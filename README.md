@@ -2,7 +2,7 @@
 
 # trailroutine
 
-A hiking map that routes tracks along roads and trails with [BRouter](https://github.com/abrensch/brouter). Public version: https://nakarte-routing.pages.dev.
+A hiking map that routes tracks along roads and trails with [BRouter](https://github.com/abrensch/brouter). Public version: https://trailroutine.com (the old address https://nakarte-routing.pages.dev moves visitors there with their saved tracks).
 
 It started as a fork of [wladich/nakarte](https://github.com/wladich/nakarte), the code of nakarte.me by Sergey Orlov, and is developed as a separate product: the app in [web/](web/) is a rewrite on React and MapLibre that reads the old links. MIT license, see [LICENSE](LICENSE).
 

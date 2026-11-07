@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Публичный клон nakarte на Cloudflare (`nakarte-routing.pages.dev`): сборка под клон, раздача тайлов BRouter и файлов движка с того же origin, свои сервисы вместо инфраструктуры автора `*.nakarte.me`.
+Публичный сайт trailroutine на Cloudflare (`trailroutine.com`; старый адрес `nakarte-routing.pages.dev` переводит туда людей вместе с данными браузера): сборка под клон, раздача тайлов BRouter и файлов движка с того же origin, свои сервисы вместо инфраструктуры автора `*.nakarte.me`.
 
 ## Requirements
 

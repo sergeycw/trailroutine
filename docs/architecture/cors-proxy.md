@@ -25,7 +25,7 @@ flowchart TD
     options{"OPTIONS?"}
     method{"GET or HEAD?"}
     target{"targetUrl parsed?"}
-    own{"trailroutine address:<br/>*.nakarte-routing.workers.dev,<br/>nakarte-routing.pages.dev and subdomains?"}
+    own{"trailroutine address:<br/>*.nakarte-routing.workers.dev,<br/>nakarte-routing.pages.dev, trailroutine.com<br/>and subdomains?"}
     tt{"Tracestrack tile<br/>tile.tracestrack.com/topo_‹language›/z/x/y(@2x).webp?"}
     ttkey{"secret TRACESTRACK_KEY set?"}
     withkey["query string of the client dropped,<br/>?key=TRACESTRACK_KEY"]
