@@ -394,12 +394,21 @@ describe('инструменты линии', () => {
         ctx.editing.start(walk.id, 0);
         ctx.editing.startJoin('end');
         // the end nearer to C is D: Other attaches with its start
+        const before = ctx.calls.length;
         ctx.editing.join(other.id, 0, 'start');
+        // the seam C–D is routed with the current activity (change route-join-seam)
+        expect(states(tracks(ctx)[0].routes?.[0])).toEqual(['routed', 'routed', 'pending', 'routed']);
+        expect(ctx.calls).toHaveLength(before + 1);
+        expect(ctx.calls[before].from).toEqual(C);
+        expect(ctx.calls[before].to).toEqual(D);
+        ctx.calls[before].resolve([P(41.72, 44.82)]);
+        await flush();
         const [joined, untouched] = tracks(ctx);
         expect(untouched).toBe(other);
         expect(untouched.segments).toEqual([[D, P(41.725, 44.83), E]]);
         expect(joined.segments[0].at(-1)).toEqual(E);
-        expect(states(joined.routes?.[0])).toEqual(['routed', 'routed', 'straight', 'routed']);
+        expect(states(joined.routes?.[0])).toEqual(['routed', 'routed', 'routed', 'routed']);
+        expect(joined.routes?.[0]?.legs[2]).toMatchObject({ state: 'routed', activity: 'hiking' });
         expect(joined.routes?.[0]?.legs.at(-1)).toEqual({ state: 'routed', activity: 'mtb' });
     });
 
