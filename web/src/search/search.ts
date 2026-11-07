@@ -55,8 +55,8 @@ export const OPEN_AS_TRACK = 'Open as track';
 
 // the sources of track links: the services of tracks/import-url.ts and the map links of search/links.ts
 export const SEARCH_HINT =
-    'Search places and coordinates, or paste a link: a map of Google, Yandex, OpenStreetMap, mapy.cz or nakarte.me; ' +
-    'a track of nakarte.me, Yandex ruler, OpenStreetMap traces, Tracedetrail or Sports Tracker; ' +
+    'Search places and coordinates, or paste a link: a map of Google, Yandex, OpenStreetMap, mapy.cz or nakarte; ' +
+    'a track of nakarte, Yandex ruler, OpenStreetMap traces, Tracedetrail or Sports Tracker; ' +
     'a GPX, KML, KMZ or GeoJSON file.';
 
 // a link of a service that does not give its tracks (spec map-search, «Ссылки на треки в поиске»): what to do instead

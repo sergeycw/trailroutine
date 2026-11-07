@@ -84,7 +84,7 @@ describe('Строка поиска', () => {
         await searchField().click();
         const hint = page.getByText(SEARCH_HINT);
         await expect.element(hint).toBeVisible();
-        for (const source of ['nakarte.me', 'Yandex ruler', 'OpenStreetMap traces', 'Tracedetrail', 'Sports Tracker']) {
+        for (const source of ['nakarte', 'Yandex ruler', 'OpenStreetMap traces', 'Tracedetrail', 'Sports Tracker']) {
             expect(SEARCH_HINT).toContain(source);
         }
         await searchField().fill('Tbilisi');
