@@ -2,7 +2,7 @@
 
 One level up: [overview](README.md#overview), block ①.
 
-A single-page app in [web/](../../web/). The stack: React 19, MapLibre GL JS 6 through `@vis.gl/react-maplibre`, shadcn/ui on Base UI and Tailwind 4, state in Zustand, build with Vite. The app opens on `https://trailroutine.com/`. The old address `https://nakarte-routing.pages.dev/` serves the same build, and the app there moves the visitor to the new domain with the data of the browser (see «Move to the own domain» below). The address `/next/` (the address before the switch) answers with a redirect to the same path from the root ([web/public/_redirects](../../web/public/_redirects)). The entry point is [main.tsx](../../web/src/main.tsx), the root component is [App.tsx](../../web/src/App.tsx). Change `switch-to-web-app` deleted the old nakarte client (Leaflet, knockout, webpack). The reasons and the migration: [new UI research](../../openspec/research/new-ui.md) and the archives of changes 1–9 from its list.
+A single-page app in [web/](../../web/). The stack: React 19, MapLibre GL JS 6 through `@vis.gl/react-maplibre`, shadcn/ui on Base UI and Tailwind 4, state in Zustand, build with Vite. The app opens on `https://trailroutine.com/`. The old address `https://nakarte-routing.pages.dev/` serves the same build, and the app there moves the visitor to the new domain with the data of the browser ([Move to the own domain](#move-to-the-own-domain)). Old links to `/next/` get a redirect to the same path from the root ([web/public/_redirects](../../web/public/_redirects)). The entry point is [main.tsx](../../web/src/main.tsx), the root component is [App.tsx](../../web/src/App.tsx). Reasons for the stack: [register: platform and stack](decisions.md#platform-and-stack).
 
 ## Main modules
 
@@ -21,6 +21,8 @@ flowchart LR
     elevation["elevation/<br/>elevation profile"]
     search["search/<br/>search, placemark r="]
     streetview["streetview/<br/>Street View"]
+    errors["errors/<br/>Sentry"]
+    move["move/<br/>move to the own domain"]
 
     app --> store
     app --> map
@@ -35,12 +37,15 @@ flowchart LR
     store --- tracks
     store --- routing
     store --- layers
+    main["main.tsx"] --> errors
+    main --> move
+    main --> app
 ```
 
 | Directory | Sends requests to | Details |
 |---|---|---|
-| `state/` | `location.hash`, `localStorage` | `hash.ts` parses the address parameters of the old nakarte client (`m=`, `l=`, `r=`, `n2=` …), `sync.ts` connects store ↔ address ↔ `localStorage`; spec [web-client](../../openspec/specs/web-client/spec.md) |
-| `layers/` | tile providers directly; the vector basemap OpenFreeMap Outdoor (`Of`): TileJSON and tiles from `tiles.openfreemap.org` directly, with its own style and labels ([outdoor.ts](../../web/src/layers/outdoor.ts)); Strava, Tsvetkov (`Mt`), the basemap Tracestrack Topo (`Tt`, the second basemap of the fallback chain `Of` → `Tt` → OSM, the key is in the proxy) and custom layers with the proxy flag go through `corsProxyUrl`; `maplibre-contour` builds the contour lines (`Ct`) in the browser, in its own Web Worker, from the AWS Terrain Tiles relief tiles, the same tiles as the hillshade `Hs` uses; dated imagery (`Hls`): HLS NASA GIBS tiles for the date from `d=`, capture dates with cloud cover from STAC Earth Search ([dated.ts](../../web/src/layers/dated.ts)) | spec [map-layers](../../openspec/specs/map-layers/spec.md), [cors-proxy.md](cors-proxy.md) |
+| `state/` | `location.hash`, `localStorage` | `hash.ts` parses the address parameters in the nakarte.me format (`m=`, `l=`, `r=`, `n2=` …), `sync.ts` connects store ↔ address ↔ `localStorage`; spec [web-client](../../openspec/specs/web-client/spec.md) |
+| `layers/` | tile providers directly; the vector basemap OpenFreeMap Outdoor (`Of`): TileJSON and tiles from `tiles.openfreemap.org` directly, with its own style and labels ([outdoor.ts](../../web/src/layers/outdoor.ts)); Strava, Tsvetkov (`Mt`), the basemap Tracestrack Topo (`Tt`, the key is in the proxy) and custom layers with the proxy flag go through `corsProxyUrl`; `maplibre-contour` builds the contour lines (`Ct`) in the browser, in its own Web Worker, from the AWS Terrain Tiles relief tiles, the same tiles as the hillshade `Hs` uses; dated imagery (`Hls`): HLS NASA GIBS tiles for the date from `d=`, capture dates with cloud cover from STAC Earth Search ([dated.ts](../../web/src/layers/dated.ts)) | spec [map-layers](../../openspec/specs/map-layers/spec.md), [cors-proxy.md](cors-proxy.md) |
 | `tracks/` | `tracksStorageServer` (`nktl=`, "Copy link"), track sites through `corsProxyUrl` | [track-storage.md](track-storage.md), specs [tracks](../../openspec/specs/tracks/spec.md), [track-files](../../openspec/specs/track-files/spec.md) |
 | `routing/` | the server BRouter (`routingServer`) or `engine/` | [route-editor.md](route-editor.md), [routing.md](routing.md) |
 | `engine/` | the CheerpJ runtime from the Leaning Technologies CDN, `/brouter-wasm/` and `routingTilesPath` of the same origin | [routing.md](routing.md), spec [browser-routing-engine](../../openspec/specs/browser-routing-engine/spec.md) |
@@ -49,6 +54,7 @@ flowchart LR
 | `search/` | mapy.cz and short links through `corsProxyUrl`, photon.komoot.io directly | spec [map-search](../../openspec/specs/map-search/spec.md) |
 | `streetview/` | Google Maps JavaScript API, coverage tiles | spec [street-view](../../openspec/specs/street-view/spec.md) |
 | `map/` | — | spec [web-client](../../openspec/specs/web-client/spec.md) |
+| `move/` | `tracksStorageServer` (the moved data, encrypted) | [Move to the own domain](#move-to-the-own-domain) |
 | `errors/` | Sentry ingest (`o….ingest.sentry.io`): only for a build with `sentryDsn` and only with an error. The errors are unhandled exceptions, render errors, and an engine backend failure (`onBackendError` in `engine/`). The report has no address with `#…`, no request addresses and no console | spec [clone-monitoring](../../openspec/specs/clone-monitoring/spec.md), design [add-error-tracking](../../openspec/changes/archive/2026-10-30-add-error-tracking/design.md) |
 
 The editor, the placemark and Street View share one map click handler: `routing/MapEditor.tsx` (`onClick`). On a phone, a long press opens the map menu ([route-editor.md](route-editor.md)).
@@ -79,6 +85,8 @@ flowchart LR
 | `routingTilesPath` | `engine/` | `'/tiles/'` (in other modes `'/brouter-wasm/segments4/'`) |
 | `googleMapsApiKey` | `streetview/` | the secret or an empty string |
 | `sentryDsn` | `errors/` | the secret `SENTRY_DSN` (`check-web` uses a fake DSN) or an empty string, which turns off the tracker |
+| `siteOrigin` | `move/` | `https://trailroutine.com`: where the old address sends visitors |
+| `movedFromHosts` | `move/` | `['nakarte-routing.pages.dev']`: the hosts that move visitors and their data to `siteOrigin` |
 
 ## Build and serving
 
@@ -86,7 +94,7 @@ flowchart LR
 
 ## Move to the own domain
 
-The browser keeps the data of the app per origin: the autosave record in IndexedDB `nakarte-web` and the settings in `localStorage`. The site moved from `nakarte-routing.pages.dev` to `trailroutine.com`, so the old origin hands its data to the new one. The module is [web/src/move/](../../web/src/move/), and both sides run in [main.tsx](../../web/src/main.tsx) before the render. Decisions: archive [move-to-trailroutine-domain](../../openspec/changes/archive/2026-11-07-move-to-trailroutine-domain/design.md). Behavior: spec clone-hosting, requirements "Move from the old address" and "Import of moved data".
+The browser keeps the data of the app per origin: the autosave record in IndexedDB `nakarte-web` and the settings in `localStorage`. The site is on `trailroutine.com`, so the old origin `nakarte-routing.pages.dev` hands its data to the new one. The module is [web/src/move/](../../web/src/move/), and both sides run in [main.tsx](../../web/src/main.tsx) before the render. Decisions: archive [move-to-trailroutine-domain](../../openspec/changes/archive/2026-11-07-move-to-trailroutine-domain/design.md). Behavior: spec [clone-hosting](../../openspec/specs/clone-hosting/spec.md), requirements ["Move from the old address"](../../openspec/specs/clone-hosting/spec.md#requirement-move-from-the-old-address) and ["Import of moved data"](../../openspec/specs/clone-hosting/spec.md#requirement-import-of-moved-data).
 
 ```mermaid
 sequenceDiagram
@@ -105,9 +113,8 @@ sequenceDiagram
 
 - The encryption key is only in the URL fragment, so the Worker never sees it.
 - The old origin remembers its `move` value, and the new origin remembers the imported keys. So a second visit does not upload or import again.
-- If the upload fails, the app renders on the old address as before. If the import fails, the app shows a toast.
-- The Bulk Redirect of the old address is a later step (backlog).
+- If the upload fails, the app renders on the old address. If the import fails, the app shows a toast.
 
 ## Checked against
 
-[web/src/config.ts](../../web/src/config.ts), [web/src/App.tsx](../../web/src/App.tsx), [web/vite.config.ts](../../web/vite.config.ts), the directories `web/src/*/` (`grep -rhoE "config\.[A-Za-z]+" web/src`, `grep -rl "fetch(" web/src`), [deploy-pages.yml](../../.github/workflows/deploy-pages.yml): `master` after change `switch-to-web-app`.
+[web/src/config.ts](../../web/src/config.ts), [web/src/App.tsx](../../web/src/App.tsx), [web/vite.config.ts](../../web/vite.config.ts), the directories `web/src/*/` (`grep -rhoE "config\.[A-Za-z]+" web/src`, `grep -rl "fetch(" web/src`), [deploy-pages.yml](../../.github/workflows/deploy-pages.yml), [web/src/move/](../../web/src/move/), [web/src/main.tsx](../../web/src/main.tsx): `master` on 2026-11-07.

@@ -124,7 +124,7 @@ flowchart LR
 | `tracestrack check` | daily 05:41 UTC, manually | a Tracestrack Topo tile through the proxy: `503` (no key) is a warning, another failure (key, quota) fails the workflow | — |
 | `prod check` | daily 05:40 UTC, after the deploy (job `smoke`), manually | `scripts/prod-check.sh`: the app on `/`, the redirect from `/next/` to `/`, the trailroutine services respond; read only | — |
 
-The workflow `elevation tiles` (the elevation tile archive z0–9) is deleted together with the elevation tiles: [elevation.md](elevation.md#elevation-tiles-are-retired). GitHub runs schedules only from the default branch. The workflows that write to Cloudflare and R2 have the condition `github.repository == 'sergeycw/trailroutine'`: a copy in another repository does not run them.
+GitHub runs schedules only from the default branch. The workflows that write to Cloudflare and R2 have the condition `github.repository == 'sergeycw/trailroutine'`: a copy in another repository does not run them.
 
 ## Secrets
 
@@ -134,6 +134,8 @@ The workflow `elevation tiles` (the elevation tile archive z0–9) is deleted to
 | `CLOUDFLARE_ACCOUNT_ID` | GitHub | the steps `wrangler` and `prune` in `deploy pages` | — |
 | `GOOGLE_MAPS_API_KEY` | GitHub, optional | the step `web build` in `deploy pages`, variable `VITE_GOOGLE_MAPS_API_KEY`; without the secret, the key is empty and the app uses the keyless mode | key restrictions in Google Cloud (the key is in the bundle) |
 | `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | GitHub | `elevation data`, `brouter tiles sync` (R2 S3 API) | Bucket Item Write on `nakarte-elevation` and `nakarte-tiles` |
+| `SENTRY_DSN` | GitHub, optional | the step `web build` in `deploy pages`, variable `VITE_SENTRY_DSN`; without the secret, the build has no error tracker | the DSN is public in the bundle; Allowed Domains of the Sentry project limit the senders |
+| `SENTRY_AUTH_TOKEN`; variables `SENTRY_ORG`, `SENTRY_PROJECT` | GitHub, optional | the step `upload source maps to sentry` in `deploy pages`; without the token, the step skips the upload | — |
 | `STRAVA_SESSION`, `STRAVA_COOKIES` | secrets of the Worker `nakarte-cors-proxy` | the proxy ([cors-proxy.md](cors-proxy.md)) | — |
 | `TRACESTRACK_KEY` | secret of the Worker `nakarte-cors-proxy` | the proxy, tiles of the Tracestrack Topo basemap ([cors-proxy.md](cors-proxy.md#tracestrack-key)) | Tracestrack key without a `Referer` list; the free plan gives 100 thousand tiles per month |
 

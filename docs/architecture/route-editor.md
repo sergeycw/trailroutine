@@ -6,7 +6,7 @@ How a track line keeps the waypoints and the route legs, and how the legs are ro
 
 ## Line model
 
-An editor line is waypoints and legs between them. It is not a flat array of nodes with a mark on each node, as in the editor of the old nakarte client. The data is immutable: an edit gives a new line ([line.ts](../../web/src/routing/line.ts)).
+An editor line is waypoints and legs between them. The data is immutable: an edit gives a new line ([line.ts](../../web/src/routing/line.ts)).
 
 ```mermaid
 flowchart LR
@@ -89,4 +89,4 @@ sequenceDiagram
 
 ## Checked against
 
-[web/src/routing/](../../web/src/routing/) (`line.ts`, `editor.ts`, `editing.ts`, `line-tools.ts`, `router.ts`), [web/src/autosave/](../../web/src/autosave/) (`autosave.ts`, `saved.ts`, `idb.ts`, `legacy-session.ts`): `master` after change `switch-to-web-app`.
+[web/src/routing/](../../web/src/routing/) (`line.ts`, `editor.ts`, `editing.ts`, `line-tools.ts`, `router.ts`), [web/src/autosave/](../../web/src/autosave/) (`autosave.ts`, `saved.ts`, `idb.ts`, `legacy-session.ts`): `master` on 2026-11-07.
