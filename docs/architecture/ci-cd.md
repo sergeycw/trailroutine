@@ -21,7 +21,7 @@ flowchart LR
     djobs["deploy pages: job per Worker<br/>npm test / cargo test, wrangler deploy"]
     dpages["deploy pages: pages<br/>tests of functions and web/, build of<br/>web/ to the root of build/, e2e,<br/>wrangler pages deploy"]
 
-    ghcr["ghcr.io<br/>brouter:nightly"]
+    ghcr["ghcr.io<br/>brouter, pinned digest BROUTER_IMAGE"]
     pages["Pages nakarte-routing<br/>static files + functions/"]
     workers["Workers nakarte-cors-proxy,<br/>nakarte-tracks, nakarte-elevation,<br/>nakarte-guard"]
     prune["deploy pages: prune<br/>delete the Pages deploys, except the current one"]
