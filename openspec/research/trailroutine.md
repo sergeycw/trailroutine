@@ -1,6 +1,6 @@
 # trailroutine: rename plan and domain research
 
-Status: steps 1 and 2 are done. Steps 3 and 4 are open. Facts were checked on 2026-11-07.
+Status: steps 1 and 2 are done. Step 3 is done except the Bulk Redirect. Step 4 is open. Facts were checked on 2026-11-07.
 
 ## Name
 
@@ -25,7 +25,7 @@ The owner set this order on 2026-11-07.
 |---|---|---|---|
 | 1 | Rename the code and the repo (`sergeycw/trailroutine`) | change `rename-to-trailroutine` | done 2026-11-07: [archive](../changes/archive/2026-11-07-rename-to-trailroutine/) |
 | 2 | Register `trailroutine.com` at Cloudflare Registrar, in the account of the Pages project (owner decision 2026-11-07; no `.app`) | owner | done 2026-11-07: registered, Cloudflare nameservers |
-| 3 | Add the custom domain to the Pages project. The old origin moves the data of users to the new domain automatically, and the Bulk Redirect starts after a transition period (owner decision 2026-11-07) | a change | open |
+| 3 | Add the custom domain to the Pages project. The old origin moves the data of users to the new domain automatically, and the Bulk Redirect starts after a transition period (owner decision 2026-11-07) | change `move-to-trailroutine-domain` | domain and move done 2026-11-07: [archive](../changes/archive/2026-11-07-move-to-trailroutine-domain/); the Bulk Redirect is open (backlog) |
 | 4 | Create the Pages project `trailroutine` (`trailroutine.pages.dev`) as a staging site for large features | a change | open |
 
 Related work outside the steps:

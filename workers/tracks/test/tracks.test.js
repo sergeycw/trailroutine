@@ -158,6 +158,16 @@ describe('CORS', () => {
         expect(response.headers.get('Access-Control-Allow-Credentials')).toBe('true');
     });
 
+    // свой домен после переезда (change move-to-trailroutine-domain): с него приложение читает перенесённые данные
+    it('reflects the own domain trailroutine.com', async () => {
+        const body = 'ownDomainTrack';
+        await postTrack(clientKey(body), body);
+        const response = await request(`/track/${clientKey(body)}`, {origin: 'https://trailroutine.com'});
+        expect(response.status).toBe(200);
+        expect(response.headers.get('Access-Control-Allow-Origin')).toBe('https://trailroutine.com');
+        expect(response.headers.get('Access-Control-Allow-Credentials')).toBe('true');
+    });
+
     it('answers OPTIONS with 204 and allowed methods', async () => {
         const response = await request(`/track/${clientKey('x')}`, {
             method: 'OPTIONS',

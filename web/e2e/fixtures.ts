@@ -21,6 +21,8 @@ const PHOTON_FIXTURE = fileURLToPath(new URL('../src/search/fixtures/photon-mtat
 // адреса прокси и хранилища треков клона — те же, что в сборке (vite build --mode clone)
 export const CORS_PROXY_URL = makeConfig('clone').corsProxyUrl;
 export const TRACKS_STORAGE = makeConfig('clone').tracksStorageServer;
+// vite preview of the build, the same address as baseURL in playwright.config.ts
+const PREVIEW_ORIGIN = 'http://localhost:4173';
 // сервис высот клона: в тестах отвечает заглушка, высота — функция широты (elevationAt)
 export const ELEVATION_SERVER = makeConfig('clone').elevationsServer;
 export const elevationAt = (lat: number) => Math.round((lat - 41.6) * 10000 * 100) / 100;
@@ -192,6 +194,9 @@ interface Network {
     googleApiLoads: string[];
     // тела конвертов, принятых вместо Sentry (сборка с DSN, спека clone-monitoring)
     sentryEnvelopes: string[];
+    // serve the build of vite preview under real host names (the move between two origins, e2e/move.spec.ts):
+    // each host is its own origin with its own storage; /__seed__ on it is an empty page for writing test data
+    serveSite(...hosts: string[]): void;
     // забрать принятые конверты: тест, который ждёт отчёт, забирает его, остальные к концу обязаны остаться без отчётов
     takeSentryEnvelopes(): string[];
 }
@@ -254,6 +259,7 @@ export const test = base.extend<{ network: Network; tracksOpen: boolean }>({
             const failing = new Set<string>();
             let customCors = true;
             let externalAllowed = false;
+            const siteHosts = new Set<string>();
             const proxied = new Map<string, { path?: string; body?: string; status?: number }>();
             const searchStatus: Record<'mapycz' | 'photon', number> = { mapycz: 200, photon: 200 };
             const network: Network = {
@@ -286,6 +292,11 @@ export const test = base.extend<{ network: Network; tracksOpen: boolean }>({
                 attach: async (other) => {
                     await intercept(other);
                 },
+                serveSite: (...hosts) => {
+                    for (const host of hosts) {
+                        siteHosts.add(host);
+                    }
+                },
             };
             async function intercept(target: BrowserContext) {
                 target.on('request', (request) => {
@@ -295,7 +306,21 @@ export const test = base.extend<{ network: Network; tracksOpen: boolean }>({
                 });
                 await target.route('**/*', async (route) => {
                     const url = route.request().url();
-                    if (new URL(url).hostname === 'localhost') {
+                    const { hostname, pathname, origin } = new URL(url);
+                    if (siteHosts.has(hostname)) {
+                        if (pathname === '/__seed__') {
+                            return route.fulfill({
+                                status: 200,
+                                body: '<!doctype html><title>seed</title>',
+                                contentType: 'text/html',
+                            });
+                        }
+                        const response = await route.fetch({ url: url.replace(origin, PREVIEW_ORIGIN) });
+                        return ENGINE_WORKER.test(pathname)
+                            ? route.fulfill({ response, body: WORKER_PRELUDE + (await response.text()) })
+                            : route.fulfill({ response });
+                    }
+                    if (hostname === 'localhost') {
                         if (ENGINE_WORKER.test(new URL(url).pathname)) {
                             network.engineLoads += 1;
                             const response = await route.fetch();

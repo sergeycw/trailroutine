@@ -23,7 +23,7 @@ command = "worker-build --release worker"
 
 [vars]
 # сайт клона, dev-сервер приложения web/ (8769) и vite preview (4173)
-ALLOWED_ORIGINS = "https://nakarte-routing.pages.dev,http://localhost:8769,http://localhost:4173"
+ALLOWED_ORIGINS = "https://trailroutine.com,https://nakarte-routing.pages.dev,http://localhost:8769,http://localhost:4173"
 
 [[r2_buckets]]
 binding = "DEM"

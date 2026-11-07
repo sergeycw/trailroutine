@@ -27,6 +27,11 @@ export interface Config {
     // DSN»). DSN не секрет, он виден в бандле; в деплое — секрет SENTRY_DSN ради выключателя: без него сборка к Sentry
     // не обращается
     sentryDsn: string;
+    // адрес сайта после переезда (change move-to-trailroutine-domain): сюда старый адрес переводит людей
+    siteOrigin: string;
+    // хосты, с которых приложение переводит людей на siteOrigin вместе с данными браузера (move/move-out.ts).
+    // Только точное имя: деплои <хеш>.nakarte-routing.pages.dev и будущий стенд не переезжают
+    movedFromHosts: readonly string[];
 }
 
 export function makeConfig(mode: string, googleMapsApiKey = '', sentryDsn = ''): Config {
@@ -53,6 +58,8 @@ export function makeConfig(mode: string, googleMapsApiKey = '', sentryDsn = ''):
         routingTilesPath: clone ? '/tiles/' : '/brouter-wasm/segments4/',
         googleMapsApiKey,
         sentryDsn,
+        siteOrigin: 'https://trailroutine.com',
+        movedFromHosts: ['nakarte-routing.pages.dev'],
     };
 }
 

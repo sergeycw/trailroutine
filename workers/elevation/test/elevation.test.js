@@ -96,6 +96,13 @@ describe('CORS and methods', () => {
         expect(response.headers.get('Access-Control-Allow-Origin')).toBe(CLONE_ORIGIN);
     });
 
+    // свой домен после переезда (change move-to-trailroutine-domain)
+    it('reflects the own domain trailroutine.com', async () => {
+        const response = await request({body: '', origin: 'https://trailroutine.com'});
+        expect(response.status).toBe(200);
+        expect(response.headers.get('Access-Control-Allow-Origin')).toBe('https://trailroutine.com');
+    });
+
     it('rejects a foreign origin and a missing origin with 403', async () => {
         expect((await request({body: '1 2', origin: 'https://example.com'})).status).toBe(403);
         expect((await request({body: '1 2', origin: null})).status).toBe(403);

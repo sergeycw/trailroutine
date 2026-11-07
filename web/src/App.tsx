@@ -1,6 +1,6 @@
 import type { MapRef } from '@vis.gl/react-maplibre';
 import type { RequestTransformFunction } from 'maplibre-gl';
-import { type Ref, useEffect, useState } from 'react';
+import { type Ref, useEffect, useRef, useState } from 'react';
 import { type AutosaveStorage, startAutosave } from '@/autosave/autosave';
 import { indexedDbStorage } from '@/autosave/idb';
 import { legacySessionSource } from '@/autosave/legacy-session';
@@ -38,7 +38,7 @@ import { MapActions } from './map/MapActions';
 import { MapButtons } from './map/MapButtons';
 import { TopBar } from './TopBar';
 
-function localStorageOrNull(): Storage | null {
+export function localStorageOrNull(): Storage | null {
     try {
         return window.localStorage;
     } catch {
@@ -83,6 +83,9 @@ interface AppProps {
     autosave?: AutosaveStorage | null;
     // Street View: по умолчанию Maps JavaScript API Google; browser-тесты подставляют поддельное окно без сети
     streetView?: StreetViewApi;
+    // error toast after the start: main.tsx passes the failed import of moved data (move/move-in.ts). The toast
+    // manager has no listener before Toaster mounts, so the toast waits for an effect of App
+    notice?: string | null;
 }
 
 // Высота нижних панелей — CSS-переменные на <html>: над профилем высот встаёт панорама (--profile-inset), над обеими —
@@ -124,7 +127,16 @@ export function App({
     router,
     autosave,
     streetView,
+    notice,
 }: AppProps) {
+    // Strict Mode runs effects twice in dev: the ref keeps it one toast
+    const noticeShown = useRef(false);
+    useEffect(() => {
+        if (notice && !noticeShown.current) {
+            noticeShown.current = true;
+            notify(notice, 'error');
+        }
+    }, [notice]);
     const [store] = useState(startStore);
     const [atPosition] = useState(() => startsAtPosition(window.location.hash));
     // откатывать ли подложку по ошибке её источника (layers/basemap-fallback.ts): помнит, какие подложки уже показали тайлы

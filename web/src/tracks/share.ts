@@ -51,7 +51,10 @@ export function shareLink(location: { origin: string; pathname: string; hash: st
 export class ShareError extends Error {}
 
 // POST в хранилище; ошибка — ShareError с текстом для «Error making link: …»
-export async function storeTracks(body: string, sources: TrackSources): Promise<string> {
+export async function storeTracks(
+    body: string,
+    sources: Pick<TrackSources, 'fetch' | 'tracksStorageServer'>,
+): Promise<string> {
     const key = trackKey(body);
     let response: Response;
     try {

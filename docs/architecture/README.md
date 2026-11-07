@@ -83,7 +83,7 @@ The blocks of the overview one level down: each service and each request path wi
 
 ### Public site
 
-The build `vite build --mode clone` on `nakarte-routing.pages.dev`. The browser calculates the route, and the BRouter tiles and engine files come from the same origin.
+The build `vite build --mode clone` on `trailroutine.com` (and on the old address `nakarte-routing.pages.dev`, which moves visitors to the new domain). The browser calculates the route, and the BRouter tiles and engine files come from the same origin.
 
 ```mermaid
 flowchart LR
@@ -191,7 +191,7 @@ Each component and each connection, with the file that confirms it. All diagrams
 | Client | SPA `web/` on React + MapLibre, Vite build | [vite.config.ts](../../web/vite.config.ts), [App.tsx](../../web/src/App.tsx) |
 | Mode without `clone` (server mode) | `makeConfig(mode)`: the route comes from the server BRouter | [config.ts](../../web/src/config.ts) |
 | Mode `clone` | `vite build --mode clone`: in-browser engine, tiles from `/tiles/` | [config.ts](../../web/src/config.ts), [deploy-pages.yml](../../.github/workflows/deploy-pages.yml) |
-| Pages project `nakarte-routing` | static files `build/` (the app in the root, the engine files in `brouter-wasm/`, the `/next/` redirect from `_redirects`) and Pages Functions, address `nakarte-routing.pages.dev` | [wrangler.toml](../../wrangler.toml), [_redirects](../../web/public/_redirects) |
+| Pages project `nakarte-routing` | static files `build/` (the app in the root, the engine files in `brouter-wasm/`, the `/next/` redirect from `_redirects`) and Pages Functions, addresses `trailroutine.com` (custom domain, a proxied CNAME in the zone of the same account) and `nakarte-routing.pages.dev` | [wrangler.toml](../../wrangler.toml), [_redirects](../../web/public/_redirects) |
 | Pages Function `tiles` | BRouter tiles `/tiles/*` from R2 with Range; code in `workers/tiles` | [functions/tiles](../../functions/tiles/[[path]].js), [workers/tiles/src/index.js](../../workers/tiles/src/index.js) |
 | Pages Function `brouter-wasm` | Range for the engine files (jar, profiles) on top of the Pages static files | [functions/brouter-wasm](../../functions/brouter-wasm/[[path]].js) |
 | Worker `nakarte-guard` | rate counter for Pages Functions, closed from outside (`workers_dev = false`) | [workers/guard/wrangler.toml](../../workers/guard/wrangler.toml), [index.js](../../workers/guard/src/index.js), [client.js](../../workers/guard/src/client.js) |

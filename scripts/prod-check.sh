@@ -5,7 +5,10 @@
 # Запускают workflow «prod check» (раз в день и после деплоя) и человек: sh scripts/prod-check.sh
 set -u
 
-SITE=${SITE:-https://nakarte-routing.pages.dev}
+SITE=${SITE:-https://trailroutine.com}
+# the old address serves the same build until the Bulk Redirect (change move-to-trailroutine-domain): the move of
+# user data to SITE runs in the page, so the server still answers the app here
+OLD_SITE=${OLD_SITE:-https://nakarte-routing.pages.dev}
 ELEVATION=${ELEVATION:-https://nakarte-elevation.nakarte-routing.workers.dev}
 TRACKS=${TRACKS:-https://nakarte-tracks.nakarte-routing.workers.dev}
 PROXY=${PROXY:-https://nakarte-cors-proxy.nakarte-routing.workers.dev}
@@ -42,12 +45,16 @@ check_range() {
 
 # приложение web/ (openspec/specs/web-client): заголовок из web/index.html. Одного статуса мало — Pages отвечают 200 и
 # на пути без файла (корневым index.html)
-status=$(fetch "$SITE/")
-if [ "$status" = 200 ] && grep -q '<title>trailroutine</title>' "$body"; then
-    report 'site' ok
-else
-    report 'site' "status $status, title $(grep -o '<title>[^<]*' "$body" | head -1 | cut -c8-)"
-fi
+check_site() {
+    status=$(fetch "$2/")
+    if [ "$status" = 200 ] && grep -q '<title>trailroutine</title>' "$body"; then
+        report "$1" ok
+    else
+        report "$1" "status $status, title $(grep -o '<title>[^<]*' "$body" | head -1 | cut -c8-)"
+    fi
+}
+check_site 'site' "$SITE"
+check_site 'old site' "$OLD_SITE"
 
 # старый адрес приложения: /next/ — редирект на / (web/public/_redirects); curl без -L смотрит сам ответ
 status=$(fetch "$SITE/next/")

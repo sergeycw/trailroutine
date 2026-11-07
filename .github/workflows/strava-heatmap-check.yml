@@ -22,7 +22,7 @@ jobs:
           # тайл Тбилиси z12, на нём точно есть треки; Origin — клон, иначе прокси ответит 403
           url="https://nakarte-cors-proxy.nakarte-routing.workers.dev/https/content-a.strava.com/identified/globalheat/all/hot/12/2557/1514.png?px=256&check=$(date +%s)"
           for attempt in 1 2 3; do
-            if curl -sS -o /dev/null -D headers.txt -H 'Origin: https://nakarte-routing.pages.dev' "$url"; then
+            if curl -sS -o /dev/null -D headers.txt -H 'Origin: https://trailroutine.com' "$url"; then
               break
             fi
             sleep 10
