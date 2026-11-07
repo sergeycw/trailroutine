@@ -1,6 +1,8 @@
 import { AttributionControl, GeolocateControl, ScaleControl, useMap } from '@vis.gl/react-maplibre';
 import { BinocularsIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { config } from '@/config';
+import { routingAttribution } from '@/engine/credit';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/state/context';
 import { useStreetView } from '@/streetview/context';
@@ -207,7 +209,11 @@ export function MapButtons({ notify, storage }: MapButtonsProps) {
                 (MapActions); MapLibre puts each next bottom control higher, so the scale bar is above the attribution.
                 maxWidth 80 (MapLibre has 100): the collapsed column fits to the left of the profile button on a phone
                 (design map-chrome) */}
-            <AttributionControl position="bottom-left" compact />
+            <AttributionControl
+                position="bottom-left"
+                compact
+                customAttribution={routingAttribution(config.routingEngine)}
+            />
             <ScaleControl position="bottom-left" unit="metric" maxWidth={80} />
         </>
     );

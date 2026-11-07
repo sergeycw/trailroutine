@@ -5,6 +5,7 @@ import { ProfileOnMap } from '@/elevation/ProfileOnMap';
 import { PROFILE_SOURCES } from '@/elevation/style';
 import type { LayerDef } from '@/layers/catalog';
 import { withDate } from '@/layers/dated';
+import { providePoiIcon } from '@/layers/poi-icons';
 import { buildStyle, layerCodeOfSource } from '@/layers/style';
 import { editSources } from '@/routing/edit-style';
 import { MapEditor } from '@/routing/MapEditor';
@@ -58,6 +59,11 @@ export function BaseMap({ onTileError, onTileLoad, transformRequest, ref, childr
     const setMapRef = useCallback(
         (instance: MapRef | null) => {
             mapRef.current = instance;
+            // the POI icons of OpenFreeMap Outdoor: the style has no sprite, the app draws them on request. MapLibre 6
+            // asks the resolver (the event styleimagemissing cannot add an image any more), and it is set before the
+            // first tiles, when react-maplibre gives the reference
+            const map = instance?.getMap();
+            map?.setMissingStyleImageResolver((id) => providePoiIcon(map, id));
             if (typeof ref === 'function') {
                 ref(instance);
             } else if (ref) {

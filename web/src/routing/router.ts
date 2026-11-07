@@ -9,7 +9,9 @@ import { type Activity, parseRoute, RoutingError, routeQuery } from './brouter';
 // without a message.
 
 export interface Router {
-    route(from: LatLng, to: LatLng, activity: Activity, signal?: AbortSignal): Promise<LatLng[]>;
+    // kind 'preview': a route for the drag preview, not for the line (MapEditor); the routers handle it as any route,
+    // the fake router of the tests keeps it apart
+    route(from: LatLng, to: LatLng, activity: Activity, signal?: AbortSignal, kind?: 'preview'): Promise<LatLng[]>;
     // warm-up on activity selection: the engine runtime loads before the first click (spec browser-routing-engine)
     warmUp(): void;
     // is the router alive: a new check when the routing menu opens (spec routing, «Недоступный роутер»)

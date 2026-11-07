@@ -7,6 +7,7 @@ import { getActivity, RoutingError } from './brouter';
 import { createRouteEditor, type End, type RouteEditor } from './editor';
 import { fromSegment, type RouteLine, type SegmentRoute, settledRoute, toSegment } from './line';
 import { cutLine, joinLines, type LinePlace } from './line-tools';
+import { type HikingOptions, saveHikingOptions, withHikingOptions } from './options';
 import { type Router, routerDownHint } from './router';
 
 // The connection between the editor and the store, without React, as createTrackActions (design add-web-route-editor,
@@ -131,7 +132,8 @@ export function createRouteEditing({ store, router, engine, notify, storage }: R
                     if (!activity) {
                         return Promise.reject(new RoutingError(`unknown activity ${activityId}`));
                     }
-                    return router.route(from, to, activity, signal);
+                    // the options at the time of the request: a change applies to the legs that are routed next
+                    return router.route(from, to, withHikingOptions(activity, state().hikingOptions), signal);
                 },
                 onChange: () => write(created),
                 onRouteError,
@@ -403,6 +405,31 @@ export function createRouteEditing({ store, router, engine, notify, storage }: R
         undo: () => editor()?.undo(),
         redo: () => editor()?.redo(),
         pending: () => editor()?.pending() ?? 0,
+
+        // a route for the drag preview with the current activity and options; null when routing is off or fails (the
+        // preview stays straight)
+        async previewRoute(from: LatLng, to: LatLng, signal: AbortSignal): Promise<LatLng[] | null> {
+            const activity = getActivity(state().routingActivity);
+            if (!activity) {
+                return null;
+            }
+            try {
+                return await router.route(
+                    from,
+                    to,
+                    withHikingOptions(activity, state().hikingOptions),
+                    signal,
+                    'preview',
+                );
+            } catch {
+                return null;
+            }
+        },
+
+        setHikingOptions(options: HikingOptions) {
+            state().setHikingOptions(options);
+            saveHikingOptions(storage, options);
+        },
 
         setActivity(id: string | null) {
             state().setRoutingActivity(id);

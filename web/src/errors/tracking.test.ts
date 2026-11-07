@@ -72,8 +72,20 @@ describe('Отчёт без места и треков пользователя'
         // the SDK does not touch the fetch messages in the app (toasts)
         expect(options.enhanceFetchErrorMessages).toBe('report-only');
         const { keepBreadcrumb, scrubEvent } = await import('./scrub');
-        expect(options.beforeSend).toBe(scrubEvent);
+        const event = { request: { url: 'https://trailroutine.com/#m=12/41.7/44.8&nktk=abc' } };
+        expect(options.beforeSend(structuredClone(event))).toEqual(scrubEvent(structuredClone(event) as never));
         expect(options.beforeBreadcrumb).toBe(keepBreadcrumb);
+    });
+});
+
+describe('No reports after the page leaves', () => {
+    test('No reports after the page leaves', async () => {
+        const { tracking, options } = await started();
+        const event = { message: 'Importing a module script failed.' };
+        expect(options.beforeSend(structuredClone(event))).not.toBeNull();
+        // the move to the new domain, a reload or a navigation begins: Safari and Firefox abort the loads in flight
+        tracking.stopReportingOnLeave();
+        expect(options.beforeSend(structuredClone(event))).toBeNull();
     });
 });
 

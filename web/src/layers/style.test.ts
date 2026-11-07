@@ -1,5 +1,5 @@
 import { createExpression, latest, type StylePropertySpecification } from '@maplibre/maplibre-gl-style-spec';
-import { expect, test } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import { PROFILE_SELECTION } from '@/elevation/style';
 import { EDIT_LAYERS, EDIT_LEGS, EDIT_PREVIEW, EDIT_WAYPOINTS } from '@/routing/edit-style';
 import { TRACK_COLORS } from '@/tracks/model';
@@ -85,12 +85,25 @@ test('Горизонтали над отмывкой: линии и подпис
     });
 });
 
+// the layer ids of the outdoor style with the relief Hs after the land cover
+function withRelief(own: string[]) {
+    const at = own.indexOf('Of-landcover') + 1;
+    return [...own.slice(0, at), 'Hs', ...own.slice(at)];
+}
+
 test('Подложка OpenFreeMap Outdoor: слои своего стиля одним источником, горизонтали над ней — свои', () => {
     const [of] = pick('Of');
     const ru = { ...of, labelLanguage: 'ru-RU' };
     const style = buildStyle([...pick('Ct', 'Hs'), ru]);
     const own = outdoorLayers('Of', 'ru-RU').map((layer) => layer.id);
-    expect(style.layers.map((layer) => layer.id)).toEqual(['background', ...own, 'Hs', 'Ct', 'Ct-labels', ...TRACKS]);
+    // the relief is inside the style of the basemap (Relief inside OpenFreeMap Outdoor)
+    expect(style.layers.map((layer) => layer.id)).toEqual([
+        'background',
+        ...withRelief(own),
+        'Ct',
+        'Ct-labels',
+        ...TRACKS,
+    ]);
     expect(style.sources.Of).toEqual(of.source);
     expect(style.layers.filter((layer) => 'source' in layer && layer.source === 'Of').length).toBeGreaterThan(10);
     expect(style.layers).toEqual(expect.arrayContaining(outdoorLayers('Of', 'ru-RU')));
@@ -244,4 +257,24 @@ test('Радиалка на обзоре: до зума 13 включитель�
         // between the thresholds, the lines move apart smoothly, without a jump
         expect(offsetAt(offsets[id], 13.5), id).toBeCloseTo(1.75);
     }
+});
+
+describe('Relief inside OpenFreeMap Outdoor', () => {
+    test('Relief under the roads of the basemap', () => {
+        const style = buildStyle(pick('Of', 'Hs'));
+        const ids = style.layers.map((layer) => layer.id);
+        expect(ids).toEqual(['background', ...withRelief(outdoorLayers('Of', '').map((layer) => layer.id)), ...TRACKS]);
+        expect(ids.indexOf('Hs')).toBeLessThan(ids.indexOf('Of-water'));
+        expect(ids.indexOf('Hs')).toBeLessThan(ids.indexOf('Of-path'));
+        expect(ids.indexOf('Hs')).toBeLessThan(ids.indexOf('Of-places'));
+        expect(style.layers.find((layer) => layer.id === 'Hs')).toMatchObject({ type: 'hillshade', source: 'Hs' });
+        // the toggle stays: without Hs, there is no relief
+        expect(buildStyle(pick('Of')).layers.map((layer) => layer.id)).not.toContain('Hs');
+    });
+
+    test('Relief above an overlay', () => {
+        const ids = buildStyle(pick('Of', 'Hs', 'Nm')).layers.map((layer) => layer.id);
+        const own = outdoorLayers('Of', '').map((layer) => layer.id);
+        expect(ids).toEqual(['background', ...own, 'Nm', 'Hs', ...TRACKS]);
+    });
 });

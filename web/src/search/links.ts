@@ -2,7 +2,7 @@ import { fromLeafletZoom, type SearchResponse, type SearchResult } from './resul
 
 // Map links in the search bar: a port of LinksProvider of the old client
 // (src/lib/leaflet.control.search/providers/links.js): Yandex, Google, mapy.com, OSM, nakarte. The zoom in links is
-// the zoom of the old client (Leaflet), in the result it is MapLibre zoom. Short links goo.gl/maps and mapy.com/s/
+// the zoom of the old client (Leaflet), in the result it is MapLibre zoom. Short links goo.gl/maps, maps.app.goo.gl and mapy.com/s/
 // expand with HEAD through the proxy of the clone; the final address of the answer is a proxy address, and the code
 // removes the proxy prefix from it.
 
@@ -144,8 +144,12 @@ function unsorry(url: URL): URL {
     return url;
 }
 
-async function google(url: URL, sources: LinkSources): Promise<SearchResponse> {
-    const short = url.hostname === 'goo.gl';
+// A link of a Google place with only a name and no coordinates (a maps.app.goo.gl share of a place often gives
+// this): the search looks for the name instead (spec map-search, «Поиск по ссылкам на карты»)
+export type LinkResponse = SearchResponse | { placeName: string };
+
+async function google(url: URL, sources: LinkSources): Promise<LinkResponse> {
+    const short = url.hostname === 'goo.gl' || url.hostname === 'maps.app.goo.gl';
     let actual: URL | null = url;
     if (short) {
         try {
@@ -166,6 +170,14 @@ async function google(url: URL, sources: LinkSources): Promise<SearchResponse> {
             } catch {
                 // the next parser
             }
+        }
+    }
+    const placeName = actual?.pathname.match(GOOGLE_PLACE)?.[1];
+    if (placeName) {
+        try {
+            return { placeName: decodeURIComponent(placeName).replace(/\+/gu, ' ') };
+        } catch {
+            // a broken name: the error below
         }
     }
     return short ? brokenShort('Google') : malformed('Google');
@@ -226,7 +238,7 @@ export function isLinkQuery(query: string): boolean {
     return /^(https?|track):\/\//u.test(query);
 }
 
-export async function searchLink(query: string, sources: LinkSources): Promise<SearchResponse> {
+export async function searchLink(query: string, sources: LinkSources): Promise<LinkResponse> {
     let url: URL;
     try {
         url = new URL(query);
@@ -237,7 +249,10 @@ export async function searchLink(query: string, sources: LinkSources): Promise<S
     if ((/\byandex\./u.test(host) && url.pathname.startsWith('/maps/')) || /static-maps\.yandex\./u.test(host)) {
         return yandex(url);
     }
-    if ((/\bgoogle\./u.test(host) || host === 'goo.gl') && /^\/maps(\/|$)/u.test(url.pathname)) {
+    if (
+        ((/\bgoogle\./u.test(host) || host === 'goo.gl') && /^\/maps(\/|$)/u.test(url.pathname)) ||
+        host === 'maps.app.goo.gl'
+    ) {
         return google(url, sources);
     }
     if (/\bmapy\.(cz|com)$/u.test(host)) {

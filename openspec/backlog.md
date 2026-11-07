@@ -34,19 +34,15 @@
 ## Отложено
 
 - Strava heatmap: z13–z16 живут, пока жива сессия `STRAVA_SESSION`, а её срок неизвестен: в браузере `_strava4_session` без `Expires`, куки «запомнить меня» нет (`--probe` в `scripts/strava-session-secret.mjs`), и ни одна страница сессию не продлевает: `/dashboard`, `/api/next/session/get`, счётчик уведомлений и heatmap отвечают без `Set-Cookie: _strava4_session` (`--rotation`, 2026-10-08). Срок решает сервер Strava; если он продлевается активностью, его держат ежедневные заходы прокси, срок покажет `strava heatmap check`. Новую сессию даёт только вход человека: вход защищён reCAPTCHA v3 Enterprise на `/login/request_otp` и `/session`, автологин по крону не делаем; удалённый браузер получил бы ту же сессию. Если сессия окажется короткой — расширение Chrome, которое после ручного входа само отправляет новую `_strava4_session` в прокси (KV), чтобы обойтись без скрипта. Условия Strava (сверено 2026-10-10, design архива `map-chrome`, «Условия атрибуции»): о показе heatmap в стороннем приложении молчат, а автоматический доступ и сбор данных запрещают — ежедневные заходы прокси под сессией владельца формально под этот запрет попадают.
-- Лицензия CheerpJ Community: держать рантайм у себя нельзя — «Self-Hosting not allowed» для Community, только по коммерческой лицензии ([licensing](https://cheerpj.com/licensing/), 2026-10-08), то есть требование «Рантайм с CDN Leaning Technologies» в `browser-routing-engine` верно. Не сверено, нужно ли указывать авторство в UI (сейчас его нет).
+- Лицензия CheerpJ Community: держать рантайм у себя нельзя — «Self-Hosting not allowed» для Community, только по коммерческой лицензии ([licensing](https://cheerpj.com/licensing/), 2026-10-08), то есть требование «Рантайм с CDN Leaning Technologies» в `browser-routing-engine` верно. Авторство «Built with CheerpJ» обязательно (сверено 2026-11-07), оно в подписи карты клона (архив `cheerpj-credit`).
 - Проверка в Firefox, Safari и на телефоне.
-- Короткие ссылки Google `maps.app.goo.gl/…` (нынешний формат «Поделиться») в поиске нового приложения: старый клиент их не понимал, а разворот через прокси клона не проверен — нужна живая ссылка (обычные `google.com/maps` и `goo.gl/maps` работают). Проверить `HEAD` через прокси (Google может отдать капчу или страницу согласия), добавить в `web/src/search/links.ts`.
 - Свой ключ Google для Street View, если понадобится чистая панорама. Сейчас клон, как nakarte.me, грузит Maps JavaScript API без ключа (`keyless-street-view`) и прячет режим разработки Google своим CSS (`hide-street-view-dev-overlay`); это против условий Google, и Google может режим закрыть или сменить вёрстку. Ключ — секрет GitHub `GOOGLE_MAPS_API_KEY`, деплой подставит его сам. Шаги владельца: проект в Google Cloud с биллингом (карта нужна даже для бесплатного объёма), включить Maps JavaScript API, создать ключ с ограничениями Websites `https://nakarte-routing.pages.dev` и API только Maps JavaScript API ([рекомендации Google](https://developers.google.com/maps/api-security-best-practices)), бюджет с оповещением, `gh secret set GOOGLE_MAPS_API_KEY`. Цена по [прайсу Google Maps Platform](https://developers.google.com/maps/billing-and-pricing/pricing): Dynamic Street View — 5 000 бесплатных панорам в месяц, дальше $14 за 1 000; покрытие — тайлы без ключа, не тарифицируются.
 
 ## Редактор и активности
 
-- Настройки активности в UI: уровень SAC (`SAC_scale_limit`), `consider_elevation`, `allow_steps`.
-- Перестраивать маршрут во время перетаскивания, с ограничением частоты запросов.
 - Импортированная линия в редакторе нового приложения: каждая точка — опорная, на десятках тысяч точек перетаскивание тормозит (замер — архив `add-web-route-editor`, «Перетаскивание внутри большой редактируемой линии»). Варианты: показывать опорные точки только на крупном масштабе или упрощать линию при входе в редактирование. Cut и Shortcut на такой линии в 100 тыс. точек — 0.35–0.7 с до кадра (архив `add-web-line-tools`, «Время на больших линиях»).
 - Undo операций списка треков в новом приложении: Cut, Join, удаление и вынос отрезка, разворот трека не отменяются, как у старого клиента (история редактора — история одной линии; design `add-web-line-tools`, «Undo»).
 - Стык Join, который сразу прокладывается текущей активностью: сейчас стык — прямой отрезок, как у старого клиента, и проложить его можно только удалив одну из его опорных точек (design `add-web-line-tools`, «Что после операции»).
-- Профиль высот пальцем: зум и выделение участка на сенсорном экране (сейчас палец только водит курсор, зум — колесом мыши; архив `add-web-elevation-profile`, «График: свой SVG»).
 
 ## Данные из ответа BRouter
 
@@ -68,16 +64,11 @@
 
 В Things у таких задач тег `Feedback`.
 
-- Импорт по ссылкам (отзыв тестировщика 2026-11-07, Chrome на iPad): «какие вообще ссылки жрёт? из накарте не хочет, из стравы тоже; пусть жрёт все, включая мэнимэпс, plotaroute, tracedetrail».
-  - Strava: импорта нет, см. «Импорт треков по ссылкам Strava, Garmin Connect и Wikiloc» в разделе рисков.
-  - plotaroute.com: сервиса в `web/src/tracks/import-url.ts` нет; главная страница отвечает `403` на curl (2026-11-07), проверять на живой ссылке маршрута.
-  - tracedetrail: сервис есть, но через прокси ≈ 3 запроса подряд, потом `429` (раздел рисков). Нужна ссылка, которая не открылась.
-  - «мэнимэпс» — неясно, какой сервис; уточнить у тестировщика.
-  - Какие ссылки понимает поиск, в интерфейсе не видно: в строке только «Search or paste a track link».
+- Импорт по ссылкам (отзыв тестировщика 2026-11-07, Chrome на iPad): «какие вообще ссылки жрёт? из накарте не хочет, из стравы тоже; пусть жрёт все, включая мэнимэпс, plotaroute, tracedetrail». Сделано: ссылки nakarte.me с `nktl=` (архив `import-nakarte-storage-links`), подсказка пустой строки поиска и сообщение для Strava, Garmin Connect, Wikiloc, plotaroute и MapMagic (архив `explain-track-link-sources`; «мэнимэпс» — MapMagic, у него нет публичных ссылок на маршруты, plotaroute закрыт проверкой на ботов). Открыто: tracedetrail — ссылка `/en/trace/300530` через прокси открывается (2026-11-07), а ссылки тестировщика, которая не открылась, нет; ждём её.
 
 ## Новые возможности
 
-- Векторная подложка OpenFreeMap Outdoor (`Of`) — подложка по умолчанию с откатом на `Tt` и OSM (архивы `add-vector-outdoor-style` и `openfreemap-default-basemap`): свой стиль, подписи «местное / язык браузера или латиница» на любом зуме. Дальше: значки POI (хижины, родники, приюты — нужен свой спрайт); рельеф внутри стиля вместо оверлея `Hs`; свой хостинг тайлов — та же схема OpenMapTiles через Planetiler в PMTiles на R2, если OpenFreeMap закроется (ресёрч `openspec/research/new-ui.md`, «Рекомендация на потом»).
+- Векторная подложка OpenFreeMap Outdoor (`Of`) — подложка по умолчанию с откатом на `Tt` и OSM (архивы `add-vector-outdoor-style` и `openfreemap-default-basemap`): свой стиль, подписи «местное / язык браузера или латиница» на любом зуме. Значки хижин, приютов, кемпингов, воды и смотровых сделаны без спрайта (архив `outdoor-poi-icons`). Рельеф `Hs` рисуется внутри стиля, под водой, дорогами и подписями (архив `outdoor-relief-in-style`). Дальше: свой хостинг тайлов — та же схема OpenMapTiles через Planetiler в PMTiles на R2, если OpenFreeMap закроется (ресёрч `openspec/research/new-ui.md`, «Рекомендация на потом»).
 - Слои Яндекса (`Y` карта, `S` спутник) в новом UI на MapLibre: Яндекс отдаёт тайлы в EPSG:3395, MapLibre рисует растр только в Web Mercator. Вариант — перепроекция в браузере через `addProtocol`: склеивать два тайла Яндекса со сдвигом по вертикали, как `_adjustHeight` старого клиента (`git show 015be893:src/lib/leaflet.layer.yandex/index.js`); около дня. В первой версии нового UI их нет (решение владельца 2026-10-08, `record-new-ui-decisions`).
 - Отправка маршрута прямо в приложение часов и велокомпьютера — COROS, Wahoo, Garmin (запрос пользователя, переданный владельцем 2026-10-12): ресёрч сделан 2026-10-12 — [`openspec/research/device-route-sync.md`](research/device-route-sync.md), там же решения владельца и changes. Файловый путь — «Save as GPX» с высотами: окно «Send to device» сделано ([архив `send-route-to-device`](changes/archive/2026-10-12-send-route-to-device/design.md)) и удалено владельцем 2026-10-29 ([архив `trim-track-menus`](changes/archive/2026-10-29-trim-track-menus/design.md)). Осталось: проверить импорт GPX в приложения на устройствах владельца; прямая отправка в Wahoo — change 2 ресёрча, если файловый путь окажется неудобен.
 
@@ -85,12 +76,10 @@
 
 - Расписания GitHub выключает в публичном репо после 60 дней без активности: это синхронизация тайлов, `strava heatmap check`, `tracestrack check` и `prod check`. Ошибки клиента видит Sentry (архив `add-error-tracking`).
 - Год мозаики Sentinel-2 — константа `SENTINEL_YEAR` в `web/src/layers/catalog.ts`. Новая мозаика — слой `s2cloudless-<год>_3857` в Capabilities: `curl -s https://tiles.maps.eox.at/wmts/1.0.0/WMTSCapabilities.xml | grep -o 's2cloudless-[0-9]*_3857' | sort -u | tail -1`. Тогда поднять год, год в образце адреса и подписи тестов (`catalog.test.ts`, `App.browser.test.tsx`).
-- Мелочи хранилищ: у объектов `nakarte-tracks` есть время записи (`customMetadata.created`, с `limit-track-writes`), но нет версии `nktk`.
 - Безопасность после security-аудита (цены и формулы — `openspec/research/security-audit.md`, «Итог»):
   - P2. Выключатель расходов: потолка у Cloudflare нет, бюджетные оповещения — письмо раз в сутки. Workflow по расписанию читает GraphQL Analytics и выше порога выключает `workers.dev` у Worker'ов; нужен токен Analytics Read + Workers Scripts Edit — решение владельца.
   - P2, отложено владельцем 2026-10-08. Секреты деплоя в environment `production` с веткой `master`: сначала владелец заводит environment и переносит секреты, потом `environment: production` в job'ы с секретами.
   - P2, отложено владельцем 2026-10-08. Сессия Strava в прокси — личный аккаунт владельца: утечка секрета или выкачка heatmap через прокси бьют по нему. Выпустить `STRAVA_SESSION` от отдельного аккаунта.
-  - P3. `cargo audit` и `npm audit --omit=dev` шагом в `check-<сервис>.yml`; разовая проверка 2026-10-08 — чисто.
   - P3. Workers Logs под флудом добавляют $0.60 за миллион событий: понизить `head_sampling_rate` у прокси, если трафик вырастет (логи кук Strava при этом станут выборочными).
 
 ## Варианты движка в браузере

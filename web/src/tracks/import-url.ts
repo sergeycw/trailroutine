@@ -229,6 +229,23 @@ const anyFile: Service = (url) => {
 
 const SERVICES: Service[] = [yandexRuler, nakarteTrack, nakarteUrl, osm, tracedetrail, sportsTracker, anyFile];
 
+// Services whose tracks do not open by link (checked 2026-11-07, change explain-track-link-sources): Strava, Garmin
+// Connect and Wikiloc need a login or a browser (the owner's decision, archive record-new-ui-decisions), plotaroute
+// answers non-browser requests with a bot check, MapMagic has private routes and GPX export only in PRO. The search
+// names them instead of trying "any file".
+const CLOSED_SERVICES: [string, RegExp][] = [
+    ['Strava', /^https?:\/\/(?:[a-z0-9-]+\.)?strava\.(?:com|app\.link)\//u],
+    ['Garmin Connect', /^https?:\/\/connect\.garmin\.(?:com|cn)\//u],
+    ['Wikiloc', /^https?:\/\/(?:[a-z0-9-]+\.)?wikiloc\.com\//u],
+    ['plotaroute', /^https?:\/\/(?:www\.)?plotaroute\.com\//u],
+    ['MapMagic', /^https?:\/\/(?:[a-z0-9-]+\.)?mapmagic\.app\//u],
+];
+
+// the name of a service that does not give its tracks by link, or null; no network
+export function closedTrackService(url: string): string | null {
+    return CLOSED_SERVICES.find(([, pattern]) => pattern.test(url))?.[0] ?? null;
+}
+
 // the first service that recognizes the link; no network
 export function matchTrackLink(url: string): TrackLink | null {
     for (const service of SERVICES) {
