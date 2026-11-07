@@ -17,9 +17,9 @@ import {
 } from './custom';
 import { isListed } from './settings';
 
-// Свой слой по URL — поля формы старого клиента (showCustomLayerForm в leaflet.control.layers.configure), кроме
-// scaleDependent (нужен был только печати). Перед сохранением — проверка CORS одним тайлом в центре вида
-// (design, «Свои слои»): WebGL без CORS тайл не покажет, поэтому форма предлагает прокси клона.
+// A custom layer by URL: the form fields of the old client (showCustomLayerForm in leaflet.control.layers.configure),
+// except scaleDependent (only printing used it). Before the save, the form checks CORS with one tile at the view center
+// (design, «Свои слои»): WebGL does not show a tile without CORS, so the form offers the proxy of the clone.
 
 const MAX_ZOOMS = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
 
@@ -41,7 +41,7 @@ const CORS_MESSAGES: Record<Exclude<CorsCheck, 'ok'>, string> = {
 };
 
 interface CustomLayerDialogProps {
-    // null — новый слой
+    // null for a new layer
     code: string | null;
     onClose: () => void;
 }
@@ -52,7 +52,7 @@ export function CustomLayerDialog({ code, onClose }: CustomLayerDialogProps) {
     const settings = useAppStore((state) => state.settings);
     const [fields, setFields] = useState<CustomLayerFields>(() => (code && parseCustomLayerCode(code)) || NEW_LAYER);
     const [message, setMessage] = useState<string | null>(null);
-    // проверка не прошла по недоступности — повторное нажатие сохраняет слой без проверки
+    // the check failed because the tile is unreachable: a second click saves the layer without the check
     const [warnedFor, setWarnedFor] = useState<string | null>(null);
     const [checking, setChecking] = useState(false);
     const id = useId();

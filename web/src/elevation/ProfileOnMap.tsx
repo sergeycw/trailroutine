@@ -6,11 +6,12 @@ import { cursorInfo } from './format';
 import { nearestIndex, pointAt } from './profile';
 import { PROFILE_SELECTION, selectionFeature } from './style';
 
-// Профиль на карте (design add-web-elevation-profile, «Курсор на карте»): метка в точке курсора графика, выделенный
-// участок и наведение мыши на линию профиля — курсор графика встаёт в ближайшее место. Ближайшее место ищется
-// проекцией точек выборки (map.project), а не по отрисованному кадру: не зависит от кадра и не требует слоя.
+// The profile on the map (design add-web-elevation-profile, «Курсор на карте»): a marker at the point of the graph
+// cursor, the selected section, and the mouse hover on the profile line, which puts the graph cursor at the nearest
+// place. The code finds the nearest place by the projection of the sample points (map.project), not by the drawn
+// frame: so it does not depend on the frame and does not need a layer.
 
-// насколько близко к линии профиля должна быть мышь, px
+// how near to the profile line the mouse must be, px
 const HOVER_DISTANCE = 10;
 
 export function ProfileOnMap() {
@@ -19,13 +20,13 @@ export function ProfileOnMap() {
     const data = useAppStore((state) => state.profileData);
     const cursor = useAppStore((state) => state.profileCursor);
     const selection = useAppStore((state) => state.profileSelection);
-    // линию скрытого трека не видно — наведение на её место курсор не ставит
+    // the line of a hidden track is not visible, so a hover on its place does not set the cursor
     const visible = useAppStore(
         (state) => state.tracks.find((track) => track.id === state.profile?.trackId)?.visible ?? false,
     );
     const map = current?.getMap();
 
-    // выделение — данные источника мимо стиля; пересборка стиля сбрасывает их — вернуть на styledata
+    // the selection is source data past the style; a rebuild of the style resets it, so set it again on styledata
     useEffect(() => {
         if (!map) {
             return;
@@ -45,7 +46,7 @@ export function ProfileOnMap() {
         };
     }, [map, data, selection]);
 
-    // наведение мыши на линию профиля; проекция — раз в кадр
+    // the mouse hover on the profile line; the projection runs one time per frame
     useEffect(() => {
         if (!map || !data?.values || !visible) {
             return;

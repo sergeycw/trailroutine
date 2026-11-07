@@ -1,7 +1,7 @@
-// Пути движка и обвязка CheerpJ для запасного пути на главном потоке. Воркер (engine.worker.ts)
-// повторяет loadRouter у себя: классический воркер в dev Vite не может ничего импортировать — правка
-// одной копии — правка обеих. Справочник — движок старого клиента src/lib/brouter/browser-engine.js и
-// класс WasmRouter из experiments/wasm/cheerpj/java/.
+// Engine paths and the CheerpJ wrapper for the fallback on the main thread. The worker (engine.worker.ts) repeats
+// loadRouter: a classic worker in Vite dev cannot import anything, so a change in one copy is a change in both.
+// Reference: the engine of the old client src/lib/brouter/browser-engine.js and the class WasmRouter from
+// experiments/wasm/cheerpj/java/.
 
 export type EnginePaths = EngineProtocol.Paths;
 
@@ -11,7 +11,7 @@ const JARS = ['lib/brouter-patch.jar', 'lib/brouter.jar', 'lib/wasm-router.jar']
 export function enginePaths(runtimeUrl: string, routingTilesPath: string): EnginePaths {
     return {
         runtimeUrl,
-        // brouter-patch.jar первым: его классы подменяют одноимённые из brouter.jar
+        // brouter-patch.jar goes first: its classes replace the classes with the same names from brouter.jar
         classpath: JARS.map((jar) => BASE_DIR + jar).join(':'),
         segmentDir: `/app${routingTilesPath}`,
         profileDir: `${BASE_DIR}profiles/`,
@@ -29,8 +29,8 @@ interface CheerpjGlobals {
     cheerpjRunLibrary(classpath: string): Promise<{ WasmRouter: Promise<WasmRouterClass> }>;
 }
 
-// Исключение Java приходит JS-объектом с асинхронным getMessage(). Переполнение стека в CheerpJ —
-// ArithmeticException без текста (AGENTS.md), тогда остаётся только имя.
+// A Java exception comes as a JS object with an async getMessage(). A stack overflow in CheerpJ is an
+// ArithmeticException without a message (AGENTS.md), then only the name is left.
 async function javaErrorMessage(error: unknown): Promise<string> {
     try {
         const message = await (error as { getMessage(): Promise<unknown> }).getMessage();
@@ -38,14 +38,14 @@ async function javaErrorMessage(error: unknown): Promise<string> {
             return String(message);
         }
     } catch {
-        // не исключение Java
+        // not a Java exception
     }
     return error instanceof Error ? error.message : String(error);
 }
 
-// cheerpjInit — один раз на глобальную область: второй вызов бросает «CheerpJ: Already initialized»
-// (проверено в design spike-engine-in-worker). Поэтому повторный запуск после сбоя на главном потоке
-// берёт уже прошедшую инициализацию, а не зовёт её снова.
+// cheerpjInit runs one time per global scope: a second call throws «CheerpJ: Already initialized» (checked in design
+// spike-engine-in-worker). So a restart after a failure on the main thread uses the initialization that already ran and
+// does not call it again.
 let initialized: Promise<void> | null = null;
 
 export async function loadRouter(loadScript: (url: string) => Promise<void>, paths: EnginePaths): Promise<RouteFn> {

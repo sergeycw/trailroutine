@@ -8,29 +8,31 @@ import type {
 import type { SegmentRoute } from '@/routing/line';
 import { type LatLng, type Track, trackColor } from './model';
 
-// Треки на карте (design add-web-tracks, «Треки на карте»): GeoJSON-источники на все треки, над всеми слоями.
-// Линия — непрозрачная цвета трека над белой обводкой (design map-chrome): полупрозрачная линия старого клиента
-// (weight 6, opacity 0.5) терялась на спутнике и Strava heatmap. Подписи точек MapLibre рисует сам,
-// без glyphs в стиле: шрифт из text-font берётся как CSS-семейство (GlyphManager MapLibre 6). id источников и слоёв не
-// пересекаются с кодами слоёв каталога и своих слоёв (-cs…).
+// Tracks on the map (design add-web-tracks, «Треки на карте»): GeoJSON sources for all tracks, above all layers.
+// The line is opaque in the track color over a white casing (design map-chrome): the semi-transparent line of the old
+// client (weight 6, opacity 0.5) was lost on satellite imagery and the Strava heatmap. MapLibre draws point labels
+// itself, without glyphs in the style: the font from text-font is a CSS family (GlyphManager MapLibre 6). The ids of
+// sources and layers do not overlap with the codes of catalog layers and custom layers (-cs…).
 //
-// Фича линии — кусок одного отрезка трека (id трека и номер отрезка в свойствах: по ним клик начинает редактирование).
-// Разметка маршрута режет отрезок на куски (design add-web-route-editor, «Отрисовка»): ожидающий отрезок — разрыв со
-// спиннером в середине, непроложенный — красный пунктир в слое tracks-unrouted вместо линии трека. Редактируемый
-// отрезок рисует редактор (routing/edit-style.ts), здесь его нет.
+// A line feature is a piece of one track segment (the track id and the segment index are in the properties: a click
+// starts editing by them).
+// Route markup cuts a segment into pieces (design add-web-route-editor, «Отрисовка»): a pending leg is a gap without a
+// marker, an unrouted leg is a red dashed line in the tracks-unrouted layer instead of the track line.
+// The editor draws the segment in editing (routing/edit-style.ts), it is not here.
 
 export const TRACK_LINES = 'tracks';
-// обводка линий: тот же источник, слой под линиями; клики ищут только TRACK_LINES (MapEditor)
+// line casing: the same source, a layer under the lines; clicks look only for TRACK_LINES (MapEditor)
 export const TRACK_CASING = 'tracks-casing';
 export const TRACK_UNROUTED = 'tracks-unrouted';
-// обводка пунктира непроложенного отрезка: пометка ошибки не должна теряться на спутнике сильнее линии трека
+// casing of the dashed line of an unrouted leg: on satellite imagery, the error mark must not be harder to see than
+// the track line
 export const TRACK_UNROUTED_CASING = 'tracks-unrouted-casing';
 export const TRACK_POINTS = 'track-points';
 export const TRACK_LABELS = 'track-labels';
-// отметки расстояния (tracks/ticks.ts): источник собирает карта на целом зуме
+// distance ticks (tracks/ticks.ts): the map builds the source at an integer zoom
 export const TRACK_TICKS = 'track-ticks';
 
-// пометка непроложенного отрезка (решение владельца 2026-10-09: красный пунктир всегда, и вне редактирования)
+// mark of an unrouted leg (the owner's decision 2026-10-09: a red dashed line always, also outside editing)
 export const UNROUTED_COLOR = '#e11d48';
 
 export interface SegmentRef {
@@ -39,9 +41,9 @@ export interface SegmentRef {
 }
 
 export interface SegmentPieces {
-    // куски линии без ожидающих и непроложенных отрезков
+    // line pieces without pending and unrouted legs
     lines: LatLng[][];
-    // непроложенные отрезки: прямая между опорными точками
+    // unrouted legs: a straight line between waypoints
     unrouted: [LatLng, LatLng][];
 }
 
@@ -66,8 +68,8 @@ export function segmentPieces(points: readonly LatLng[], route: SegmentRoute | n
         if (!a || !b) {
             return;
         }
-        // ожидающий отрезок — разрыв без маркера: ожидание показывает курсор (спека route-editing, «Разрыв на
-        // ожидающем отрезке»)
+        // a pending leg is a gap without a marker: the badge at the mouse pointer shows the wait
+        // (routing/RoutingBadgeOnMap.tsx, spec route-editing, «Разрыв на ожидающем отрезке»)
         if (leg.state === 'pending' || leg.state === 'failed') {
             flush();
             if (leg.state === 'failed') {
@@ -88,7 +90,7 @@ function line(coordinates: readonly LatLng[], properties: Record<string, unknown
     return { type: 'Feature', properties, geometry: { type: 'LineString', coordinates: toCoordinates(coordinates) } };
 }
 
-// Источники треков. skip — редактируемый отрезок: его рисует редактор.
+// Track sources. skip is the segment in editing: the editor draws it.
 export function trackSources(
     tracks: readonly Track[],
     skip: SegmentRef | null = null,
@@ -114,7 +116,7 @@ export function trackSources(
         });
     }
     const points: Feature<Point>[] = visible.flatMap((track) =>
-        // index — номер точки в треке: по нему клик открывает меню точки (design add-web-line-tools)
+        // index is the point index in the track: a click opens the point menu by it (design add-web-line-tools)
         track.points.map((point, index) => ({
             type: 'Feature' as const,
             properties: { id: track.id, index, color: trackColor(track.color), name: point.name },
@@ -126,20 +128,23 @@ export function trackSources(
             [TRACK_LINES]: { type: 'geojson', data: { type: 'FeatureCollection', features: lines } },
             [TRACK_UNROUTED]: { type: 'geojson', data: { type: 'FeatureCollection', features: unrouted } },
             [TRACK_POINTS]: { type: 'geojson', data: { type: 'FeatureCollection', features: points } },
-            // данные отметок зависят от зума — их ставит карта (BaseMap); здесь источник пустой, чтобы слой был всегда
+            // tick data depends on the zoom, and the map sets it (BaseMap); here the source is empty, so that the
+            // layer always exists
             [TRACK_TICKS]: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
         },
     };
 }
 
-// Линии треков и редактора смещены вправо по ходу (design offset-track-lines): у радиалки «туда» и «обратно» по одной
-// дороге — противоположные направления, и линии ложатся рядом, как полосы, а не одна на другую. Смещение — половина
-// белой обводки трека: обводки двух направлений соприкасаются. Данные не трогаются, клик MapLibre ищет по смещённой
-// линии (queryRenderedFeatures учитывает line-offset)
+// Track lines and editor lines are offset to the right in the direction of travel (design offset-track-lines): on an
+// out-and-back route, "there" and "back" along one road go in opposite directions, and the lines lie side by side,
+// as lanes, not one on top of the other. The offset is half of the white track casing: the casings of the two
+// directions touch. The data does not change, a MapLibre click searches on the offset line (queryRenderedFeatures
+// uses line-offset)
 export const TRACK_OFFSET_PX = 3.5;
-// Только вблизи (design offset-track-lines-by-zoom): смещение в пикселях не зависит от зума, и на обзоре двойная
-// полоса в разы шире дороги, петли серпантинов слипаются. Порог — зум 14 MapLibre (m=15 в адресе), выбор владельца по
-// листу скриншотов; до 13 одна линия, между 13 и 14 линии расходятся плавно, без скачка
+// Only at close zoom (design offset-track-lines-by-zoom): the offset in pixels does not depend on the zoom, and in an
+// overview the double lane is many times wider than the road, and the loops of switchbacks stick together. The
+// threshold is MapLibre zoom 14 (m=15 in the address), the owner's choice from a screenshot sheet; up to 13 there is
+// one line, between 13 and 14 the lines move apart smoothly, without a jump
 export const TRACK_OFFSET_ZOOM = 14;
 export const TRACK_LINE_OFFSET: ExpressionSpecification = [
     'interpolate',
@@ -151,7 +156,7 @@ export const TRACK_LINE_OFFSET: ExpressionSpecification = [
     TRACK_OFFSET_PX,
 ];
 
-// пунктир непроложенного отрезка: line-dasharray — в ширинах линии
+// dashed line of an unrouted leg: line-dasharray is in line widths
 export const UNROUTED_PAINT: LineLayerSpecification['paint'] = {
     'line-color': UNROUTED_COLOR,
     'line-width': 3,
@@ -159,10 +164,10 @@ export const UNROUTED_PAINT: LineLayerSpecification['paint'] = {
     'line-offset': TRACK_LINE_OFFSET,
 };
 
-// Белая обводка шире линии на 1.5 px с каждой стороны: на светлой карте её почти не видно, на тёмной (спутник, heatmap)
-// она отделяет линию от фона
+// The white casing is 1.5 px wider than the line on each side: on a light map it is almost invisible, on a dark one
+// (satellite imagery, heatmap) it separates the line from the background
 export const CASING_COLOR = '#fff';
-// под пунктиром — сплошная: белые промежутки между штрихами
+// under the dashes, a solid line: white gaps between the dashes
 export const UNROUTED_CASING_PAINT: LineLayerSpecification['paint'] = {
     'line-color': CASING_COLOR,
     'line-width': 6,
@@ -197,8 +202,8 @@ export const TRACK_LAYERS: LayerSpecification[] = [
         source: TRACK_UNROUTED,
         paint: UNROUTED_PAINT,
     },
-    // Подпись поперёк линии с отступом от неё (.measure-tick-icon-text старого: padding-left 0.7em, жирный 10 px, белый
-    // ореол); поверх всех подписей и не вытесняет их — отметки разнесены шагом не меньше 15 мм
+    // A label across the line, at a distance from it (.measure-tick-icon-text of the old client: padding-left 0.7em,
+    // bold 10 px, white halo); above all labels, and it does not push them out: the ticks are at least 15 mm apart
     {
         id: TRACK_TICKS,
         type: 'symbol',

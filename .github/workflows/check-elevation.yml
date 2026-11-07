@@ -19,7 +19,7 @@ jobs:
         working-directory: workers/elevation
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # rustup на раннере сам ставит версию, таргет wasm32 и компоненты из rust-toolchain.toml
+      # rustup on the runner installs the version, the wasm32 target and the components from rust-toolchain.toml
       - run: rustup toolchain install
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
@@ -35,5 +35,5 @@ jobs:
           cache: npm
           cache-dependency-path: workers/elevation/package-lock.json
       - run: npm ci
-      # собирает wasm под wasm32 и гоняет его в workerd с локальным R2
+      # builds the wasm for wasm32 and runs it in workerd with a local R2
       - run: npm test

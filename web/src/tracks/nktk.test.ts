@@ -15,9 +15,9 @@ import {
     saveNktk,
 } from './nktk';
 
-// Эталон — строки, записанные кодировщиками старого клиента, и их разбор старым parseNktkFragment
-// (fixtures/nktk-old.json): v4 — saveNktk, v3 и v2 — saveToString из истории апстрима (7534e57^, f339a82^),
-// v1 и v0 (track://) — строка v2 без точек с версией 1 и без версии.
+// Reference: strings written by the encoders of the old client, and their parsing by the old parseNktkFragment
+// (fixtures/nktk-old.json): v4 is saveNktk, v3 and v2 are saveToString from the upstream history (7534e57^, f339a82^),
+// v1 and v0 (track://) are the v2 string without points, with version 1 and without a version.
 
 interface OldGeoData {
     name: string;
@@ -101,9 +101,9 @@ describe('запись версии 4', () => {
 describe('Любой цвет в ссылке', () => {
     const track = { name: 'Цвет', segments: [], points: [{ lat: 41.69, lng: 44.79, name: 'P' }] };
 
-    // поле color сообщения View, как его читает клиент без поля rgb (pbf пропускает неизвестные поля)
+    // the color field of the View message, as a client without the rgb field reads it (pbf skips unknown fields)
     function viewColor(nktk: string): number {
-        // первый байт — версия строки
+        // the first byte is the string version
         const pbf = new PbfReader((decodeBase64Url(nktk) as Uint8Array).slice(1));
         let color = 0;
         pbf.readFields((tag, _, reader) => {
@@ -130,7 +130,7 @@ describe('Любой цвет в ссылке', () => {
         expect(viewColor(saveNktk({ ...track, color: '#14b8a6' }))).toBe(2);
     });
 
-    // строка версии 4 с View { color: 2, shown, rgb } — rgb записан как есть, без проверок saveNktk
+    // a version 4 string with View { color: 2, shown, rgb }: rgb is written as it is, without the saveNktk checks
     function withRgb(write: (view: PbfWriter) => void): string {
         const pbf = new PbfWriter();
         pbf.writeMessage(
@@ -160,14 +160,15 @@ describe('Любой цвет в ссылке', () => {
         const nktk = saveNktk({ ...track, color: 3 });
         expect(viewColor(nktk)).toBe(3);
         expect(parseNktk(nktk)[0].color).toBe(3);
-        // у цвета палитры поля rgb нет: свой цвет с тем же номером в color длиннее ровно на поле 4 (тег и 3 байта)
+        // a palette color has no rgb field: a custom color with the same index in color is longer exactly by field 4
+        // (the tag and 3 bytes)
         const bytes = (text: string) => decodeBase64Url(text)?.length ?? 0;
         expect(bytes(saveNktk({ ...track, color: '#14b8a6' }))).toBe(bytes(saveNktk({ ...track, color: 2 })) + 4);
     });
 });
 
 describe('разметка маршрута в строке', () => {
-    // точки уже на сетке ARC_UNIT: запись → чтение их не сдвигает
+    // the points are on the ARC_UNIT grid already: write → read does not move them
     const grid = (lat: number, lng: number) => ({
         lat: Math.round(lat * ARC_UNIT) / ARC_UNIT,
         lng: Math.round(lng * ARC_UNIT) / ARC_UNIT,
@@ -215,7 +216,7 @@ describe('разметка маршрута в строке', () => {
         );
     });
 
-    // строка, записанная руками: разметка с шагами gaps и кодами legs поверх отрезка routed
+    // a string written by hand: markup with gaps steps and legs codes over the routed segment
     function withRawRoute(gaps: number[], legs: number[], activities: string[]) {
         const pbf = new PbfWriter();
         pbf.writeMessage(1, (_: null, out: PbfWriter) => out.writeBooleanField(2, true), null);

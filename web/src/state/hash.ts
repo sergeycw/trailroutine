@@ -1,8 +1,8 @@
-// Адрес нового приложения в формате старого клиента (src/lib/leaflet.hashState/hashState.js):
-// `#k=v1/v2&k2` — пары через `&`, значения через `/`, ключ без `=` — пустой список. Значения не декодируются:
-// старый клиент их не кодировал и не раскодировал, а старые ссылки должны читаться и собираться обратно байт в байт.
-// Параметры, которые приложение не понимает (q, p, j, min, sid…), остаются на своих местах: пользователь не теряет их при
-// движении карты; треки, r= и n2= разбирает sync.ts.
+// The address of the new app in the format of the old client (src/lib/leaflet.hashState/hashState.js): `#k=v1/v2&k2`:
+// `&` separates pairs, `/` separates values, a key without `=` is an empty list. Values are not decoded: the old client
+// did not encode or decode them, and old links must be read and built back byte for byte. Parameters that the app does
+// not understand (q, p, j, min, sid…) stay in their places: the user keeps them when the map moves; sync.ts parses
+// tracks, r= and n2=.
 
 export type HashParams = ReadonlyMap<string, readonly string[]>;
 
@@ -14,7 +14,7 @@ export function parseHash(hash: string): HashParams {
         return params;
     }
     for (const pair of body.split('&')) {
-        // ленивый ключ, как в parseHashParams: всё после первого `=` — значение, `=` в base64 своих слоёв остаются
+        // a lazy key, as in parseHashParams: all after the first `=` is the value, `=` in base64 of custom layers stays
         const match = /^([^=]+?)(?:=(.*))?$/u.exec(pair);
         if (!match) {
             continue;
@@ -33,7 +33,7 @@ export function formatHash(params: HashParams): string {
     return items.join('&');
 }
 
-// null удаляет ключ; новый ключ встаёт в конец, существующий остаётся на своём месте
+// null removes the key; a new key goes to the end, an existing key stays in its place
 export function withParam(params: HashParams, key: string, values: readonly string[] | null): HashParams {
     const next = new Map(params);
     if (values === null) {
@@ -47,12 +47,12 @@ export function withParam(params: HashParams, key: string, values: readonly stri
 export interface View {
     lat: number;
     lng: number;
-    // зум MapLibre: мир на z0 у него 512 px, у Leaflet 256 px, поэтому тот же масштаб на 1 меньше
+    // MapLibre zoom: its world at z0 is 512 px, the Leaflet world is 256 px, so the same scale is 1 less
     zoom: number;
 }
 
-// m=zoom/lat/lng с зумом старого клиента. Проверки — validateState старого Leaflet.Map.js; зум читается
-// дробным, потому что новое приложение пишет его дробным (старый клиент прочтёт parseInt).
+// m=zoom/lat/lng with the zoom of the old client. The checks are validateState of the old Leaflet.Map.js; the zoom is
+// read as fractional, because the new app writes it as fractional (the old client reads it with parseInt).
 export function parseView(values: readonly string[] | undefined): View | null {
     if (values?.length !== 3) {
         return null;

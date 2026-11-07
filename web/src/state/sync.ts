@@ -15,12 +15,13 @@ import { isTrackParam, type TrackParam } from '@/tracks/links';
 import { formatHash, formatView, parseHash, parseView, type View, withParam } from './hash';
 import { type AppStore, createAppStore, savedSelection } from './store';
 
-// Связь стора с адресом и localStorage (design add-web-map-layers, «Адрес»). При старте: адрес → localStorage →
-// умолчания. Дальше стор пишет m= и панораму в n2= (не чаще раза в 300 мс: moveend и взгляд идут сериями), l=, r= метки
-// поиска и режим Street View в n2= (сразу) через
-// history.replaceState — он не шлёт hashchange, поэтому петли нет; hashchange (пользователь правит адрес)
-// переводит карту и слои. Параметры треков (nktk, nktl, nktu, nktp, nktj) читаются при старте и на hashchange и сразу
-// стираются из адреса, как bindHashStateReadOnly старого клиента; загружает их App (design add-web-tracks, «Стор»).
+// The store connection to the address and localStorage (design add-web-map-layers, «Адрес»). At start: address →
+// localStorage → defaults. Then the store writes m= and the panorama to n2= (at most once in 300 ms: moveend and the
+// view direction come in series), and l=, r= of the search placemark and the Street View mode in n2= (immediately)
+// through history.replaceState: it does not send hashchange, so there is no loop; hashchange (the user edits the
+// address) moves the map and switches the layers. Track parameters (nktk, nktl, nktu, nktp, nktj) are read at start and
+// on hashchange and immediately removed from the address, as bindHashStateReadOnly of the old client does; App loads
+// them (design add-web-tracks, «Стор»).
 
 export interface AddressWindow {
     location: { hash: string; pathname: string; search: string };
@@ -44,7 +45,7 @@ export function startAppStore({ catalog, corsProxyUrl, defaultView, hash, storag
         catalog,
         corsProxyUrl,
         settings,
-        // последний выбор — только если адрес не задаёт годный l= (ниже)
+        // the last selection only if the address does not give a valid l= (below)
         selection: settings.selection ?? { base: '', overlays: [] },
         view: parseView(params.get('m')) ?? defaultView,
         imageryDate: parseDateParam(params.get(DATE_PARAM)),
@@ -53,10 +54,10 @@ export function startAppStore({ catalog, corsProxyUrl, defaultView, hash, storag
         streetView: parseStreetView(params.get(STREET_VIEW_PARAM), params.get(LEGACY_STREET_VIEW_PARAM)),
     });
     const parsed = parseLayersParam(params.get('l'), new Map(catalog.map((layer) => [layer.code, layer])));
-    // l=, совпадающий с сохранённым выбором, — свой адрес прошлого захода (приложение всегда пишет l=), а не ссылка:
-    // он не вносит слои в список и не переписывает память столбца. Иначе перезагрузка возвращала бы галочку, снятую у
-    // слоя на карте, а память группы менялась бы на последний слой по порядку l= (design quick-layer-menus, design
-    // custom-bases-in-list)
+    // An l= that matches the saved selection is our own address from the last visit (the app always writes l=), not a
+    // link: it does not add layers to the list and does not overwrite the column memory. Otherwise a reload would bring
+    // back a check mark that the user cleared for a layer on the map, and the group memory would change to the last
+    // layer in the l= order (design quick-layer-menus, design custom-bases-in-list)
     const { selection, layers } = store.getState();
     const own =
         settings.selection !== null && params.get('l')?.join('/') === formatLayersParam(selection, layers).join('/');
@@ -70,14 +71,14 @@ const VIEW_DEBOUNCE_MS = 300;
 
 const streetViewParam = (state: StreetViewHash) => formatStreetView(state)?.join('/') ?? null;
 
-// метки сравниваются по виду в адресе: та же метка из адреса не пересоздаётся
+// placemarks are compared by their form in the address: the same placemark from the address is not created again
 function samePlacemark(a: Placemark | null, b: Placemark | null): boolean {
     return (a && formatPlacemark(a).join('/')) === (b && formatPlacemark(b).join('/'));
 }
 
 export type TrackParams = [key: TrackParam, values: string[]][];
 
-// fitView — в адресе при старте не было годного m=: карта покажет загруженные треки целиком
+// fitView: at start, the address had no valid m=: the map shows the loaded tracks in full
 export type TrackParamsHandler = (params: TrackParams, fitView: boolean) => void;
 
 export function bindAppStore(
@@ -88,7 +89,7 @@ export function bindAppStore(
 ): () => void {
     let viewTimer: ReturnType<typeof setTimeout> | undefined;
 
-    // параметры треков из адреса — и сразу из адреса долой; пустые (`nktk` без `=`) тоже стираются
+    // track parameters from the address, and immediately out of it; empty ones (`nktk` without `=`) are removed too
     function takeTrackParams(): TrackParams {
         let params = parseHash(win.location.hash);
         const found: TrackParams = [];
@@ -108,14 +109,15 @@ export function bindAppStore(
         return found;
     }
 
-    // в l= — выбор пользователя, а не подложка отката (design add-outdoor-basemap): перезагрузка снова пробует
-    // Tracestrack, а ссылка из адресной строки передаёт выбор, а не временную замену
+    // l= has the user selection, not the fallback basemap (design add-outdoor-basemap): a reload tries the selected
+    // basemap again (by default OpenFreeMap Outdoor), and a link from the address bar gives the selection, not a
+    // temporary replacement
     function layersParam() {
         const state = store.getState();
         return formatLayersParam(savedSelection(state), state.layers);
     }
 
-    // d= — только пока подложка — снимки по датам (design add-dated-imagery): у других подложек дата ничего не значит
+    // d= only while the basemap is dated imagery (design add-dated-imagery): for other basemaps a date means nothing
     function dateParam() {
         const state = store.getState();
         const base = state.layers.get(savedSelection(state).base);
@@ -131,7 +133,7 @@ export function bindAppStore(
         params = withParam(params, DATE_PARAM, dateParam());
         const { placemark } = store.getState();
         params = withParam(params, PLACEMARK_PARAM, placemark ? formatPlacemark(placemark) : null);
-        // старый n= после чтения заменяется на n2= (hashStateUpgrader старого клиента)
+        // the old n= is replaced with n2= after the read (hashStateUpgrader of the old client)
         params = withParam(params, LEGACY_STREET_VIEW_PARAM, null);
         params = withParam(params, STREET_VIEW_PARAM, formatStreetView(store.getState().streetView));
         const hash = formatHash(params);
@@ -157,7 +159,7 @@ export function bindAppStore(
         if (parsed && params.get('l')?.join('/') !== layersParam().join('/')) {
             state.applyLayersParam(parsed);
         }
-        // адрес без d= оставляет текущую дату: writeAddress ниже вернёт её в адрес
+        // an address without d= keeps the current date: writeAddress below puts it back into the address
         const date = parseDateParam(params.get(DATE_PARAM));
         if (date && date !== state.imageryDate) {
             state.setImageryDate(date);
@@ -175,7 +177,7 @@ export function bindAppStore(
                 state.setPano(null);
             }
         }
-        // адрес без m= или l= (или с негодными) — вернуть в него текущее состояние
+        // an address without m= or l= (or with invalid ones): put the current state back into it
         writeAddress();
         if (trackParams.length) {
             onTrackParams(trackParams, false);
@@ -195,7 +197,7 @@ export function bindAppStore(
         }
         const sv = state.streetView;
         const prevSv = prev.streetView;
-        // метка, режим, открытие и закрытие панорамы, переход по клику — сразу
+        // placemark, mode, panorama open and close, a move on click: immediately
         if (
             state.imageryDate !== prev.imageryDate ||
             state.placemark !== prev.placemark ||
@@ -205,7 +207,7 @@ export function bindAppStore(
         ) {
             writeAddress();
         }
-        // взгляд в панораме меняется сериями, как вид карты, — не чаще раза в 300 мс
+        // the panorama view direction changes in series, as the map view does: not more often than once in 300 ms
         if (sv.pano !== prevSv.pano && viewTimer === undefined) {
             viewTimer = setTimeout(writeAddress, VIEW_DEBOUNCE_MS);
         }
@@ -216,7 +218,7 @@ export function bindAppStore(
     win.addEventListener('hashchange', onHashChange);
     const fitView = parseView(parseHash(win.location.hash).get('m')) === null;
     const trackParams = takeTrackParams();
-    // старый клиент сразу пишет m= и l= в адрес — так ссылка из адресной строки всегда полная
+    // the old client writes m= and l= to the address immediately: so a link from the address bar is always complete
     writeAddress();
     persist();
     if (trackParams.length) {

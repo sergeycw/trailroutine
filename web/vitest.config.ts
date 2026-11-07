@@ -4,8 +4,8 @@ import type { Plugin } from 'vite';
 import { configDefaults, defineConfig, mergeConfig } from 'vitest/config';
 import viteConfig from './vite.config.ts';
 
-// Ответ с заданным HTTP-статусом для browser-тестов карты: /__status__/404/… → 404. Dev-сервер на любой
-// несуществующий путь отвечает 200 text/html, а тестам нужны честные 404 (тайла нет) и 503 (сервер лёг).
+// An answer with a given HTTP status for the browser tests of the map: /__status__/404/… → 404. The dev server answers
+// 200 text/html on any path that does not exist, but the tests need a real 404 (no tile) and 503 (the server is down).
 function statusResponses(): Plugin {
     return {
         name: 'test-status-responses',
@@ -18,8 +18,9 @@ function statusResponses(): Plugin {
     };
 }
 
-// Фикстура байтами: `import data from './x.zip?bytes'` даёт base64 файла (src/test/bytes.ts раскодирует). ?raw портит
-// двоичные файлы (читает как UTF-8), а ?inline Vite отдаёт только для известных типов ассетов, не для .gpx/.plt/.kmz.
+// A fixture as bytes: `import data from './x.zip?bytes'` gives the base64 of the file (src/test/bytes.ts decodes it).
+// ?raw breaks binary files (it reads them as UTF-8), and Vite serves ?inline only for known asset types, not for
+// .gpx/.plt/.kmz.
 function fixtureBytes(): Plugin {
     return {
         name: 'test-fixture-bytes',
@@ -34,8 +35,8 @@ function fixtureBytes(): Plugin {
     };
 }
 
-// Две части: unit в Node (*.test.ts) и то, чему нужен браузер, — в Chromium (*.browser.test.ts[x]).
-// В сеть тесты не ходят: тайлы — фикстура из src/test/.
+// Two parts: unit in Node (*.test.ts), and the tests that need a browser in Chromium (*.browser.test.ts[x]).
+// The tests do not go to the network: the tiles are a fixture from src/test/.
 export default mergeConfig(
     viteConfig,
     defineConfig({
@@ -49,16 +50,16 @@ export default mergeConfig(
                         environment: 'node',
                         include: ['src/**/*.test.ts', 'vite/**/*.test.ts'],
                         exclude: [...configDefaults.exclude, '**/*.browser.test.*'],
-                        // DOMParser браузера для парсеров треков (design add-web-tracks, «Парсеры»)
+                        // the browser DOMParser for the track parsers (design add-web-tracks, «Парсеры»)
                         setupFiles: ['src/test/node-dom.ts'],
                     },
                 },
                 {
                     extends: true,
                     plugins: [statusResponses()],
-                    // зависимости, которые Vite иначе находит уже во время прогона и перезагружает тест
-                    // («Vite unexpectedly reloaded a test»): вторая копия React падает с useContext of null.
-                    // С холодным кешем (CI) так падает первый файл, который их импортирует.
+                    // dependencies that Vite else finds only during the run and then reloads the test
+                    // («Vite unexpectedly reloaded a test»): a second copy of React fails with useContext of null.
+                    // With a cold cache (CI) the first file that imports them fails this way.
                     optimizeDeps: {
                         include: [
                             '@base-ui/react/checkbox',

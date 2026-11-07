@@ -1,5 +1,6 @@
-// Middleware лимита перед Pages Functions: спрашивает nakarte-guard по привязке GUARD (здесь заглушка)
-// и не вызывает функцию сверх лимита; без IP, без привязки и при сбое пропускает.
+// The limit middleware before Pages Functions: asks nakarte-guard through the binding GUARD (here a stub)
+// and does not call the function above the limit; without an IP, without the binding and on a failure it lets
+// the request pass.
 import {describe, expect, it} from 'vitest';
 
 import {onRequest as brouterWasm} from '../../../functions/brouter-wasm/_middleware.js';

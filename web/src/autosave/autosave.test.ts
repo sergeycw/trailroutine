@@ -31,7 +31,7 @@ function deferred<T>() {
     return { promise, resolve, reject };
 }
 
-// Хранилище в памяти: чтение и каждая запись ждут, пока тест их отпустит
+// An in-memory storage: the read and each write wait until the test releases them
 function manualStorage() {
     const load = deferred<unknown>();
     const saves: { record: SavedSet; done: ReturnType<typeof deferred<void>> }[] = [];
@@ -220,7 +220,7 @@ describe('запись', () => {
         autosave.flush();
         expect(saves).toHaveLength(2);
         expect(names(1)).toEqual(['b']);
-        // после текущей записи повторять нечего
+        // after the current write, there is nothing to repeat
         saves[0].done.resolve();
         await tick();
         expect(saves).toHaveLength(2);
@@ -234,7 +234,8 @@ describe('запись', () => {
     });
 });
 
-// Спека tracks, «Сохранённые сессии старого клиента не трогаются»: источник legacy — последняя сессия старого клиента
+// Spec tracks, «Сохранённые сессии старого клиента не трогаются»: the source legacy is the last session of the old
+// client
 describe('сессия старого клиента', () => {
     test('Сессия старого клиента: без своей записи треки сессии в списке и сразу пишутся своей записью', async () => {
         const store = appStore();

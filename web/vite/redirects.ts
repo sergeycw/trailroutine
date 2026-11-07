@@ -1,8 +1,8 @@
-// Разбор public/_redirects по правилам Cloudflare Pages в той части, что нужна файлу: точный путь или путь со звёздочкой
-// на конце, `:splat` в назначении, первое подходящее правило выигрывает, код по умолчанию 302
-// (developers.cloudflare.com/pages/configuration/redirects). Им пользуются unit-тест правил и e2e, который отвечает
-// браузеру за Pages: vite preview файл _redirects не читает. Query string сюда не передаётся: Pages переносят его в
-// назначение сами (проверено wrangler pages dev), тестам он не нужен.
+// Parsing of public/_redirects by the Cloudflare Pages rules, only the part that the file needs: an exact path or a
+// path with an asterisk at the end, `:splat` in the destination, the first matching rule wins, the default code is 302
+// (developers.cloudflare.com/pages/configuration/redirects). The unit test of the rules uses it, and so does e2e, which
+// answers the browser in place of Pages: vite preview does not read the _redirects file. The query string does not come
+// here: Pages move it to the destination themselves (checked with wrangler pages dev), the tests do not need it.
 
 export interface RedirectRule {
     source: string;

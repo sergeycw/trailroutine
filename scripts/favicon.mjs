@@ -1,11 +1,11 @@
-// Иконки сайта из web/public/favicon.svg (change site-favicon): favicon.ico с картинками 16, 32 и 48 px для браузеров
-// без SVG-иконок и apple-touch-icon.png 180 px для экрана iPhone. У apple-touch-icon — квадрат во весь размер с синим
-// фоном, без своего скругления и без прозрачности (rx="0" вместо rx="174", рендер без omitBackground). Сам favicon.svg —
-// векторная копия картинки владельца 2026-10-30: средняя линия белой полосы снята с растра 1024 px и сглажена кривой
-// Безье (design site-favicon).
+// Site icons from web/public/favicon.svg (change site-favicon): favicon.ico with images of 16, 32 and 48 px for
+// browsers without SVG icons, and apple-touch-icon.png of 180 px for the iPhone screen. apple-touch-icon is a full-size
+// square with a blue background, without its own rounding and without transparency (rx="0" in place of rx="174",
+// render without omitBackground). favicon.svg itself is a vector copy of the owner image of 2026-10-30: the center
+// line of the white stripe is traced from a 1024 px raster and smoothed with a Bézier curve (design site-favicon).
 //
-// Запуск из корня: PATH=/usr/local/bin:$PATH node scripts/favicon.mjs. Нужен Chromium Playwright из web/node_modules
-// (npm ci в web/); сеть не нужна.
+// Run from the root: PATH=/usr/local/bin:$PATH node scripts/favicon.mjs. It needs the Playwright Chromium from
+// web/node_modules (npm ci in web/); it does not need the network.
 import {readFile, writeFile} from 'node:fs/promises';
 import {createRequire} from 'node:module';
 import {dirname, join} from 'node:path';
@@ -24,8 +24,8 @@ if (square === svg) {
 }
 
 const browser = await chromium.launch();
-// transparent — прозрачный фон вне скругления (картинки ICO); без него углы — белый фон страницы, поэтому для
-// apple-touch-icon квадрат рисуется без скругления
+// transparent: a transparent background outside the rounding (the ICO images); without it the corners are the white
+// background of the page, so for apple-touch-icon the square is drawn without the rounding
 async function render(source, size, transparent) {
     const page = await browser.newPage({viewport: {width: size, height: size}});
     const url = `data:image/svg+xml;base64,${Buffer.from(source).toString('base64')}`;
@@ -38,7 +38,7 @@ async function render(source, size, transparent) {
     return png;
 }
 
-// ICO с картинками PNG внутри: заголовок 6 байт, по 16 байт на картинку (размер, 32 бита на пиксель, длина, смещение)
+// ICO with PNG images inside: a header of 6 bytes, 16 bytes per image (size, 32 bits per pixel, length, offset)
 function ico(images) {
     const header = Buffer.alloc(6 + 16 * images.length);
     header.writeUInt16LE(0, 0);

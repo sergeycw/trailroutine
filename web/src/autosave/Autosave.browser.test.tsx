@@ -30,9 +30,9 @@ import type { AutosaveStorage } from './autosave';
 import { indexedDbStorage } from './idb';
 import { legacySessionSource } from './legacy-session';
 
-// Автосохранение в App на настоящем IndexedDB Chromium. «Перезагрузка» — размонтировать App (он дописывает
-// несохранённое, как на pagehide) и отрендерить заново с новым подключением к той же базе. Настоящая перезагрузка
-// страницы — e2e (e2e/autosave.spec.ts). Названия тестов — сценарии спек route-editing и tracks.
+// Autosave in App on the real IndexedDB of Chromium. A "reload" is: unmount App (it writes the unsaved changes, as
+// on pagehide) and render it again with a new connection to the same database. The real page reload is in e2e
+// (e2e/autosave.spec.ts). The test titles are the scenarios of the specs route-editing and tracks.
 
 let tiles: FixtureTiles;
 const databases: string[] = [];
@@ -56,17 +56,17 @@ afterEach(async () => {
     );
 });
 
-// Тбилиси, зум старого клиента 15: между точками ≈ 100 px
-// подложка — растровый OpenStreetMap: тесту она не важна, а векторная по умолчанию (OpenFreeMap) с фикстурой —
-// настоящим тайлом z12 — рисуется во всех тайлах экрана и под общей нагрузкой браузерных тестов не укладывалась в
-// таймауты (change openfreemap-default-basemap)
+// Tbilisi, zoom 15 of the old client: ≈ 100 px between the points
+// the basemap is the raster OpenStreetMap: the basemap is not important for the test, and the default vector one
+// (OpenFreeMap) with its fixture, a real z12 tile, draws in all tiles of the screen and did not fit in the
+// timeouts under the shared load of the browser tests (change openfreemap-default-basemap)
 const VIEW = '#m=15/41.69/44.785&l=O';
 const A = P(41.687, 44.78);
 const B = P(41.69, 44.785);
 const C = P(41.693, 44.79);
 const MOVED = P(41.6915, 44.783);
 
-// IndexedDB под уникальным именем; записи считаются, чтобы «перезагрузка» читала базу после них
+// IndexedDB with a unique name; the code counts the writes, so that the "reload" reads the database after them
 function database() {
     const name = `nakarte-web-test-${crypto.randomUUID()}`;
     databases.push(name);
@@ -95,8 +95,8 @@ async function start(db: Db, hash = VIEW, router: FakeRouter = fakeRouter({ auto
     return { ...app, router };
 }
 
-// Перезагрузка: старый App уходит, его записи доходят до базы, новый App читает её. Активность в меню — другая, чтобы
-// было видно, что отрезок перестраивается своей.
+// Reload: the old App goes away, its writes reach the database, and the new App reads it. The activity in the menu
+// is different, to show that a leg is routed again with its own activity.
 async function reload(db: Db, hash = VIEW, router: FakeRouter = fakeRouter({ auto: true })) {
     await cleanup();
     await db.settled();
@@ -115,7 +115,7 @@ async function trackMenu(name: string, item: string) {
 const lineFeatures = (map: MaplibreMap) => features<GeoJSON.LineString>(map, TRACK_LINES);
 const unrouted = (map: MaplibreMap) => legs(map).map((leg) => leg.properties?.unrouted);
 
-// трек A–B–C с двумя проложенными отрезками «Hiking», рисование закончено, редактирование тоже
+// a track A–B–C with two legs routed with «Hiking»; the drawing is finished, and the edit too
 async function drawABC(map: MaplibreMap) {
     await newTrack(map, [A, B, C]);
     await expect.poll(() => unrouted(map)).toEqual([false, false]);
@@ -124,8 +124,8 @@ async function drawABC(map: MaplibreMap) {
     await expect.element(editPanel()).not.toBeInTheDocument();
 }
 
-// после перезагрузки: трек на месте, точки маршрута скрыты — вне редактирования это одна линия из всех узлов, при
-// редактировании видны только опорные точки и оба отрезка проложены
+// after the reload: the track is in place, and the route points are hidden: outside the edit it is one line through
+// all vertices; in the edit only the waypoints are visible, and both legs are routed
 async function expectRoutedABC(map: MaplibreMap) {
     await expect.element(rows()).toHaveLength(1);
     await expect.poll(() => lineFeatures(map)[0]?.geometry.coordinates.length).toBe(5);
@@ -162,7 +162,7 @@ describe('Разметка маршрута переживает перезаг�
         const first = await start(db);
         await newTrack(first.map, [A, B, C]);
         await expect.poll(() => unrouted(first.map)).toEqual([false, false]);
-        // секунда без движения мыши, потом Escape — у старого клиента так пропадала последняя точка
+        // one second without a mouse move, then Escape: this is how the old client lost the last point
         await new Promise((resolve) => setTimeout(resolve, 1000));
         pressEscape();
         const { map } = await reload(db);
@@ -201,7 +201,8 @@ describe('Разметка маршрута переживает перезаг�
         await newTrack(first.map, [A, C]);
         await expect.poll(() => unrouted(first.map)).toEqual([false]);
         pressEscape();
-        // точка посередине между A и изломом маршрута заглушки: вставка без перетаскивания кладёт её на прямую
+        // a point in the middle between A and the bend of the stub route: an insert without a drag puts it on the
+        // straight line
         const [corner] = bend(A, C);
         const onLine = P((A.lat + corner.lat) / 2, (A.lng + corner.lng) / 2);
         await idle(first.map);
@@ -323,8 +324,8 @@ describe('Треки переживают перезагрузку', () => {
     });
 });
 
-// Спека tracks, «Сохранённые сессии старого клиента не трогаются»: база sessions в схеме старого клиента
-// (src/lib/session-state на коммите 015be893), разметка — ключи сетки nktk (routeMarkupKey)
+// Spec tracks, «Сохранённые сессии старого клиента не трогаются»: the database sessions in the schema of the old
+// client (src/lib/session-state at commit 015be893), the markup uses keys of the nktk grid (routeMarkupKey)
 describe('Сохранённые сессии старого клиента не трогаются', () => {
     const markupKey = ({ lat, lng }: LatLng) => `${Math.round(lat * ARC_UNIT)},${Math.round(lng * ARC_UNIT)}`;
 
@@ -366,7 +367,8 @@ describe('Сохранённые сессии старого клиента не
         });
         await expect.element(rows()).toHaveLength(1);
         await expect.element(page.getByRole('button', { name: 'Old session', exact: true })).toBeVisible();
-        // точка маршрута скрыта: опорные — только концы, отрезок проложен активностью сессии, а не выбранной
+        // the route point is hidden: only the ends are waypoints, and the leg is routed with the activity of the
+        // session, not with the selected one
         await click(map, A);
         await expect.poll(() => waypoints(map)).toHaveLength(2);
         expect(unrouted(map)).toEqual([false]);

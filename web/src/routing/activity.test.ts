@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { memoryStorage } from '@/test/memory-storage';
 import { loadActivity, saveActivity } from './activity';
 
-// Сценарии спеки routing, «Выбор активности сохраняется»
+// Scenarios of the spec routing, «Выбор активности сохраняется»
 
 describe('Выбор активности сохраняется', () => {
     test('Перезагрузка страницы', () => {

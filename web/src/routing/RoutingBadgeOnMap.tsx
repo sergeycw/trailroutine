@@ -4,14 +4,14 @@ import { useAppStore } from '@/state/context';
 import { tracksRouting } from './line';
 import { RouteThread } from './RouteThread';
 
-// Бейдж ожидания прокладки у указателя мыши (спека route-editing, «Бейдж ожидания у указателя»; design
-// route-thread-loader). Картинку курсора браузеры не анимируют (первый кадр GIF, APNG и SVG), поэтому бейдж — элемент
-// над картой, а курсор остаётся своим: перекрестие рисования, move над опорной точкой. Указатель — Pointer Events
-// только мыши: после касания браузер шлёт совместимые mousemove, и бейдж остался бы под пальцем. pointerleave холста
-// срабатывает и над панелями, маркерами и контролами — они не потомки холста. Положение пишется в стиль мимо React,
-// клики проходят сквозь бейдж к карте.
+// The routing wait badge at the mouse pointer (spec route-editing, «Бейдж ожидания у указателя»; design
+// route-thread-loader). Browsers do not animate a cursor image (the first frame of GIF, APNG and SVG), so the badge is
+// an element over the map, and the cursor stays as it is: the drawing crosshair, move over a waypoint. The pointer:
+// mouse Pointer Events only: after a touch the browser sends compatibility mousemove events, and the badge would stay
+// under the finger. The canvas pointerleave also fires over panels, markers and controls: they are not canvas children.
+// The code writes the position to the style past React, and clicks go through the badge to the map.
 
-// левый верхний угол бейджа от острия стрелки, px: правее и ниже стрелки, где у курсора progress колёсико
+// the badge top left corner from the arrow tip, px: right of and below the arrow, at the wheel of the progress cursor
 const OFFSET = { x: 12, y: 16 };
 
 const badgeTransform = ({ x, y }: { x: number; y: number }) => `translate(${x + OFFSET.x}px, ${y + OFFSET.y}px)`;
@@ -22,7 +22,7 @@ export function RoutingBadgeOnMap() {
     const routing = useAppStore((state) => tracksRouting(state.tracks));
     const [over, setOver] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
-    // острие в координатах контейнера карты: бейдж появляется по ответу роутера, когда мышь уже стоит
+    // the tip in map container coordinates: the badge appears on a router response, when the mouse already stands still
     const at = useRef({ x: 0, y: 0 });
 
     useEffect(() => {
@@ -54,9 +54,9 @@ export function RoutingBadgeOnMap() {
     if (!routing || !over) {
         return null;
     }
-    // положение при появлении — из последнего движения, дальше его пишет onPointer. 27 px — ×1.5 от первых 18 px:
-    // владелец 2026-10-30 выбрал по листу размеров на живой карте (на 18 нитку почти не видно, 36 — как круглые
-    // кнопки и закрывает место следующей точки)
+    // the position at appearance comes from the last move, then onPointer writes it. 27 px is ×1.5 of the first 18 px:
+    // the owner chose it on 2026-10-30 from a size sheet on the live map (at 18 the thread is almost invisible, 36 is
+    // as the round buttons and covers the place of the next point)
     return (
         <div
             ref={ref}

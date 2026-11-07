@@ -1,10 +1,10 @@
 const PATH_PREFIX = '/tiles/';
 const EMPTY_FILES = ['storageconfig.txt'];
-// Наружу — только тайлы; служебный manifest.json синхронизации и прочие ключи бакета не отдаются.
+// Only tiles go outside; the Worker does not give the sync file manifest.json and the other bucket keys.
 const TILE_KEY = /^[EW]\d{1,3}_[NS]\d{1,2}\.rd5$/u;
-// Синхронизация перезаписывает тайл под тем же ключом, а движок читает его кусками по Range.
-// С кешем браузера (было max-age=86400) Chrome склеивает ответ из старых кешированных байт и новых
-// из сети, и BRouter получает индекс одной версии тайла и данные другой. Поэтому без кеша.
+// The sync overwrites a tile under the same key, and the engine reads it in parts by Range.
+// With the browser cache (it was max-age=86400) Chrome joins a response from old cached bytes and new bytes
+// from the network, and BRouter gets the index of one tile version and the data of another. Thus no cache.
 const CACHE_CONTROL = 'no-store';
 
 function objectHeaders(object) {
@@ -54,8 +54,8 @@ async function get(request, env, key) {
     if (!object) {
         return new Response('Not found', {status: 404});
     }
-    // R2 в Cloudflare на диапазон за концом объекта бросает исключение (выше → 416), а локальный R2
-    // miniflare отдаёт объект; проверяем сами, чтобы wrangler dev и тесты вели себя как прод.
+    // R2 in Cloudflare throws an exception for a range past the end of the object (above → 416), but the local R2
+    // of miniflare gives the object; the code checks it, so wrangler dev and the tests behave as production.
     if (hasRange && startsPastEnd(request.headers.get('Range'), object.size)) {
         await object.body.cancel();
         return new Response(null, {status: 416, headers: {'Content-Range': `bytes */${object.size}`}});

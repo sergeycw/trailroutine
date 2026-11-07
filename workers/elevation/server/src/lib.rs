@@ -1,5 +1,5 @@
-//! Запасной адаптер для VPS и локальный стенд: то же ядро поверх файлов `<data>/dem3/<градус>`
-//! (раскладка как в R2). Основной путь — `worker`.
+//! The fallback adapter for a VPS and the local test bench: the same core over the files
+//! `<data>/dem3/<degree>` (the layout as in R2). The main path is `worker`.
 
 use std::io::{Read, Seek, SeekFrom};
 use std::path::PathBuf;
@@ -53,15 +53,15 @@ async fn handle(State(state): State<Arc<AppState>>, request: Request) -> Respons
     let origin = header("origin");
     let request_headers = header("access-control-request-headers");
     let content_length = header("content-length").and_then(|value| value.parse().ok());
-    // Тело читается не больше лимита + 1 байт: переполнение ядро само превратит в `413`.
+    // The body is read up to the limit + 1 byte: the core itself converts an overflow to `413`.
     let body = match to_bytes(body, MAX_BODY_BYTES + 1).await {
         Ok(bytes) => bytes.to_vec(),
         Err(_) => vec![0; MAX_BODY_BYTES + 1],
     };
     let path = parts.uri.path().to_string();
     let method = parts.method.as_str().to_string();
-    // Источник читает файлы синхронно, а future ядра не `Send` (трейт без `Send`-границ, ради wasm),
-    // поэтому ядро крутится на отдельном потоке своим исполнителем.
+    // The source reads files synchronously, and the core future is not `Send` (the trait has no
+    // `Send` bounds, for wasm), thus the core runs on a separate thread with its own executor.
     let response = tokio::task::spawn_blocking(move || {
         let request = http::Request {
             method: &method,

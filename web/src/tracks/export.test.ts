@@ -37,7 +37,7 @@ describe('экспорт → импорт', () => {
             ...track,
             routes: [{ waypoints: [0, 1], legs: [{ state: 'routed', activity: 'hiking' }] }, null],
         };
-        // время создания в metadata GPX у двух вызовов может разойтись на миллисекунду
+        // the creation time in GPX metadata can differ by a millisecond between two calls
         const content = (data: TrackData) =>
             String(exportTrack(data, format).content).replace(/<time>[^<]*<\/time>/u, '');
         expect(content(routed)).toBe(content(track));
@@ -86,7 +86,7 @@ describe('экспорт → импорт', () => {
     });
 });
 
-// Спека track-files, «GPX с высотами»: высота — функция координат, точка с широтой 41.71 — без данных
+// Spec track-files, «GPX с высотами»: elevation is a function of coordinates, the point with latitude 41.71 has no data
 describe('GPX с высотами', () => {
     const heights = async (points: readonly { lat: number; lng: number }[]) =>
         points.map((p) => (p.lat === 41.71 ? null : Math.round(p.lat * 1000) / 10));
@@ -98,9 +98,9 @@ describe('GPX с высотами', () => {
         expect(gpx).toContain('creator="trailroutine"');
         expect(gpx).toContain('<trkpt lat="41.690001" lon="44.800000"><ele>4169.0</ele><time>');
         expect(gpx).toContain('<trkpt lat="41.700000" lon="44.810000"><ele>4170.0</ele><time>');
-        // порядок схемы GPX 1.1: ele раньше name
+        // the order of the GPX 1.1 schema: ele before name
         expect(gpx).toMatch(/<wpt lat="41.690000" lon="44.790000">\n\t\t<ele>4169.0<\/ele>\n\t\t<name>/u);
-        // координаты и состав — как у обычного GPX
+        // coordinates and content are the same as in a plain GPX
         const [parsed] = reparse(gpx, file.filename);
         expect(parsed.segments).toEqual(track.segments);
         expect(parsed.points).toEqual(track.points);

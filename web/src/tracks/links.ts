@@ -4,8 +4,8 @@ import { type GeoData, geoData, TRACK_COLORS, type TrackColor, type Waypoint } f
 import { decodeBase64Url, parseNktk, parseNktkSequence } from './nktk';
 import { fetchOrNull, type TrackSources } from './sources';
 
-// Треки из параметров адреса старого клиента (NakarteUrlLoader в services/nakarte/index.js): nktk — строки трека,
-// nktl — ключи хранилища, nktu — закодированные ссылки, nktp — точка, nktj — base64 JSON (loadTracksFromJson.js).
+// Tracks from the address parameters of the old client (NakarteUrlLoader in services/nakarte/index.js): nktk is track
+// strings, nktl is storage keys, nktu is encoded links, nktp is a point, nktj is base64 JSON (loadTracksFromJson.js).
 
 export const TRACK_PARAMS = ['nktk', 'nktl', 'nktu', 'nktp', 'nktj'] as const;
 export type TrackParam = (typeof TRACK_PARAMS)[number];
@@ -15,7 +15,8 @@ export function isTrackParam(key: string): key is TrackParam {
 }
 
 async function fromStorage(keys: readonly string[], sources: TrackSources): Promise<GeoData[]> {
-    // запросы к хранилищу — без credentials: Worker отражает Origin и так (design add-web-tracks, «`nktk` и ссылки старого клиента»)
+    // requests to the storage go without credentials: the Worker reflects Origin anyway
+    // (design add-web-tracks, «`nktk` и ссылки старого клиента»)
     const responses = await Promise.all(
         keys.map((key) => fetchOrNull(sources, `${sources.tracksStorageServer}/track/${key}`)),
     );
@@ -93,8 +94,8 @@ function jsonPoint(raw: unknown): Waypoint | null {
     return { name, lat, lng };
 }
 
-// Поле c: номер палитры, как у старого клиента (строкой тоже; дробный проходит и даёт цвет по кругу в addTracks), или
-// свой '#rrggbb' (design track-color-picker); null — испорчено
+// Field c: a palette index, as in the old client (a string too; a fractional index passes and gives a color in a
+// cycle in addTracks), or a custom '#rrggbb' (design track-color-picker); null means corrupt
 function jsonColor(value: unknown): TrackColor | null {
     if (typeof value === 'string' && value.startsWith('#')) {
         return parseTrackColor(value);
@@ -103,7 +104,7 @@ function jsonColor(value: unknown): TrackColor | null {
     return number >= 0 && number < TRACK_COLORS.length ? number : null;
 }
 
-// Любая испорченная часть — весь параметр CORRUPT, как у старого клиента
+// Any corrupt part makes the whole parameter CORRUPT, as in the old client
 async function fromJson(value: string, sources: TrackSources): Promise<GeoData[]> {
     const bytes = decodeBase64Url(value);
     if (!bytes) {
@@ -113,7 +114,7 @@ async function fromJson(value: string, sources: TrackSources): Promise<GeoData[]
     try {
         text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
     } catch {
-        // не UTF-8 — как есть, по байту на символ
+        // not UTF-8: as it is, one character per byte
         text = String.fromCharCode(...bytes);
     }
     let data: unknown;
@@ -127,7 +128,7 @@ async function fromJson(value: string, sources: TrackSources): Promise<GeoData[]
     }
     const result: GeoData[] = [];
     for (const item of data as JsonTrack[]) {
-        // в каждом элементе — ссылка или хотя бы отрезки или точки
+        // each item has a link or at least segments or points
         if (!item || (!item.u && !(item.p || item.t))) {
             return CORRUPT_JSON();
         }

@@ -2,8 +2,8 @@ import { simplifyRouted } from '@/routing/line';
 import { normalizeLine } from './geometry';
 import { type GeoData, isEmpty } from './model';
 
-// Что из загруженного попадает в список и какие сообщения показать (addTracksFromGeodataArray старого клиента;
-// тексты — спека track-files, «Сообщение об ошибке источника»).
+// What from the loaded data goes into the list and which messages to show (addTracksFromGeodataArray of the old client;
+// the texts: spec track-files, «Сообщение об ошибке источника»).
 
 const ERROR_MESSAGES: Record<string, string> = {
     CORRUPT: 'File "{name}" is corrupt',
@@ -17,7 +17,7 @@ export interface ImportResult {
     messages: string[];
 }
 
-// allowEmpty — пустой трек тоже добавить («New track»)
+// allowEmpty: add an empty track too («New track»)
 export function prepareImport(data: readonly GeoData[], allowEmpty = false): ImportResult {
     const result: ImportResult = { tracks: [], messages: [] };
     if (data.length === 0) {
@@ -26,8 +26,8 @@ export function prepareImport(data: readonly GeoData[], allowEmpty = false): Imp
     for (const item of data) {
         const empty = isEmpty(item);
         if (!empty || allowEmpty) {
-            // линии упрощаются; отрезок с разметкой маршрута (ссылка nktk) — без опорных точек, и номера в разметке
-            // пересчитываются (design add-web-autosave, «Упрощение линии не трогает опорные точки»)
+            // lines are simplified; a segment with route markup (an nktk link) keeps its waypoints, and the indexes in
+            // the markup are calculated again (design add-web-autosave, «Упрощение линии не трогает опорные точки»)
             const { routes, ...rest } = item;
             const lines = item.segments.map(
                 (line, i) => simplifyRouted(line, routes?.[i]) ?? { points: normalizeLine(line), route: null },

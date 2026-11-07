@@ -40,8 +40,8 @@ export function RenameTrackDialog({ track, onClose }: { track: Track; onClose: (
     );
 }
 
-// Название точки трека: после постановки и по Rename в меню точки (prompt «New point name» старого клиента). Cancel
-// оставляет прежнее название, пустое допустимо.
+// Track point name: after the point is added and by Rename in the point menu (prompt «New point name» of the old
+// client). Cancel keeps the previous name, an empty name is allowed.
 export function PointNameDialog() {
     const dialog = useAppStore((state) => state.pointDialog);
     return dialog ? <PointNameForm key={`${dialog.trackId}:${dialog.point.name}`} /> : null;
@@ -92,8 +92,8 @@ function PointNameForm() {
     );
 }
 
-// Текст, который не удалось положить в буфер обмена: ссылка на треки (design add-web-tracks, «Ссылка — после ответа
-// хранилища»), координаты точки (design add-web-line-tools, «Точки трека»)
+// Text that could not go to the clipboard: a link to tracks (design add-web-tracks, «Ссылка — после ответа хранилища»),
+// point coordinates (design add-web-line-tools, «Точки трека»)
 export function CopyFallbackDialog() {
     const fallback = useAppStore((state) => state.copyFallback);
     const setCopyFallback = useAppStore((state) => state.setCopyFallback);

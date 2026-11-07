@@ -1,5 +1,5 @@
-// Поднимает настоящий сервер на свободном порту поверх `fixtures/` и шлёт сырой HTTP/1.1,
-// без HTTP-клиента в зависимостях.
+// Starts a real server on a free port over `fixtures/` and sends raw HTTP/1.1,
+// without an HTTP client in the dependencies.
 
 use std::path::Path;
 
@@ -87,8 +87,8 @@ async fn rejects_foreign_origin_and_wrong_method() {
     assert_eq!(body(&invalid), "Invalid request\n");
 }
 
-// Тайлов высот больше нет (change retire-old-client-services): `/tiles/…` без `Origin` — `403`, как любой
-// запрос API без разрешённого origin.
+// The elevation tiles do not exist any more (change retire-old-client-services): `/tiles/…` without
+// `Origin` gives `403`, as each API request without an allowed origin.
 #[tokio::test]
 async fn former_tiles_route_needs_origin() {
     let port = start().await;

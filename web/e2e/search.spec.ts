@@ -1,9 +1,9 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures.ts';
 
-// Поиск, метка и линейка в собранном клоне (спеки map-search и tracks). Поисковики — сохранёнными ответами фикстуры
-// network (mapy.cz через прокси клона, photon), в сеть тест не ходит. Окно Desktop Chrome 1280×720, центр карты —
-// (640, 360).
+// Search, placemark and ruler in the built clone (specs map-search and tracks). The search providers answer with the
+// saved answers of the fixture network (mapy.cz through the clone proxy, photon), the test does not go to the network.
+// Window Desktop Chrome 1280×720, map center (640, 360).
 const VIEW = './#m=15/41.69/44.785&l=O';
 
 async function clickMap(page: Page, point: { x: number; y: number }) {
@@ -38,7 +38,7 @@ test('mapy.cz недоступен', async ({ page, network }) => {
 test('Ссылка с меткой', async ({ page }) => {
     await page.goto(`${VIEW}&r=41.693040/44.779477/Mtatsminda%20Park`);
     await expect(page.getByTestId('placemark')).toContainText('Mtatsminda Park');
-    // метка переживает перезагрузку — она в адресе
+    // the placemark stays after a reload: it is in the address
     await page.reload();
     await expect(page.getByTestId('placemark')).toContainText('Mtatsminda Park');
 });
@@ -47,10 +47,10 @@ test('Измерить расстояние', async ({ page }) => {
     await page.goto(VIEW);
     await expect(page.locator('.maplibregl-canvas')).toBeVisible();
     await page.getByRole('button', { name: 'Measure distance' }).click();
-    // ≈ 3.56 м на пиксель на z15 у Тбилиси: 340 px ≈ 1.2 км
+    // ≈ 3.56 m per pixel at z15 near Tbilisi: 340 px ≈ 1.2 km
     await clickMap(page, { x: 470, y: 400 });
     await clickMap(page, { x: 810, y: 400 });
-    // пока линия рисуется, длина — в редакторе верхней строки
+    // while the line is drawn, the length is in the editor of the top bar
     await expect(page.getByTestId('edit-panel').getByRole('textbox', { name: 'Track name' })).toHaveValue('Ruler');
     await expect(page.getByTestId('edit-length')).toHaveText(/^1\.2\d km$/u);
     await page.getByRole('button', { name: 'Finish editing' }).click();

@@ -3,8 +3,9 @@ import type { Activity } from '@/routing/brouter';
 import type { Router } from '@/routing/router';
 import type { LatLng } from '@/tracks/model';
 
-// Поддельный роутер для browser-тестов редактора: каждый запрос ждёт, пока тест ответит сам (resolve/reject), или
-// сразу получает прямую с изломом посередине (auto). В сеть не ходит; состояние движка задаёт тест.
+// A fake router for the browser tests of the editor: each request waits until the test answers it (resolve/reject),
+// or gets a straight line with a bend in the middle at once (auto). It does not use the network. The test sets the
+// engine status.
 
 export interface FakeCall {
     from: LatLng;
@@ -17,13 +18,13 @@ export interface FakeCall {
 
 export interface FakeRouter extends Router {
     calls: FakeCall[];
-    // запросы, которые ещё ждут ответа
+    // the requests that still wait for an answer
     live(): FakeCall[];
     setStatus(status: EngineStatus): void;
     warmUps: number;
 }
 
-// «маршрут» между двумя точками: излом посередине, чтобы упрощение его не схлопнуло
+// a "route" between two points: a bend in the middle, so that the simplification does not remove it
 export function bend(from: LatLng, to: LatLng): LatLng[] {
     return [{ lat: (from.lat + to.lat) / 2 + Math.abs(to.lng - from.lng) / 4, lng: (from.lng + to.lng) / 2 }];
 }

@@ -3,9 +3,10 @@ import type { GeoJSONSourceSpecification, LayerSpecification } from 'maplibre-gl
 import type { LatLng } from '@/tracks/model';
 import { TRACK_LINE_OFFSET } from '@/tracks/style';
 
-// Выделенный участок профиля на карте (polyLineSelection старого клиента: жёлтая полупрозрачная широкая линия под
-// треками). Источник в стиле есть всегда и пустой: данные ставит ProfileOnMap через setData мимо стиля, как превью
-// редактора (routing/edit-style.ts) — diff стиля не гоняется на каждое движение мыши.
+// The selected profile section on the map (polyLineSelection of the old client: a yellow semi-transparent wide line
+// below the tracks). The source is always in the style, and it is empty: ProfileOnMap sets the data with setData
+// past the style, as the editor preview does (routing/edit-style.ts), so the style diff does not run on each mouse
+// move.
 
 export const PROFILE_SELECTION = 'elevation-profile-selection';
 
@@ -19,12 +20,13 @@ export const PROFILE_LAYERS: LayerSpecification[] = [
         type: 'line',
         source: PROFILE_SELECTION,
         layout: { 'line-cap': 'butt', 'line-join': 'round' },
-        // по оси смещённой линии трека, а не по геометрии (tracks/style.ts)
+        // along the axis of the offset track line, not along the geometry (tracks/style.ts)
         paint: { 'line-color': '#ffeb3b', 'line-width': 16, 'line-opacity': 0.6, 'line-offset': TRACK_LINE_OFFSET },
     },
 ];
 
-// Участок from..to (дробные номера точек выборки) по отрезкам профиля: звено через стык не рисуется
+// The section from..to (fractional indexes of the sample points) along the profile segments: the code does not draw
+// a link across a joint
 export function selectionFeature(
     points: readonly LatLng[],
     starts: readonly number[],

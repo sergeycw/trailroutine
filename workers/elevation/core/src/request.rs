@@ -1,12 +1,14 @@
-// Разбор повторяет Go-сервер автора: строки по `\n`, один хвостовой `\n` допустим, широта и долгота
-// через первый пробел, числа как `strconv.ParseFloat` (`1e1`, `nan` проходят). Пустая строка в
-// середине, лишний пробел, `\r` — `400`. Лимиты автора: 250 000 байт и 10 000 точек, иначе `413`.
-// Расхождение с Go: шестнадцатеричные числа и `_` в числах Rust не разбирает, клиент их не шлёт.
+// The parser repeats the Go server of the author: lines split by `\n`, one trailing `\n` is
+// allowed, latitude and longitude split by the first space, numbers as in `strconv.ParseFloat`
+// (`1e1`, `nan` pass). An empty line in the middle, an extra space, `\r` give `400`. The limits of
+// the author: 250 000 bytes and 10 000 points, otherwise `413`. A difference from Go: Rust does not
+// parse hexadecimal numbers and `_` in numbers, the client does not send them.
 pub const MAX_BODY_BYTES: usize = 250_000;
 pub const MAX_POINTS: usize = 10_000;
-// Свой лимит, у автора его нет: точки, задевающие больше чтений хранилища (градусы + куски, `read_count`),
-// получают тот же `413`. Точки вдоль трека в 5 000 км задевают ≈ 450 кусков, 10 000 точек вразброс —
-// до 20 000 чтений класса B R2 (security-аудит, п. 2; change limit-elevation-reads).
+// Our own limit, the author does not have it: points that touch more storage reads (degrees +
+// chunks, `read_count`) get the same `413`. Points along a track of 5 000 km touch ≈ 450 chunks,
+// 10 000 scattered points touch up to 20 000 R2 class B reads (security audit, item 2; change
+// limit-elevation-reads).
 pub const MAX_READS: usize = 512;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

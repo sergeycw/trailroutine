@@ -1,16 +1,16 @@
-// Ищет адреса инфраструктуры автора (nakarte.me и поддомены) в собранном бандле и падает на любом буквальном
-// вхождении. Запуск: node scripts/check-no-author-hosts.mjs [build]. Шаги деплоя (.github/workflows/deploy-pages.yml)
-// и check-web.yml; решение — openspec/changes/archive/*-drop-author-services/design.md. Исключения для строк-метаданных
-// старого клиента (<title>, creator GPX, имя файла JNX, текст уведомления сессий) ушли вместе с ним (design
-// switch-to-web-app): в бандле приложения таких строк нет.
+// Finds the hosts of the author infrastructure (nakarte.me and subdomains) in the built bundle and fails on any literal
+// match. Run: node scripts/check-no-author-hosts.mjs [build]. Steps of the deploy (.github/workflows/deploy-pages.yml)
+// and check-web.yml; decision — openspec/changes/archive/*-drop-author-services/design.md. The exceptions for metadata
+// strings of the old client (<title>, GPX creator, JNX file name, text of the sessions notice) went away with it
+// (design switch-to-web-app): the bundle of the app has no such strings.
 import {readdir, readFile} from 'node:fs/promises';
 import {extname, join, relative} from 'node:path';
 
 const ROOT = process.argv[2] ?? 'build';
-// Текстовые файлы, которые грузит браузер. Карты исходников (.map) не запрашиваются и содержат
-// комментарии исходников, jar и тайлы — двоичные.
+// Text files that the browser loads. The browser does not request the source maps (.map), and they contain
+// the comments of the sources; the jar and the tiles are binary.
 const TEXT_EXTENSIONS = new Set(['.js', '.html', '.css', '.json', '.txt', '.webmanifest', '.svg']);
-// Буквальный адрес: регулярные выражения разбора ссылок в бандле экранированы (nakarte\.me) и сюда не попадают.
+// Literal host: the link parsing regular expressions in the bundle are escaped (nakarte\.me) and do not match here.
 const AUTHOR_HOST = /(?:[a-z0-9-]+\.)*nakarte\.me/giu;
 const CONTEXT_CHARS = 60;
 

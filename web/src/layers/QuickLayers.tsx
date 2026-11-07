@@ -17,48 +17,53 @@ import { QUICK_BASE_GROUPS, QUICK_OVERLAY_GROUPS, type QuickLayerGroup, quickTar
 import { DEFAULT_SELECTION } from './selection';
 import { isListed, type LayerSettings } from './settings';
 
-// Быстрые слои справа (design layer-thumbnails, design three-quick-bases, design quick-layer-menus): три круга подложек
-// по типу и кнопка тепловой карты Strava, у каждого меню своей группы под значком. Полный список — кнопка All layers в
-// LayerSwitcher.
+// Quick layers on the right (design layer-thumbnails, design three-quick-bases, design quick-layer-menus): three
+// basemap circles by type and the Strava heatmap button, each with the menu of its group under its badge. The full list
+// is the All layers button in LayerSwitcher.
 
-// Иконки кнопок оверлеев по первому коду группы QUICK_OVERLAY_GROUPS; иконки вместо превью: тайлы оверлеев прозрачные
+// Overlay button icons by the first code of a group in QUICK_OVERLAY_GROUPS. Icons instead of previews: overlay tiles
+// are transparent
 const OVERLAY_ICONS: Record<string, ComponentType> = { Sa: FlameIcon };
 
-// Картинки из сборки (scripts/layer-thumbnails.mjs): тайлов ради превью приложение не запрашивает. Файлы меньше 4 КБ
-// Vite встраивает в бандл (assetsInlineLimit)
+// Images from the build (scripts/layer-thumbnails.mjs): the app does not request tiles for the previews. Vite puts
+// files smaller than 4 KB into the bundle (assetsInlineLimit)
 const THUMBNAILS = import.meta.glob<string>('./thumbnails/*.webp', { eager: true, import: 'default' });
 
 function thumbnailOf(code: string): string | undefined {
     return THUMBNAILS[`./thumbnails/${code}.webp`];
 }
 
-// Круглая кнопка внутри контрола MapLibre: его CSS вне @layer на наведении и нажатии ставит кнопкам
-// .maplibregl-ctrl button фон rgba(0, 0, 0, 0.05) и перебивает hover ROUND_BUTTON — отсюда !
+// A round button inside a MapLibre control: its CSS outside @layer sets the background rgba(0, 0, 0, 0.05) on
+// .maplibregl-ctrl button on hover and on press, and overrides the hover of ROUND_BUTTON, hence the !
 export const COLUMN_BUTTON = cn(ROUND_BUTTON, 'hover:bg-white/90! active:bg-white/90!');
 
-// Включённые кнопки — заливка --primary, как Street View (MapButtons); hover ghost-кнопки темнит иконку — у включённой свой
+// Pressed buttons have the --primary fill, as Street View (MapButtons); the hover of a ghost button darkens the icon,
+// so a pressed button has its own hover
 const PRESSED =
     'bg-primary! text-primary-foreground hover:bg-primary/90! hover:text-primary-foreground active:bg-primary/90!';
 
-// Значок меню — своя кнопка Button у левого нижнего края круга, как значок у аватара Telegram (референс владельца
-// 2026-10-29, со стороны меню): у круга и меню разные действия и имена. Вид (владелец 2026-10-29, design
-// quick-circle-contrast): тёмно-серый с белой стрелкой и белой обводкой — она вырезает значок из кольца круга. Стекло
-// на светлой карте терялось, а кольцо значка поверх кольца круга давало два пересекающихся круга. Видимая часть 16 px
-// наполовину за краем круга: поле столбца для неё — pl-2.5 в LayerSwitcher. Зона нажатия (after) на 4 px шире: вниз
-// она не доходит до следующего круга (gap-y-2). bg с !: CSS MapLibre вне @layer темнит фон кнопок .maplibregl-ctrl
+// The menu badge is its own Button at the bottom left edge of the circle, as the badge on a Telegram avatar (owner
+// reference 2026-10-29, on the menu side): the circle and the menu have different actions and names. The look (owner
+// 2026-10-29, design quick-circle-contrast): dark gray with a white arrow and a white outline, which cuts the badge out
+// of the circle ring. Glass was not visible on a light map, and a badge ring over the circle ring gave two crossing
+// circles. The visible part of 16 px is half outside the circle edge: the column padding for it is pl-2.5 in
+// LayerSwitcher. The touch area (after) is 4 px wider: downward, it does not reach the next circle (gap-y-2). bg with
+// !: the MapLibre CSS outside @layer darkens the background of .maplibregl-ctrl buttons
 const MENU_BADGE = cn(
     'pointer-events-auto absolute -bottom-0.5 -left-1.5 size-4 rounded-full border-2 border-white text-white',
     'bg-neutral-700! hover:bg-neutral-600! active:bg-neutral-600! aria-expanded:bg-neutral-600!',
     'after:absolute after:-inset-1',
 );
 
-// Кольцо и тень круга подложки (владелец 2026-10-29, вариант C, design quick-circle-contrast): светлое превью (Google
-// Map) иначе сливалось со светлой картой. Тень не шире поля столбца (py-1, pr-1 в LayerSwitcher): overflow-hidden
-// столбца срезал бы её ступенькой. С !: glass задаёт свою тень
+// The ring and the shadow of a basemap circle (owner 2026-10-29, variant C, design quick-circle-contrast): without
+// them, a light preview (Google Map) merged with a light map. The shadow is not wider than the column padding (py-1,
+// pr-1 in LayerSwitcher): otherwise the overflow-hidden of the column would cut it with a step. With !: glass sets its
+// own shadow
 const CIRCLE_RING = 'shadow-[0_0_0_1.5px_rgb(0_0_0/0.45),0_1px_4px_rgb(0_0_0/0.35)]!';
 
-// Пункты меню группы: нет слоя, снятого в Configure layers (галочка слоя группы по умолчанию стоит, listedByDefault),
-// кроме того, что сейчас на карте, и первого слоя группы — это сам круг
+// Menu items of a group: no layer that is unchecked in Configure layers (the check box of a group layer is on by
+// default, listedByDefault), except the layer that is on the map now and the first layer of the group, which is the
+// circle itself
 function menuItems(
     group: QuickLayerGroup,
     layers: ReadonlyMap<string, LayerDef>,
@@ -74,7 +79,7 @@ function menuItems(
 
 interface QuickMenuProps {
     group: QuickLayerGroup;
-    // круг: меню встаёт верхом по нему, а не по значку
+    // the circle: the menu aligns its top with the circle, not with the badge
     anchor: RefObject<HTMLDivElement | null>;
     items: LayerDef[];
     current: string | undefined;
@@ -89,12 +94,12 @@ function QuickMenu({ group, anchor, items, current, onSelect }: QuickMenuProps) 
             >
                 <ChevronDownIcon className="size-2.5 stroke-3" />
             </DropdownMenuTrigger>
-            {/* слева от круга: столбец у правого края, как All layers */}
+            {/* to the left of the circle: the column is at the right edge, as All layers */}
             <DropdownMenuContent side="left" align="start" anchor={anchor} className="w-auto" aria-label={group.name}>
-                {/* '' — в группе ничего не включено: отметки нет ни у одного пункта */}
+                {/* '' — nothing in the group is on: no item has a mark */}
                 <DropdownMenuRadioGroup value={current ?? ''} onValueChange={(code) => onSelect(String(code))}>
                     {items.map((layer) => (
-                        // RadioItem Base UI по умолчанию меню не закрывает
+                        // a Base UI RadioItem does not close the menu by default
                         <DropdownMenuRadioItem key={layer.code} value={layer.code} closeOnClick>
                             {layer.title}
                         </DropdownMenuRadioItem>
@@ -105,10 +110,11 @@ function QuickMenu({ group, anchor, items, current, onSelect }: QuickMenuProps) 
     );
 }
 
-// Три круга — всегда одни и те же типы QUICK_BASE_GROUPS (владелец 2026-10-28), даже если подложка круга скрыта в
-// Configure layers: это функция столбца, как QuickDated. Подписей нет: превью сняты по типу и различаются картинкой.
-// Круг — тип, а не подложка (владелец 2026-10-29, design quick-layer-menus): картинка — первой подложки группы, отмечен
-// при любой подложке группы, нажатие — последняя выбранная в группе (quickTarget)
+// The three circles are always the same types QUICK_BASE_GROUPS (owner 2026-10-28), even if Configure layers hides the
+// basemap of a circle: this is a column function, as QuickDated. There are no labels: the previews show the type and
+// differ by image. A circle is a type, not a basemap (owner 2026-10-29, design quick-layer-menus): the image is of the
+// first basemap of the group, the circle is marked for any basemap of the group, and a click selects the last selected
+// basemap of the group (quickTarget)
 export function QuickBases() {
     return QUICK_BASE_GROUPS.map((group) => <QuickBase key={group.codes[0]} group={group} />);
 }
@@ -117,7 +123,8 @@ function QuickBase({ group }: { group: QuickLayerGroup }) {
     const layers = useAppStore((state) => state.layers);
     const settings = useAppStore((state) => state.settings);
     const selected = useAppStore((state) => state.selection.base);
-    // выбор пользователя: во время отката подложки (Of → Tt) на карте подложка отката, а выбор — та, с которой откатились
+    // the user selection: during a basemap fallback (Of → Tt), the map shows the fallback basemap, and the selection is
+    // the basemap that the fallback started from
     const chosen = useAppStore((state) => savedSelection(state).base);
     const selectBase = useAppStore((state) => state.selectBase);
     const circle = useRef<HTMLDivElement>(null);
@@ -127,9 +134,9 @@ function QuickBase({ group }: { group: QuickLayerGroup }) {
     }
     const current = group.codes.includes(selected) ? selected : undefined;
     const items = menuItems(group, layers, settings, current);
-    // цель нажатия — выбор пользователя, а не подложка отката: иначе нажатие на отмеченный круг топокарты во время
-    // отката OpenFreeMap записало бы Tracestrack выбором и тратило бы его квоту и дальше (ревью диффа
-    // openfreemap-default-basemap)
+    // the click target is the user selection, not the fallback basemap: otherwise a click on the marked topo map circle
+    // during the OpenFreeMap fallback would record Tracestrack as the selection and would continue to spend its quota
+    // (diff review of openfreemap-default-basemap)
     const target = quickTarget(
         group,
         settings.quickLayers,
@@ -146,7 +153,7 @@ function QuickBase({ group }: { group: QuickLayerGroup }) {
                     COLUMN_BUTTON,
                     CIRCLE_RING,
                     'overflow-hidden p-0',
-                    // outline-solid: у Button outline-none, cn заменяет его только тем же свойством
+                    // outline-solid: Button has outline-none, and cn replaces it only with the same property
                     current && 'outline-solid outline-2 outline-primary outline-offset-2',
                 )}
                 aria-label={title}
@@ -154,7 +161,7 @@ function QuickBase({ group }: { group: QuickLayerGroup }) {
                 aria-pressed={current !== undefined}
                 onClick={() => selectBase(target)}
             >
-                {/* без указателя: картинку иначе тащит мышь, и click не доходит до кнопки */}
+                {/* no pointer: otherwise the mouse drags the image, and the click does not reach the button */}
                 <img
                     src={thumbnailOf(main.code)}
                     alt=""
@@ -167,9 +174,10 @@ function QuickBase({ group }: { group: QuickLayerGroup }) {
     );
 }
 
-// Кнопка оверлея — как круг подложки (design quick-layer-menus): включает слой группы, выбранный последним, и выключает
-// группу, меню под значком ставит на карту другой слой группы вместо прежнего. Других мест у слоёв группы нет (в All
-// layers их нет, design custom-bases-in-list), поэтому кнопка есть всегда, как круги
+// The overlay button is like a basemap circle (design quick-layer-menus): it turns on the group layer that was selected
+// last and turns off the group; the menu under the badge puts another group layer on the map instead of the previous
+// one. The group layers have no other place (they are not in All layers, design custom-bases-in-list), so the button is
+// always present, as the circles
 export function QuickOverlays() {
     return QUICK_OVERLAY_GROUPS.map((group) => <QuickOverlay key={group.codes[0]} group={group} />);
 }
@@ -218,13 +226,14 @@ function QuickOverlay({ group }: { group: QuickLayerGroup }) {
     );
 }
 
-// Снимки по датам — своей кнопкой под превью (владелец 2026-10-12, design quick-dated-imagery): нажатие выбирает их,
-// повторное возвращает подложку, выбранную до них, а без неё (ссылка сразу с l=Hls) — подложку по умолчанию. Кнопка
-// есть, даже если слой скрыт в Configure layers: это функция, а не строка списка
+// Dated imagery has its own button under the previews (owner 2026-10-12, design quick-dated-imagery): a click selects
+// it, the next click returns the basemap that was selected before it, or, without one (a link with l=Hls at once), the
+// default basemap. The button is present even if Configure layers hides the layer: it is a function, not a list row
 export function QuickDated() {
     const layers = useAppStore((state) => state.layers);
     const selected = useAppStore((state) => state.selection.base);
-    // после отката Tracestrack на OSM вернуться — к Tracestrack: откат не выбор и в память кругов попадать не должен
+    // after the fallback from Tracestrack to OSM, return to Tracestrack: a fallback is not a selection and must not go
+    // into the circle memory
     const chosen = useAppStore((state) => savedSelection(state).base);
     const selectBase = useAppStore((state) => state.selectBase);
     const lastBase = useRef<string | null>(null);
@@ -251,7 +260,7 @@ export function QuickDated() {
                     selectBase(dated.code);
                     return;
                 }
-                // прежняя подложка могла пропасть (удалённый свой слой) — тогда подложка по умолчанию
+                // the previous basemap can be gone (a deleted custom layer): then the default basemap
                 const previous = lastBase.current;
                 selectBase(previous && layers.has(previous) ? previous : DEFAULT_SELECTION.base);
             }}

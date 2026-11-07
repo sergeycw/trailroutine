@@ -34,9 +34,9 @@ import { saveNktk } from '@/tracks/nktk';
 import { TRACK_LINES } from '@/tracks/style';
 import { EDIT_PREVIEW } from './edit-style';
 
-// Меню опорной точки и линии, Cut, Join, Shortcut в App на настоящей карте MapLibre: тайлы — фикстура, роутер —
-// поддельный (маршрут — излом посередине, bend). Мышь и пальцы — синтетические события на холсте по map.project.
-// Названия тестов — сценарии спеки route-editing (design add-web-line-tools).
+// The waypoint and line menu, Cut, Join, Shortcut in App on a real MapLibre map: tiles come from a fixture, the router
+// is fake (the route is a bend in the middle, bend). Mouse and fingers are synthetic events on the canvas by
+// map.project. Test names are scenarios of the spec route-editing (design add-web-line-tools).
 
 let tiles: FixtureTiles;
 
@@ -50,15 +50,15 @@ afterEach(async () => {
     expect(tiles.external, 'запросы мимо localhost и тайлов').toEqual([]);
 });
 
-// Тбилиси, зум старого клиента 15: между точками ≈ 100 px
-// подложка — растровый OpenStreetMap: тесту она не важна, а векторная по умолчанию (OpenFreeMap) с фикстурой —
-// настоящим тайлом z12 — рисуется во всех тайлах экрана и под общей нагрузкой браузерных тестов не укладывалась в
-// таймауты (change openfreemap-default-basemap)
+// Tbilisi, zoom 15 of the old client: ≈ 100 px between the points
+// the basemap is the raster OpenStreetMap: it does not matter for the test, and the default vector basemap
+// (OpenFreeMap) with a fixture (a real z12 tile) is drawn in all screen tiles and did not fit into the timeouts under
+// the shared load of the browser tests (change openfreemap-default-basemap)
 const VIEW = '#m=15/41.69/44.785&l=O';
 const A = P(41.687, 44.78);
 const B = P(41.69, 44.785);
 const C = P(41.693, 44.79);
-// зигзаг: ломаная из ссылки упрощается, и точка на прямой между соседями пропала бы
+// a zigzag: an nktk polyline is simplified, and a point on the line between its neighbors would disappear
 const Z = [P(41.686, 44.776), P(41.689, 44.779), P(41.686, 44.782), P(41.689, 44.785), P(41.686, 44.788)];
 const OTHER = [P(41.694, 44.775), P(41.696, 44.779), P(41.694, 44.783)];
 
@@ -79,15 +79,15 @@ function rows() {
 }
 
 const unrouted = (map: MaplibreMap) => legs(map).map((leg) => leg.properties?.unrouted);
-// состояния отрезков редактируемой линии: проложенный, прямой, непроложенный (ожидающий не рисуется)
+// the leg states of the edited line: routed, straight, unrouted (a pending leg is not drawn)
 const states = (map: MaplibreMap) => legs(map).map((leg) => leg.properties?.state);
-// номера отрезков треков вне редактирования (в слое треков редактируемого отрезка нет)
+// the segment indexes of tracks out of editing (the track layer has no edited segment)
 const segmentsOnMap = (map: MaplibreMap) =>
     [
         ...new Set(features<LineString>(map, TRACK_LINES).map((f) => `${f.properties?.id}:${f.properties?.segment}`)),
     ].sort();
 
-// трек A–B–C с двумя проложенными отрезками «Hiking», редактирование продолжается, рисование закончено
+// a track A–B–C with two routed legs «Hiking», editing continues, drawing is finished
 async function drawABC(map: MaplibreMap) {
     await newTrack(map, [A, B, C]);
     await expect.poll(() => states(map)).toEqual(['routed', 'routed']);
@@ -95,7 +95,7 @@ async function drawABC(map: MaplibreMap) {
     await expect.element(editPanel()).not.toHaveAttribute('data-drawing');
 }
 
-// подсказка выбора стоит над точкой at по центру, зазор до неё не больше 20 px
+// the choice hint stands above the point at, in the center, the gap to the point is not more than 20 px
 async function hintAbove(map: MaplibreMap, at: LatLng) {
     const hint = page.getByTestId('tool-hint');
     await expect.element(hint).toBeVisible();
@@ -160,7 +160,7 @@ describe('Меню опорной точки и линии', () => {
         await longPress(map, corner);
         expect(await menuItems()).toEqual(['Cut', 'Reverse', 'Shortcut', ...SEGMENT_MENU]);
         expect(waypoints(map)).toHaveLength(3);
-        // Escape в меню закрывает только меню: фокус в нём, клавиши редактора там не действуют
+        // Escape in the menu closes only the menu: the focus is in it, the editor keys do not work there
         await userEvent.keyboard('{Escape}');
         await expect.element(mapMenu()).not.toBeInTheDocument();
         await expect.element(editPanel()).toBeVisible();
@@ -176,7 +176,7 @@ describe('Удаление опорной точки из меню', () => {
         await rightClick(map, B);
         await chooseFromMenu('Delete point');
         await expect.poll(() => waypoints(map)).toHaveLength(2);
-        // A–C прокладывается с активностью соседнего отрезка
+        // A–C is routed with the activity of the neighbor leg
         expect(router.calls.at(-1)?.activity.id).toBe('hiking');
         expect(near(router.calls.at(-1)?.from as LatLng, A) && near(router.calls.at(-1)?.to as LatLng, C)).toBe(true);
         key({ key: 'z', code: 'KeyZ', metaKey: true });
@@ -190,7 +190,7 @@ describe('Разрез отрезка', () => {
         await drawABC(map);
         await rightClick(map, B);
         await chooseFromMenu('Cut');
-        // редактируется первая половина A–B, проложенная
+        // the first half A–B is edited, routed
         await expect.poll(() => waypoints(map)).toHaveLength(2);
         expect(near(waypoints(map)[1], B)).toBe(true);
         expect(states(map)).toEqual(['routed']);
@@ -222,7 +222,7 @@ describe('Склейка отрезков', () => {
         await rightClick(map, Z[4]);
         await chooseFromMenu('Join');
         await expect.element(page.getByText('Click a track line to join it')).toBeVisible();
-        // курсор над линией Other ближе к её концу: линия выбора зелёная и прилипает к концу
+        // the cursor over the line Other near its end: the choice line is green and snaps to the end
         const nearEnd = P((OTHER[1].lat + OTHER[2].lat) / 2, (OTHER[1].lng + OTHER[2].lng) / 2);
         fire(map, 'mousemove', nearEnd);
         await expect
@@ -233,7 +233,7 @@ describe('Склейка отрезков', () => {
         expect(near(waypoints(map)[5], OTHER[2])).toBe(true);
         expect(near(waypoints(map)[7], OTHER[0])).toBe(true);
         await expect.element(rows()).toHaveLength(2);
-        // выбор окончен (Cancel сменился галочкой), правка продолжается без рисования
+        // the choice is over (Cancel changed to the check mark), the edit continues without drawing
         await expect.element(page.getByRole('button', { name: 'Finish editing' })).toBeVisible();
         await expect.element(editPanel()).not.toHaveAttribute('data-drawing');
     });
@@ -260,7 +260,7 @@ describe('Склейка отрезков', () => {
         pressEscape();
         await expect.element(page.getByRole('button', { name: 'Finish editing' })).toBeVisible();
         expect(features<LineString>(map, EDIT_PREVIEW)).toHaveLength(0);
-        // клик по другой линии теперь начинает её редактирование, а не склейку
+        // a click on another line now starts its editing, not a join
         await click(map, OTHER[1]);
         await expect.poll(() => waypoints(map)).toHaveLength(3);
     });
@@ -281,7 +281,7 @@ describe('Склейка отрезков: отмена', () => {
     test('склейка проложенных частей: отрезки маршрута остаются проложенными', async () => {
         const { map } = await render();
         await drawABC(map);
-        // второй отрезок того же трека: D–E, проложен
+        // the second segment of the same track: D–E, routed
         const D = P(41.686, 44.786);
         const E = P(41.684, 44.79);
         await page.getByRole('button', { name: 'Finish editing' }).click();
@@ -319,7 +319,7 @@ describe('Срез участка', () => {
         await rightClick(map, Z[1]);
         await chooseFromMenu('Shortcut');
         await expect.element(page.getByText('Click the line where the shortcut ends')).toBeVisible();
-        // подсветка: удаляемый участок красный, линия выбора зелёная
+        // the highlight: the part to remove is red, the choice line is green
         fire(map, 'mousemove', Z[3]);
         await expect
             .poll(() => features<LineString>(map, EDIT_PREVIEW).map((f) => f.properties?.color))
@@ -339,7 +339,7 @@ describe('Срез участка', () => {
         await chooseFromMenu('Shortcut');
         await click(map, C);
         await expect.poll(() => waypoints(map)).toHaveLength(3);
-        // A — до точки начала проложен, от неё до C — прямая
+        // from A to the start point: routed, from the start point to C: straight
         expect(states(map)).toEqual(['routed', 'straight']);
         expect(near(waypoints(map)[1], corner)).toBe(true);
     });
@@ -360,7 +360,7 @@ describe('Срез участка', () => {
 
 describe('Подсказка выбора на карте', () => {
     test('Подсказка у конца линии', async () => {
-        // вид с центром в конце: у края подсказка прижалась бы к полю и встала не по центру точки
+        // a view centered on the end: at the edge, the hint would press to the margin and stand off the point center
         const { map } = await render(
             `#m=15/${Z[4].lat}/${Z[4].lng}&nktk=${link('Zigzag', [Z])}/${link('Other', [OTHER])}`,
         );
@@ -369,7 +369,7 @@ describe('Подсказка выбора на карте', () => {
         await chooseFromMenu('Join');
         await expect.element(page.getByTestId('tool-hint')).toHaveTextContent('Click a track line to join it');
         expect(await hintAbove(map, Z[4])).toBe(true);
-        // на карте, а не в строке редактора
+        // on the map, not in the editor row
         expect(editPanel().getByText('Click a track line to join it').query()).toBeNull();
         pressEscape();
         await expect.element(page.getByTestId('tool-hint')).not.toBeInTheDocument();
@@ -431,8 +431,8 @@ describe('Удаление и вынос отрезка', () => {
         await expect.element(rows().nth(1)).toHaveAttribute('data-track', 'New track');
         await expect.element(editPanel()).toBeVisible();
         await page.getByRole('button', { name: 'Finish editing' }).click();
-        // исходный трек удалён, прокладка выключена: перетаскивание опорной точки копии перестраивает её отрезок
-        // своей активностью, значит, разметка скопирована
+        // the source track is removed, routing is off: a drag of a waypoint of the copy routes its leg again with its
+        // own activity, so the markup is copied
         await page.getByRole('button', { name: 'Actions for New track' }).first().click();
         await page.getByRole('menuitem', { name: 'Delete' }).click();
         await expect.element(rows()).toHaveLength(1);

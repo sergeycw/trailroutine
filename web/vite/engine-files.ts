@@ -3,16 +3,17 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Connect, Plugin } from 'vite';
 
-// Файлы движка BRouter для dev-сервера и vite preview. На проде их отдают Pages Functions того же
-// origin (functions/brouter-wasm, functions/tiles), локально — этот middleware и прокси /tiles на
-// nakarte-tiles-worker (vite.config.ts). CheerpJ читает /app/ только Range-запросами и без 206 с
-// Content-Range не видит размер файла (AGENTS.md, «Движок в браузере (CheerpJ)»), поэтому статика Vite
-// (вне root и без гарантий Range) не годится. Раскладка — как у functions/brouter-wasm и functions/tiles на проде.
+// BRouter engine files for the dev server and vite preview. In production the Pages Functions of the same
+// origin serve them (functions/brouter-wasm, functions/tiles), locally this middleware and the /tiles proxy to
+// nakarte-tiles-worker (vite.config.ts) serve them. CheerpJ reads /app/ only with Range requests and without 206 with
+// Content-Range does not see the file size (AGENTS.md, «Движок в браузере (CheerpJ)»), so the Vite static files
+// (outside root and without a Range guarantee) are not suitable. The layout is as in functions/brouter-wasm and
+// functions/tiles in production.
 
 const REPO = fileURLToPath(new URL('../../', import.meta.url));
 
-// [префикс URL, каталог]. lib и profiles кладёт experiments/wasm/cheerpj/build.sh, тайлы для режима без
-// clone — scripts/brouter-segments.sh (config.routingTilesPath = /brouter-wasm/segments4/).
+// [URL prefix, directory]. experiments/wasm/cheerpj/build.sh puts lib and profiles, scripts/brouter-segments.sh puts
+// the tiles for the mode without clone (config.routingTilesPath = /brouter-wasm/segments4/).
 export type Mounts = Array<[prefix: string, dir: string]>;
 
 const DEFAULT_MOUNTS: Mounts = [
@@ -21,13 +22,13 @@ const DEFAULT_MOUNTS: Mounts = [
     ['/brouter-wasm/segments4/', path.join(REPO, 'brouter/segments4')],
 ];
 
-// Что уходит в сборку: код и профили движка. На проде их отдаёт с Range functions/brouter-wasm из статики Pages, а
-// тайлы — functions/tiles из R2, поэтому segments4 в сборку не кладётся.
+// What goes into the build: the engine code and profiles. In production functions/brouter-wasm serves them with Range
+// from the Pages static files, and functions/tiles serves the tiles from R2, so segments4 does not go into the build.
 const BUILD_MOUNTS: Mounts = DEFAULT_MOUNTS.filter(([prefix]) => prefix !== '/brouter-wasm/segments4/');
 
-// Копирует каталоги движка в сборку (<outDir>/brouter-wasm/lib, …), как CopyWebpackPlugin старого клиента. Возвращает
-// каталоги, которых нет: без experiments/wasm/cheerpj/build.sh сборка проходит без движка (check-web.yml), а деплой
-// ловит это своей проверкой файлов в build/.
+// Copies the engine directories into the build (<outDir>/brouter-wasm/lib, …), as CopyWebpackPlugin of the old client
+// did. Returns the missing directories: without experiments/wasm/cheerpj/build.sh the build passes without the engine
+// (check-web.yml), and the deploy catches this with its own check of the files in build/.
 export function copyEngineFiles(outDir: string, mounts: Mounts = BUILD_MOUNTS): string[] {
     const missing: string[] = [];
     for (const [prefix, dir] of mounts) {
@@ -40,14 +41,14 @@ export function copyEngineFiles(outDir: string, mounts: Mounts = BUILD_MOUNTS): 
     return missing;
 }
 
-// BRouter читает storageconfig.txt из каталога тайлов; functions/tiles отдаёт его пустым, как и старый dev-сервер.
+// BRouter reads storageconfig.txt from the tile directory; functions/tiles serves it empty, as the old dev server did.
 const EMPTY_FILES = new Set(['/brouter-wasm/segments4/storageconfig.txt']);
 
 const RANGE = /^bytes=(\d*)-(\d*)$/;
 
 export type ByteRange = { start: number; end: number } | 'unsatisfiable' | null;
 
-// Тот же разбор, что в functions/brouter-wasm: один диапазон, суффикс `bytes=-N`, конец обрезается по размеру.
+// The same parsing as in functions/brouter-wasm: one range, the suffix `bytes=-N`, the end is clipped to the size.
 export function parseRange(header: string | undefined, size: number): ByteRange {
     const match = RANGE.exec(header ?? '');
     if (!match || (match[1] === '' && match[2] === '')) {
@@ -116,7 +117,8 @@ export function engineFiles(): Plugin {
     const middleware = engineFilesMiddleware();
     return {
         name: 'trailroutine-engine-files',
-        // middleware до внутренних Vite: Range и файлы вне root проекта статика Vite не отдаёт
+        // middleware before the internal Vite ones: the Vite static server does not serve Range or files outside the
+        // project root
         configureServer: (server) => {
             server.middlewares.use(middleware);
         },

@@ -3,17 +3,18 @@ import { type Engine, EngineStartError, type EngineStatus } from '@/engine/engin
 import type { LatLng } from '@/tracks/model';
 import { type Activity, parseRoute, RoutingError, routeQuery } from './brouter';
 
-// Роутер нового приложения: движок в браузере (клон) или серверный BRouter (локально, docker-compose.yml) за одним
-// интерфейсом — для редактора результат одинаковый: точки отрезка или RoutingError (спека browser-routing-engine,
-// «Выбор движка флагом конфигурации»). Отмена — AbortSignal: отклонение с signal.reason, редактор его молча отбрасывает.
+// The app router: the in-browser engine (the clone) or the server BRouter (locally, docker-compose.yml) behind one
+// interface; the editor gets the same result: leg points or RoutingError (spec browser-routing-engine,
+// «Выбор движка флагом конфигурации»). Cancellation: AbortSignal, a rejection with signal.reason, the editor drops it
+// without a message.
 
 export interface Router {
     route(from: LatLng, to: LatLng, activity: Activity, signal?: AbortSignal): Promise<LatLng[]>;
-    // прогрев при выборе активности: рантайм движка грузится до первого клика (спека browser-routing-engine)
+    // warm-up on activity selection: the engine runtime loads before the first click (spec browser-routing-engine)
     warmUp(): void;
-    // жив ли роутер: перепроверка при открытии меню прокладки (спека routing, «Недоступный роутер»)
+    // is the router alive: a new check when the routing menu opens (spec routing, «Недоступный роутер»)
     isReachable(): Promise<boolean>;
-    // состояние движка для кнопки прокладки; у сервера загружать нечего — всегда ready
+    // the engine state for the routing button; the server has nothing to load, so it is always ready
     status(): EngineStatus;
     subscribe(listener: () => void): () => void;
 }
@@ -22,11 +23,11 @@ export interface RouterOptions {
     engine: RoutingEngine;
     routingServer: string;
     fetch: typeof fetch;
-    // движок создаётся лениво (getEngine): пока прокладка выключена, рантайм CheerpJ не грузится
+    // the engine is created lazily (getEngine): while routing is off, the CheerpJ runtime does not load
     getEngine: () => Engine;
 }
 
-// таймауты старого клиента (lib/brouter): маршрут — 30 с, проверка живости — 3 с
+// timeouts of the old client (lib/brouter): route 30 s, alive check 3 s
 const ROUTE_TIMEOUT = 30_000;
 const PROBE_TIMEOUT = 3_000;
 
@@ -57,7 +58,7 @@ export function createRouter({ engine, routingServer, fetch, getEngine }: Router
                     .start()
                     .catch(() => {});
             },
-            // не запущенный ещё движок считается живым: он запустится на первом маршруте (isEngineFailed старого клиента)
+            // a not yet started engine counts as alive: it starts on the first route (isEngineFailed of the old client)
             isReachable: async () => getEngine().status() !== 'failed',
             status: () => getEngine().status(),
             subscribe: (listener) => getEngine().subscribe(listener),
@@ -81,13 +82,13 @@ export function createRouter({ engine, routingServer, fetch, getEngine }: Router
             }
             const text = await response.text();
             if (!response.ok) {
-                // BRouter пишет причину текстом ответа (datafile … not found, no track found …)
+                // BRouter writes the reason as the response text (datafile … not found, no track found …)
                 throw new RoutingError(text.trim() || `HTTP ${response.status}`);
             }
             return parseRoute(text, from, to);
         },
         warmUp() {},
-        // GET /brouter без параметров отвечает 404: любой HTTP-ответ — сервер жив, сетевая ошибка — нет
+        // GET /brouter with no parameters answers 404: any HTTP response means a live server, a network error does not
         async isReachable() {
             try {
                 await fetch(brouterUrl, { signal: AbortSignal.timeout(PROBE_TIMEOUT) });
@@ -101,8 +102,8 @@ export function createRouter({ engine, routingServer, fetch, getEngine }: Router
     };
 }
 
-// Короткий статус для подсказки кнопки и что делать пользователю (routerDownStatus/routerDownHint старого клиента).
-// Команда — для серверного режима: docker-compose.yml в корне репозитория поднимает BRouter на 17777.
+// A short status for the button hint, and what the user can do (routerDownStatus/routerDownHint of the old client). The
+// command is for the server mode: docker-compose.yml in the repository root starts BRouter on 17777.
 export function routerDownStatus(engine: RoutingEngine): string {
     return engine === 'browser' ? 'BRouter engine failed to load' : 'BRouter is not running';
 }

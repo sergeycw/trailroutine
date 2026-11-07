@@ -1,6 +1,6 @@
 # Бэклог
 
-Идеи, отложенное и риски, которые ещё не стали changes. Взятая в работу задача уходит отсюда в change.
+Идеи, отложенное и риски, которые ещё не стали changes. Взятая в работу задача уходит отсюда в change. Список задач и их порядок — в Things, здесь — детали (`AGENTS.md`, «Где что записано»).
 
 ## Глобальное направление: полная автономия
 
@@ -12,9 +12,6 @@
   - Bulk Redirect `nakarte-routing.pages.dev` → `trailroutine.com` — отдельно, после переходного периода, когда перенос данных отработал (заходы на старый адрес видны в Web Analytics). После него старый адрес перестанет переносить данные: у кого не перенеслось, не перенесётся. Сначала `302`, потом `301`: браузер кэширует `301` бессрочно.
   - Стенд `trailroutine.pages.dev` для крупных фич — отдельный Pages-проект (ветки основного проекта Bulk Redirect с Include subdomains тоже уведёт). Его адрес — в `ALLOWED_ORIGINS` Worker'ов.
   - Боевые ресурсы со старым именем: Worker'ы и бакеты R2 `nakarte-*`, поддомен `nakarte-routing.workers.dev`, Pages-проект `nakarte-routing`, проект Sentry `nakarte-routing`. Решить: переименовать (новые ресурсы, перенос ≈ 23 ГБ R2, токен CI не создаёт Worker'ы — их заводит владелец) или оставить внутренними именами — пользователь видит только домен.
-  - Комментарии в коде на английский (314 файлов на 2026-11-07) — отдельным шагом. Названия тестов переводятся вместе со сценариями спек, не раньше.
-  - Локальная папка `…/pets/nakarte` → `trailroutine`, когда ни одна сессия с ней не работает: перенести память Claude (`~/.claude/projects/<путь папки>/`), поправить пути в `../.claude/launch.json`; контейнер `nakarte-brouter` и имена записей `nakarte-*` в `launch.json` — по желанию.
-  - `.github/FUNDING.yml` ведёт кнопку Sponsor на Patreon и PayPal автора — оставить как благодарность автору или убрать, решает владелец.
 - Аудит системного дизайна: сделан 2026-10-08, результат — `openspec/research/system-design-audit.md` (решения, таблица переделок, что влияет на переписывание UI). Ответы владельца записаны (`record-ui-decisions`), кроме BRouter против других движков. Осталось нарезать changes из таблицы «Переделки».
 - Security-аудит клона: сделан 2026-10-08, результат — `openspec/research/security-audit.md` (угрозы с ценой худшего сценария, итоговая таблица переделок, шаги владельца). P1 сделаны (архив `2026-10-08-disable-version-urls`, `harden-ci-secrets`, `limit-elevation-reads`, `limit-track-writes`, `restrict-cors-proxy`, `limit-pages-functions`). Токены сужены 2026-10-08. Осталось: отдельный аккаунт Strava и environment `production` (отложены владельцем) и P2–P3 из итоговой таблицы — пункты ниже в «Сопровождение».
 - Высоты точнее 3″: Copernicus GLO-30 (1″, DSM) вместо viewfinderpanoramas. Источник без учётки — OpenTopography (DGED 2023_1, анонимный S3 `opentopography.s3.sdsc.edu/raster/COP30/COP30_hh/`, 26 475 тайлов, 777 ГБ, сетка 3601×3601 с перекрытием); 2024_1 — только Copernicus Data Space с учёткой. Прототип Int16 + дельта + zstd: градус Кавказа 7.9 МБ, равнины 3.3 МБ, весь мир ≈ 70–110 ГБ в R2 (≈ $1–1.7/мес). Нужна атрибуция Copernicus; формат и ядро `workers/elevation` к размеру сетки не привязаны.
@@ -105,6 +102,7 @@
 - Наблюдаемость: ошибок клиента не видно (`sentryDSN` и `eventsLogUrl` пустые), а маршрут в клоне считает браузер: отказ CDN CheerpJ или исключение Java видит только пользователь. Варианты: Sentry (DSN уже поддержан кодом) или свой `POST /events` в существующий Worker с записью в Workers Logs; события без координат. Расписания GitHub отключает после 60 дней без коммитов — это касается синхронизации тайлов, `strava heatmap check` и `prod check`.
 - Год мозаики Sentinel-2 — константа `SENTINEL_YEAR` в `web/src/layers/catalog.ts`. Новая мозаика — слой `s2cloudless-<год>_3857` в Capabilities: `curl -s https://tiles.maps.eox.at/wmts/1.0.0/WMTSCapabilities.xml | grep -o 's2cloudless-[0-9]*_3857' | sort -u | tail -1`. Тогда поднять год, год в образце адреса и подписи тестов (`catalog.test.ts`, `App.browser.test.tsx`).
 - Мелочи хранилищ: у объектов `nakarte-tracks` есть время записи (`customMetadata.created`, с `limit-track-writes`), но нет версии `nktk`.
+- Dependabot (`.github/dependabot.yml`) обновляет только workflows, npm `workers/tracks`, `workers/elevation`, `workers/cors-proxy` и cargo `workers/elevation`. Нет `/web` (приложение), `/workers/guard`, `/workers/tiles` и корня `/` (Biome): решить, добавлять ли их (найдено 2026-11-07 при переводе комментариев).
 - Безопасность после security-аудита (цены и формулы — `openspec/research/security-audit.md`, «Итог»):
   - P2. Выключатель расходов: потолка у Cloudflare нет, бюджетные оповещения — письмо раз в сутки. Workflow по расписанию читает GraphQL Analytics и выше порога выключает `workers.dev` у Worker'ов; нужен токен Analytics Read + Workers Scripts Edit — решение владельца.
   - P2, отложено владельцем 2026-10-08. Секреты деплоя в environment `production` с веткой `master`: сначала владелец заводит environment и переносит секреты, потом `environment: production` в job'ы с секретами.

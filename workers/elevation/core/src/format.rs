@@ -1,13 +1,14 @@
-//! Объект R2 на один градус (`dem3/N43E042`, имя как у HGT-файла).
+//! An R2 object for one degree (`dem3/N43E042`, the name as of the HGT file).
 //!
-//! Раскладка: заголовок `HEADER_LEN` байт — magic `NKE1`, `u16` размер куска, `u16` число делений
-//! градуса, `CHUNKS + 1` смещений `u32` LE (начало каждого куска и конец последнего); дальше куски.
-//! Кусок — четверть градуса 301×301 узлов с перекрытием в строку и столбец, как у Go-сервера автора
-//! (`wladich/elevation_server`, `HgtSplitParts = 4`): так любая точка интерполируется внутри одного
-//! куска. Порядок кусков `dy * SPLIT + dx`, `dy` и строки внутри куска идут с юга (у HGT — с севера).
-//! Значения — `i16` в метрах, `NO_VALUE` — нет данных; сжатие zstd от дельт
-//! (`wrapping_sub` подряд по всему куску, первое значение — дельта от нуля). Кусок нулевой длины — данных нет
-//! (так `repack --only` прореживает фикстуры).
+//! Layout: a header of `HEADER_LEN` bytes: magic `NKE1`, `u16` chunk size, `u16` number of parts of
+//! a degree, `CHUNKS + 1` offsets `u32` LE (the start of each chunk and the end of the last); then
+//! chunks. A chunk is a quarter degree of 301×301 nodes with an overlap of one row and one column,
+//! as in the Go server of the author (`wladich/elevation_server`, `HgtSplitParts = 4`): thus each
+//! point interpolates in one chunk. The chunk order is `dy * SPLIT + dx`; `dy` and the rows in a
+//! chunk go from the south (HGT goes from the north). Values are `i16` in meters, `NO_VALUE` is no
+//! data; zstd compresses the deltas (`wrapping_sub` in sequence across the chunk, the first value
+//! is a delta from zero). A chunk of zero length has no data (`repack --only` thins the fixtures
+//! like this).
 
 use std::io::Read;
 
@@ -57,7 +58,7 @@ impl Header {
     }
 }
 
-// В wasm распаковка — чистый Rust (`ruzstd`): C-шный zstd под wasm32-unknown-unknown не собрать.
+// In wasm, decompression is pure Rust (`ruzstd`): C zstd does not build for wasm32-unknown-unknown.
 pub fn decode_chunk(compressed: &[u8]) -> Result<Vec<i16>, Error> {
     let mut decoder = ruzstd::decoding::StreamingDecoder::new(compressed)
         .map_err(|_| Error::Format("bad zstd frame"))?;
@@ -105,8 +106,9 @@ pub fn encode_degree(chunks: &[Option<Vec<i16>>], level: i32) -> Vec<u8> {
     assemble_degree(&encoded)
 }
 
-/// Объект градуса из уже сжатых кусков (пустой — данных нет). Был публичным ради прореживания
-/// фикстур генератором тайлов высот (`elevation-tiles thin`), удалённым в change retire-old-client-services.
+/// A degree object from chunks that are already compressed (empty means no data). It was public for
+/// the thinning of fixtures by the elevation tile generator (`elevation-tiles thin`), which change
+/// retire-old-client-services removed.
 #[cfg(feature = "encode")]
 fn assemble_degree(encoded: &[Vec<u8>]) -> Vec<u8> {
     assert_eq!(encoded.len(), CHUNKS);

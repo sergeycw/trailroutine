@@ -15,83 +15,85 @@ import type { Bounds } from '@/tracks/geometry';
 import { type GeoData, type LatLng, TRACK_COLORS, type Track, type Waypoint } from '@/tracks/model';
 import type { View } from './hash';
 
-// Состояние приложения, которое делят карта, переключатель слоёв и адрес. Стор создаётся на каждый экземпляр App
-// (контекст), а не модульным синглтоном: browser-тесты рендерят App много раз в одной странице.
+// The app state that the map, the layer switcher and the address share. The store is created for each App instance
+// (context), not as a module singleton: browser tests render App many times in one page.
 
 export interface AppState {
     catalog: readonly LayerDef[];
-    // каталог + свои слои; пересобирается при изменении своих слоёв
+    // catalog + custom layers; rebuilt when custom layers change
     layers: ReadonlyMap<string, LayerDef>;
     settings: LayerSettings;
     selection: Selection;
-    // с какой подложки начался откат по цепочке BASEMAP_FALLBACKS после ошибки её тайлов (design add-outdoor-basemap,
-    // «Откат на OpenStreetMap»; цепочка — design openfreemap-default-basemap): откат — не выбор пользователя, в
-    // localStorage и l= уходит выбор с ней (savedSelection). При Of → Tt → O остаётся Of
+    // the basemap from which the fallback along the chain BASEMAP_FALLBACKS started after its tile error (design
+    // add-outdoor-basemap, «Откат на OpenStreetMap»; the chain: design openfreemap-default-basemap): a fallback is not
+    // a user selection, localStorage and l= get the selection with this basemap (savedSelection). The field keeps Of
+    // after the fallback Of → Tt → O
     basemapFallback: string | null;
-    // дата снимков по датам ГГГГ-ММ-ДД (design add-dated-imagery): в адресе d=, пока подложка — слой с dated; в
-    // localStorage не попадает. null — даты нет, слой не рисуется
+    // the date of the dated imagery YYYY-MM-DD (design add-dated-imagery): in the address d= while the basemap is a
+    // layer with dated; it does not go to localStorage. null: no date, the layer is not drawn
     imageryDate: string | null;
-    // последний вид карты (пишет карта по moveend)
+    // the last map view (the map writes it on moveend)
     view: View;
-    // вид, на который карту надо перевести (пришёл из адреса); seq различает одинаковые запросы
+    // the view to move the map to (it came from the address); seq tells identical requests apart
     viewRequest: { view: View; seq: number } | null;
-    // границы, которые карта должна показать целиком (трек, загруженные треки)
+    // bounds that the map must show in full (a track, loaded tracks)
     boundsRequest: { bounds: Bounds; seq: number } | null;
-    // список треков сверху вниз (design add-web-tracks, «Стор»)
+    // the track list from top to bottom (design add-web-tracks, «Стор»)
     tracks: readonly Track[];
-    // цвет следующего трека без своего цвета — по кругу, как _lastTrackColor старого клиента
+    // the color of the next track without its own color: in a cycle, as _lastTrackColor of the old client
     nextColor: number;
-    // сколько загрузок треков (файлы, ссылки, параметры адреса) идёт сейчас
+    // how many track loads (files, links, address parameters) run now
     loadingTracks: number;
-    // текст, который не удалось положить в буфер обмена (ссылка на треки, координаты точки): показывается окном
+    // text that could not go to the clipboard (a link to tracks, point coordinates): a dialog shows it
     copyFallback: CopyFallback | null;
-    // прокладка (design add-web-route-editor, «Связь со стором и картой»): выбранная активность или null («Off»),
-    // жив ли роутер (красная кнопка), редактируемая линия и номер перетаскиваемой опорной точки — то, что рисует
-    // карта. Само превью перетаскивания и резинку карта рисует в обход стора (routing/MapEditor.tsx).
+    // routing (design add-web-route-editor, «Связь со стором и картой»): the selected activity or null («Off»), whether
+    // the router is alive (red button), the edited line and the index of the dragged waypoint: what the map draws. The
+    // map draws the drag preview and the rubber band past the store (routing/MapEditor.tsx).
     routingActivity: string | null;
     routerReachable: boolean;
     routeEdit: RouteEditState | null;
     routeDrag: number | null;
-    // инструменты линии и точки трека (design add-web-line-tools): выбор на карте для Join и Shortcut, меню в точке
-    // карты, режим постановки или переноса точки трека и окно её названия
+    // line tools and track points (design add-web-line-tools): the map choice for Join and Shortcut, the menu at a map
+    // point, the mode to place or move a track point and its name dialog
     lineTool: LineTool | null;
     mapMenu: MapMenu | null;
     pointTool: PointTool | null;
     pointDialog: PointDialog | null;
-    // профиль высот (design add-web-elevation-profile): что показано, выборка и высоты, курсор и выделение — дробные
-    // номера точек выборки; курсор и выделение делят панель и карта
+    // the elevation profile (design add-web-elevation-profile): what is shown, samples and elevations, the cursor and
+    // the selection are fractional sample point indexes; the panel and the map share the cursor and the selection
     profile: ProfileTarget | null;
     profileData: ProfileData | null;
     profileCursor: number | null;
     profileSelection: readonly [number, number] | null;
-    // метка найденного места (design add-web-search-panoramas, «Метка»): живёт в адресе r=
+    // the placemark of a found place (design add-web-search-panoramas, «Метка»): it lives in the address r=
     placemark: Placemark | null;
-    // Street View (design add-web-search-panoramas, «Street View: режим, клик, окно»): режим, показанная панорама (панель
-    // открыта, пока она есть; пишет окно панорамы) и запрос окну перейти к виду (клик по карте, адрес)
+    // Street View (design add-web-search-panoramas, «Street View: режим, клик, окно»): the mode, the shown panorama
+    // (the panel is open while it exists; the panorama window writes it) and the request to the window to go to a view
+    // (a map click, the address)
     streetView: StreetViewState;
 
     setView(view: View): void;
     requestView(view: View): void;
     selectBase(code: string): void;
     setImageryDate(date: string | null): void;
-    // откатить подложку code на следующую в BASEMAP_FALLBACKS; false — code уже не подложка (ошибки тайлов приходят и
-    // после смены слоя) или у неё нет отката
+    // move the basemap code to the next one in BASEMAP_FALLBACKS; false: code is not the basemap any more (tile errors
+    // come also after a layer change) or it has no fallback
     fallBackBase(code: string): boolean;
     toggleOverlay(code: string): void;
-    // оверлей группы столбца вместо остальных её оверлеев (меню и кнопка в QuickLayers); null — выключить группу
+    // a column group overlay instead of its other overlays (menu and button in QuickLayers); null: turn off the group
     setQuickOverlay(group: QuickLayerGroup, code: string | null): void;
     applyLayersParam(parsed: ParsedLayers): void;
     updateSettings(patch: Partial<Pick<LayerSettings, 'listed'>>): void;
-    // возвращают код слоя
+    // return the layer code
     addCustomLayer(fields: CustomLayerFields): string;
     replaceCustomLayer(code: string, fields: CustomLayerFields): string;
     removeCustomLayer(code: string): void;
     requestBounds(bounds: Bounds): void;
-    // данные уже подготовлены prepareImport (линии упрощены); возвращает добавленные треки. atStart — в начало списка
-    // (восстановленный рабочий набор, design add-web-autosave, «Восстановление и треки из адреса»)
+    // the data is already prepared by prepareImport (lines are simplified); returns the added tracks. atStart: to the
+    // start of the list (the restored working set, design add-web-autosave, «Восстановление и треки из адреса»)
     addTracks(data: readonly GeoData[], atStart?: boolean): Track[];
-    // новые segments без routes сбрасывают разметку маршрута: правка, которая о ней не знает, не оставит номера опорных
-    // точек, указывающие не туда (design add-web-route-editor, «Разметка маршрута в треке»)
+    // new segments without routes reset the route markup: an edit that does not know about the markup does not leave
+    // waypoint indexes that point to wrong places (design add-web-route-editor, «Разметка маршрута в треке»)
     updateTrack(
         id: string,
         patch: Partial<
@@ -114,11 +116,11 @@ export interface AppState {
     setProfileCursor(cursor: number | null): void;
     setProfileSelection(selection: readonly [number, number] | null): void;
     setPlacemark(placemark: Placemark | null): void;
-    // выключение режима закрывает панораму
+    // turning off the mode closes the panorama
     setStreetViewEnabled(enabled: boolean): void;
-    // открыть панораму в этом виде (или перевести открытую)
+    // open the panorama in this view (or move the open one)
     requestPano(view: PanoView): void;
-    // окно панорамы сообщает текущий вид; null — панорама закрыта
+    // the panorama window reports the current view; null: the panorama is closed
     setPano(view: PanoView | null): void;
 }
 
@@ -128,14 +130,14 @@ export interface StreetViewState {
     request: { view: PanoView; seq: number } | null;
 }
 
-// segment null — профиль всего трека
+// segment null: the profile of the whole track
 export interface ProfileTarget {
     trackId: string;
     segment: number | null;
 }
 
-// values — высоты точек выборки (null — нет данных), пока высот нет — null. updating — идёт перестроение: виден
-// прежний профиль. error — причина ошибки API высот.
+// values: elevations of the sample points (null: no data), null while there are no elevations. updating: a rebuild
+// runs, the previous profile is visible. error: the reason of the elevation API error.
 export interface ProfileData {
     samples: ProfileSamples;
     values: readonly Elevation[] | null;
@@ -143,23 +145,24 @@ export interface ProfileData {
     error: string | null;
 }
 
-// Выбор на карте: Join от конца редактируемой линии, Shortcut от места на ней
+// Map choice: Join from the end of the edited line, Shortcut from a place on it
 export type LineTool = { kind: 'join'; end: End } | { kind: 'shortcut'; from: LinePlace };
 
-// Что под меню: опорная точка или место на линии редактируемого отрезка, точка трека
+// What is under the menu: a waypoint or a place on the line of the edited segment, a track point
 export type MenuTarget =
     | { kind: 'waypoint'; index: number }
     | { kind: 'line'; place: { leg: number; latlng: LatLng } }
     | { kind: 'point'; trackId: string; point: Waypoint };
 
-// x, y — экранные координаты (clientX/clientY), в них встаёт меню
+// x, y: screen coordinates (clientX/clientY), the menu stands there
 export interface MapMenu {
     x: number;
     y: number;
     target: MenuTarget;
 }
 
-// Точка трека — объект Waypoint из стора, а не номер: номер ищется в момент действия, пропавшая точка — ничего
+// A track point is a Waypoint object from the store, not an index: the index is found at the time of the action, a
+// missing point does nothing
 export type PointTool = { kind: 'add'; trackId: string } | { kind: 'move'; trackId: string; point: Waypoint };
 
 export interface CopyFallback {
@@ -176,11 +179,11 @@ export interface RouteEditState {
     trackId: string;
     segment: number;
     line: RouteLine;
-    // рисование: новые точки ставятся кликом к этому концу линии
+    // drawing: a click puts new points at this end of the line
     drawing: End | null;
     canUndo: boolean;
     canRedo: boolean;
-    // номер правки редактора (RouteEditor.revision): ответ роутера его не меняет
+    // the editor edit number (RouteEditor.revision): a router response does not change it
     revision: number;
 }
 
@@ -217,12 +220,12 @@ function renameKey<T>(record: Record<string, T>, from: string, to: string): Reco
     return { ...rest, [to]: value };
 }
 
-// id треков уникальны на страницу (и между экземплярами стора в browser-тестах — не мешает)
+// track ids are unique per page (and between store instances in browser tests, which is not a problem)
 let lastTrackId = 0;
 
 export function createAppStore(init: AppStoreInit): AppStore {
     return createStore<AppState>()((set, get) => {
-        // свои слои поменялись — пересобрать карту слоёв и отбросить из выбора пропавшие
+        // custom layers changed: rebuild the layer map and remove the missing layers from the selection
         function withCustom(settings: LayerSettings, selection: Selection) {
             const layers = layersMap(init.catalog, settings.custom, init.corsProxyUrl);
             return { settings, layers, selection: validSelection(selection, layers) };
@@ -270,10 +273,11 @@ export function createAppStore(init: AppStoreInit): AppStore {
                 if (layers.get(code)?.isOverlay !== false) {
                     return;
                 }
-                // выбор пользователя запоминается кругом своей группы (design quick-layer-menus), и тогда, когда
-                // подложка уже на карте: нажатие на отмеченный круг после старых настроек без памяти
+                // the circle of its group remembers the user selection (design quick-layer-menus), also when the
+                // basemap is already on the map: a press on the marked circle after old settings without the memory
                 const quickLayers = rememberQuickLayer(settings.quickLayers, code);
-                // явный выбор подложки отката — уже выбор пользователя: откат сбрасывается, хотя подложка та же
+                // an explicit selection of the fallback basemap is already a user selection: the fallback resets,
+                // although the basemap is the same
                 if (selection.base === code && !basemapFallback && quickLayers === settings.quickLayers) {
                     return;
                 }
@@ -303,7 +307,7 @@ export function createAppStore(init: AppStoreInit): AppStore {
                     set({ selection: { ...selection, overlays: selection.overlays.filter((item) => item !== code) } });
                     return;
                 }
-                // включённый оверлей группы столбца запоминается её кнопкой (design quick-layer-menus)
+                // the button of the column group remembers an overlay that is turned on (design quick-layer-menus)
                 const quickLayers = rememberQuickLayer(settings.quickLayers, code);
                 set({
                     selection: { ...selection, overlays: [...selection.overlays, code] },
@@ -325,8 +329,8 @@ export function createAppStore(init: AppStoreInit): AppStore {
                 });
             },
 
-            // l= из адреса: свои слои из ссылки попадают в список, а все слои ссылки становятся видимыми в
-            // переключателе — как unserializeState старого клиента (layer.enabled = true)
+            // l= from the address: custom layers from the link go to the list, and all layers of the link become
+            // visible in the switcher, as unserializeState of the old client does (layer.enabled = true)
             applyLayersParam: ({ selection, custom }) => {
                 const { settings } = get();
                 const listed = { ...settings.listed };
@@ -334,7 +338,8 @@ export function createAppStore(init: AppStoreInit): AppStore {
                     listed[code] = true;
                 }
                 const merged = [...settings.custom, ...custom.filter((code) => !settings.custom.includes(code))];
-                // слои ссылки — тоже последние выбранные в своих группах; откат (fallBackBase) память не трогает
+                // the layers of the link are also the last selected ones in their groups; the fallback (fallBackBase)
+                // does not touch the memory
                 const quickLayers = [selection.base, ...selection.overlays].reduce(
                     rememberQuickLayer,
                     settings.quickLayers,
@@ -351,7 +356,7 @@ export function createAppStore(init: AppStoreInit): AppStore {
                 const code = serializeCustomLayer(fields);
                 const { settings, selection } = get();
                 const custom = settings.custom.includes(code) ? settings.custom : [...settings.custom, code];
-                // новый слой сразу включён: подложка заменяет текущую, оверлей добавляется
+                // a new layer is turned on immediately: a basemap replaces the current one, an overlay is added
                 const next = fields.isOverlay
                     ? { ...selection, overlays: [...selection.overlays.filter((item) => item !== code), code] }
                     : { ...selection, base: code };
@@ -365,13 +370,13 @@ export function createAppStore(init: AppStoreInit): AppStore {
                 const custom = settings.custom.map((item) => (item === oldCode ? code : item));
                 const wasBase = selection.base === oldCode;
                 const wasOverlay = selection.overlays.includes(oldCode);
-                // пустая подложка — validSelection вернёт умолчание
+                // an empty basemap: validSelection returns the default
                 const next = {
                     base: wasBase ? '' : selection.base,
                     overlays: selection.overlays.filter((item) => item !== oldCode),
                 };
-                // включённый слой остаётся включённым в новой роли, кроме оверлея, ставшего подложкой
-                // (onCustomLayerChangeClicked старого клиента)
+                // a layer that is on stays on in its new role, except an overlay that became a basemap
+                // (onCustomLayerChangeClicked of the old client)
                 if (wasBase || (wasOverlay && fields.isOverlay)) {
                     if (fields.isOverlay) {
                         next.overlays.push(code);
@@ -476,8 +481,9 @@ export function createAppStore(init: AppStoreInit): AppStore {
     });
 }
 
-// Выбор для localStorage и l=: пока карта стоит на подложке отката, сохраняется подложка, с которой откатились, —
-// следующий заход и перезагрузка снова попробуют её. Другая подложка (свой слой, удаление подложки) значит, что откат уже ни при чём
+// The selection for localStorage and l=: while the map is on the fallback basemap, the basemap that the fallback
+// started from is saved, and the next visit and a reload try it again. Another basemap (a custom layer, a basemap
+// removal) means that the fallback is no longer relevant
 export function savedSelection(state: Pick<AppState, 'selection' | 'basemapFallback'>): Selection {
     const { selection, basemapFallback } = state;
     if (!basemapFallback || !fallbackChain(basemapFallback).includes(selection.base)) {
@@ -486,7 +492,7 @@ export function savedSelection(state: Pick<AppState, 'selection' | 'basemapFallb
     return { ...selection, base: basemapFallback };
 }
 
-// подложки, на которые откатывается code по цепочке BASEMAP_FALLBACKS, по порядку: Of → [Tt, O]
+// the basemaps to which code falls back along the chain BASEMAP_FALLBACKS, in order: Of → [Tt, O]
 function fallbackChain(code: string): string[] {
     const chain: string[] = [];
     for (let next = BASEMAP_FALLBACKS[code]; next && !chain.includes(next); next = BASEMAP_FALLBACKS[next]) {

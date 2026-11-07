@@ -9,7 +9,8 @@ import { moveIn } from './move/move-in';
 import { moveOut } from './move/move-out';
 import './index.css';
 
-// трекер — до рендера: ошибки запуска (пустая карта, WebGL) самые важные (design add-error-tracking)
+// The tracker starts before the render: the startup errors (empty map, WebGL) are the most important
+// (design add-error-tracking)
 startErrorTracking(config.sentryDsn);
 const onError = rootErrorHandler();
 

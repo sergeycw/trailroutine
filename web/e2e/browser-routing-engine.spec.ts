@@ -1,7 +1,7 @@
 import { expect, test } from './fixtures.ts';
 
-// Названия тестов — сценарии спеки browser-routing-engine (openspec/specs/browser-routing-engine/spec.md).
-// Настоящий движок e2e не запускает: рантайм CheerpJ живёт на CDN, а тесты в сеть не ходят.
+// The test titles are the scenarios of the spec browser-routing-engine (openspec/specs/browser-routing-engine/spec.md).
+// e2e does not start the real engine: the CheerpJ runtime is on a CDN, and the tests do not go to the network.
 
 test('Прокладка выключена', async ({ page, network }) => {
     const engineRequests: string[] = [];

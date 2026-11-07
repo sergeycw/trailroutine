@@ -11,7 +11,8 @@ import { useAppStore } from '@/state/context';
 import { PointPanel } from '@/tracks/PointPanel';
 import { TrackList, TracksButton } from '@/tracks/TrackList';
 
-// «Measure distance»: трек Ruler с отметками расстояния и сразу рисование (control-ruler.js старого)
+// «Measure distance»: a track Ruler with distance ticks, and the drawing starts at once (control-ruler.js of the old
+// client)
 function RulerButton() {
     const editing = useRouteEditing();
     return (
@@ -28,10 +29,10 @@ function RulerButton() {
     );
 }
 
-// Зона маршрута слева сверху (три зоны, design layout-three-zones): капсула поиска, круглые Tracks, New и линейка. Пока
-// линия редактируется или ставятся точки трека, строка становится их панелью. Список треков — панелью под строкой: открывается
-// кнопкой Tracks, закрывается ею же или нажатием на карту (холст MapLibre), а не любым кликом мимо: меню и диалоги
-// списка живут в порталах вне панели.
+// The route zone at the top left (three zones, design layout-three-zones): the search capsule, the round Tracks, New
+// and the ruler. While a line is in edit or the user places track points, the bar becomes their panel. The track list
+// is a panel below the bar: the Tracks button opens it, and the same button or a press on the map (the MapLibre
+// canvas) closes it, not any click outside: the menus and dialogs of the list live in portals outside the panel.
 export function TopBar({ fetch }: { fetch: typeof window.fetch }) {
     const editing = useRouteEditing();
     const lineEdited = useAppStore((state) => state.routeEdit !== null);
@@ -52,10 +53,11 @@ export function TopBar({ fetch }: { fetch: typeof window.fetch }) {
     }, [tracksOpen]);
 
     let bar = (
-        // каждая кнопка — своё стекло, зазоры между ними — карта (design layout-three-zones, «Зоны и компоненты»)
+        // each button is its own glass, and the gaps between them show the map (design layout-three-zones,
+        // «Зоны и компоненты»)
         <div className="flex w-full items-center gap-1">
-            {/* relative z-20: у стекла свой контекст наложения (backdrop-filter), и без него открытый список под
-                строкой рисовался бы поверх результатов поиска */}
+            {/* relative z-20: the glass has its own stacking context (backdrop-filter), and without it the open list
+                below the bar would draw above the search results */}
             <div
                 className="glass pointer-events-auto relative z-20 flex h-9 min-w-0 flex-1 items-center rounded-full"
                 data-testid="search-bar"
@@ -66,7 +68,8 @@ export function TopBar({ fetch }: { fetch: typeof window.fetch }) {
             <Button
                 variant="ghost"
                 size="icon-lg"
-                // акцент основной кнопки (макет 4a) — цветом иконки: кнопка остаётся стеклянной, как соседние
+                // the accent of the main button (mock-up 4a) is the icon color: the button stays glass, as the buttons
+                // next to it
                 className={cn(ROUND_BUTTON, 'text-primary hover:text-primary')}
                 aria-label="New track"
                 title="New track"
@@ -84,8 +87,8 @@ export function TopBar({ fetch }: { fetch: typeof window.fetch }) {
     }
 
     return (
-        // справа место под столбец кнопок карты (4.5rem = поля + кнопка), снизу — над кнопкой профиля и нижними
-        // панелями (--bottom-inset); клики между панелями уходят карте
+        // on the right, space for the column of map buttons (4.5rem = margins + button); at the bottom, above the
+        // profile button and the bottom panels (--bottom-inset); clicks between the panels go to the map
         <div
             className="pointer-events-none absolute top-3 left-3 z-10 flex max-h-[calc(100dvh-5rem-var(--bottom-inset))] w-[min(30rem,calc(100vw-4.5rem))] flex-col items-start gap-2"
             data-testid="top-bar"

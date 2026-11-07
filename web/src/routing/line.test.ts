@@ -41,12 +41,12 @@ describe('разметка маршрута в отрезке трека', () =>
         for (const waypoints of [[0, 1], [1, 2], [0, 2, 1], []]) {
             expect(fromSegment(points, { waypoints, legs: [{ state: 'straight' }] }).waypoints).toEqual(points);
         }
-        // разметка из одних прямых — та же ломаная
+        // markup of straight legs only gives the same polyline
         expect(
             fromSegment(points, { waypoints: [0, 1, 2], legs: [{ state: 'straight' }, { state: 'straight' }] })
                 .waypoints,
         ).toEqual(points);
-        // прямой отрезок с промежуточными узлами
+        // a straight leg with intermediate nodes
         expect(fromSegment(points, { waypoints: [0, 2], legs: [{ state: 'straight' }] }).waypoints).toEqual(points);
     });
 
@@ -79,11 +79,11 @@ describe('разметка маршрута в отрезке трека', () =>
 });
 
 describe('упрощение с опорными точками', () => {
-    // опорные точки на одной прямой: обычное упрощение выбросило бы среднюю
+    // waypoints on one straight line: a normal simplification would drop the middle one
     const W0 = { lat: 0, lng: 0 };
     const W1 = { lat: 0, lng: 0.01 };
     const W2 = { lat: 0, lng: 0.02 };
-    // точки маршрута между W0 и W1: средняя — на прямой между соседями, упрощение её убирает
+    // route points between W0 and W1: the middle one is on the line between its neighbors, the simplification drops it
     const r = (lng: number, lat = 0.001) => ({ lat, lng });
 
     test('опорные точки остаются, точки маршрута упрощаются, номера пересчитаны', () => {

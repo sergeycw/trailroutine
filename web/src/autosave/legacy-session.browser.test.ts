@@ -1,8 +1,8 @@
 import { afterEach, expect, test } from 'vitest';
 import { readLatestLegacySession } from './legacy-session';
 
-// Настоящий IndexedDB Chromium в схеме базы sessions старого клиента (src/lib/session-state на коммите 015be893):
-// хранилище sessionData, keyPath sessionId, индекс mtime. Имя базы — своё на каждый тест.
+// The real IndexedDB of Chromium in the schema of the database sessions of the old client (src/lib/session-state at
+// commit 015be893): object store sessionData, keyPath sessionId, index mtime. Each test has its own database name.
 
 const names: string[] = [];
 
@@ -25,7 +25,8 @@ afterEach(async () => {
     await Promise.all(names.splice(0).map(deleteDb));
 });
 
-// SessionRepository старого клиента: openDB(name, 1) с хранилищем и индексом, put({sessionId, mtime, data})
+// SessionRepository of the old client: openDB(name, 1) with the object store and the index, put({sessionId, mtime,
+// data})
 function writeLegacySessions(name: string, records: { sessionId: string; mtime: number; data: unknown }[]) {
     return new Promise<void>((resolve, reject) => {
         const request = indexedDB.open(name, 1);

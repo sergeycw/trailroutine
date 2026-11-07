@@ -1,19 +1,19 @@
 name = "nakarte-elevation"
 main = "worker/build/index.js"
 compatibility_date = "2025-09-01"
-# Version URL (<версия>-<worker>.nakarte-routing.workers.dev) выключены для всех версий: старая версия
-# со старыми лимитами обходила бы лимиты новой (requirement «Только основной адрес Worker'а», worker-limits).
+# Version URLs (<version>-<worker>.nakarte-routing.workers.dev) are off for all versions: an old version
+# with old limits would bypass the limits of the new one (requirement «Только основной адрес Worker'а», worker-limits).
 preview_urls = false
 
-# Workers Logs: история запросов и console.log в дашборде Cloudflare, хранятся 7 дней. В Workers Paid
-# включено 20 млн событий в месяц, дальше $0.60 за миллион (цены меняются с 2026-12-01); при росте
-# трафика понизить head_sampling_rate (доля записываемых запросов, по умолчанию 1).
+# Workers Logs: the request history and console.log in the Cloudflare dashboard, kept for 7 days. Workers Paid
+# includes 20 million events per month, after that $0.60 per million (the prices change from 2026-12-01); if the
+# traffic grows, decrease head_sampling_rate (the fraction of logged requests, default 1).
 [observability]
 enabled = true
 
-# Потолок на один вызов. CPU — с запасом от наблюдённого максимума 3.8 с (API на тысячах точек
-# вразброс). Чтения R2 через привязку — тоже подзапросы: запрос API читает не больше 512 раз
-# (MAX_READS в core/src/request.rs); 1100 — запас вместо платформенных 10 000.
+# The limit for one invocation. CPU has a margin above the observed maximum of 3.8 s (API on thousands of
+# scattered points). R2 reads through the binding are also subrequests: an API request reads not more than 512
+# times (MAX_READS in core/src/request.rs); 1100 is a margin instead of the platform 10 000.
 [limits]
 cpu_ms = 10000
 subrequests = 1100
@@ -22,22 +22,22 @@ subrequests = 1100
 command = "worker-build --release worker"
 
 [vars]
-# сайт клона, dev-сервер приложения web/ (8769) и vite preview (4173)
+# the site of the clone, the dev server of the web/ app (8769) and vite preview (4173)
 ALLOWED_ORIGINS = "https://trailroutine.com,https://nakarte-routing.pages.dev,http://localhost:8769,http://localhost:4173"
 
 [[r2_buckets]]
 binding = "DEM"
 bucket_name = "nakarte-elevation"
 
-# Частота запросов API с одного IP (CF-Connecting-IP) за 60 с; namespace_id уникален в аккаунте
-# (1002–1008 — Worker'ы клона; 1001 был у тайлов высот, освобождён change retire-old-client-services).
+# The API request rate from one IP (CF-Connecting-IP) per 60 s; namespace_id is unique in the account
+# (1002–1008 are the Workers of the clone; 1001 was for elevation tiles, change retire-old-client-services freed it).
 [[ratelimits]]
 name = "API_RATE_LIMITER"
 namespace_id = "1002"
 simple = { limit = 60, period = 60 }
 
-# Бюджет чтений R2 API высот с одного IP за 60 с: запрос тратит вызов на каждые 64 запланированных
-# чтения (READS_PER_UNIT в core/src/http.rs), 32 вызова — 2 048 чтений, ≈ 4 профиля трека на 5 000 км.
+# The R2 read budget of the elevation API from one IP per 60 s: a request uses one call for each 64 planned
+# reads (READS_PER_UNIT in core/src/http.rs), 32 calls are 2 048 reads, ≈ 4 profiles of a track of 5 000 km.
 [[ratelimits]]
 name = "API_READS_RATE_LIMITER"
 namespace_id = "1005"

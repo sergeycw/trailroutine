@@ -1,7 +1,7 @@
 name: check lint
 
-# Линт JS Worker'ов, Pages Functions и скриптов: Biome по корневому biome.json (только линтер, design
-# switch-to-web-app). У web/ свой biome.json, его гоняет check-web.yml.
+# Lint of the JS of the Workers, Pages Functions and scripts: Biome with the root biome.json (only the linter, design
+# switch-to-web-app). web/ has its own biome.json, check-web.yml runs it.
 
 on:
   push:

@@ -10,13 +10,13 @@ import { type FixtureTiles, fixtureTiles } from '@/test/tiles';
 import { saveNktk } from '@/tracks/nktk';
 import { COVERAGE_CODE } from './coverage';
 
-// Street View в App (спека street-view): окно — поддельное (src/test/fake-street-view.ts), покрытие — фикстура тайлов,
-// в Google тесты не ходят. Названия тестов — сценарии спеки.
+// Street View in App (spec street-view): the window is fake (src/test/fake-street-view.ts), the coverage is the tile
+// fixture, and the tests do not go to Google. The test titles are the scenarios of the spec.
 
 let tiles: FixtureTiles;
 let street: FakeStreetView;
 
-// панорамы вдоль улицы у Мтацминды
+// panoramas along a street near Mtatsminda
 const ROAD = P(41.693, 44.78);
 const VIEW = '#m=15/41.693/44.78&l=O';
 
@@ -49,7 +49,7 @@ describe('Режим Street View', () => {
         const { map } = await render();
         await button().click();
         await expect.element(button()).toHaveAttribute('aria-pressed', 'true');
-        // над подложкой, под треками (слои треков — после него, mapLayerIds их не показывает)
+        // above the basemap, below the tracks (the track layers come after it, mapLayerIds does not show them)
         await expect.poll(() => mapLayerIds(map)).toEqual(['O', COVERAGE_CODE]);
         const ids = map.getStyle().layers.map((layer) => layer.id);
         expect(ids.indexOf(COVERAGE_CODE)).toBeLessThan(ids.indexOf('tracks'));
@@ -83,12 +83,12 @@ describe('Панорама по клику', () => {
     test('Панорама найдена', async () => {
         const { map } = await render();
         await button().click();
-        // клик в паре метров от панорамы
+        // a click a few meters from the panorama
         await click(map, P(41.69302, 44.78002));
         await expect.element(panel()).toBeVisible();
         await expect.element(panorama()).toHaveAttribute('data-view', '41.69300,44.78000,0');
         await expect.element(marker()).toBeVisible();
-        // радиус — 24 px экрана: m=15 старого клиента у Тбилиси — ≈ 3.6 м на пиксель, ≈ 85 м
+        // the radius is 24 screen px: at m=15 of the old client near Tbilisi, it is ≈ 3.6 m per pixel, so ≈ 85 m
         expect(street.searches[0].radius).toBeGreaterThan(80);
         expect(street.searches[0].radius).toBeLessThan(90);
         await expect.poll(() => location.hash).toContain('n2=_g/g/41.693000/44.780000/0.0/0.0/1.0');
@@ -142,7 +142,7 @@ describe('Панель панорамы', () => {
         await expect.poll(() => panorama().element().dataset.view).toBe('41.69350,44.78100,0');
         const far = P(41.75, 44.9);
         street.walk(far);
-        // карта встаёт так, что метка — посередине видимой части над панелью панорамы
+        // the map moves so that the marker is in the middle of the visible part above the panorama panel
         const visibleMiddle = () => {
             const canvas = map.getContainer().getBoundingClientRect();
             const top = panel().element().getBoundingClientRect().top;
@@ -170,10 +170,10 @@ describe('Панель панорамы', () => {
         const svRect = panel().element().getBoundingClientRect();
         const profileRect = profile.element().getBoundingClientRect();
         expect(svRect.bottom).toBeLessThanOrEqual(profileRect.top);
-        // карта над обеими панелями: атрибуция и список треков учитывают --bottom-inset
+        // the map is above both panels: the attribution and the track list use --bottom-inset
         const inset = getComputedStyle(document.documentElement).getPropertyValue('--bottom-inset');
         expect(inset).toContain('12rem');
-        // кнопка профиля высот — над панорамой
+        // the elevation profile button is above the panorama
         expect(page.getByTestId('map-actions').element().getBoundingClientRect().bottom).toBeLessThanOrEqual(
             svRect.top,
         );
@@ -189,7 +189,7 @@ describe('Панель панорамы', () => {
         await expect.element(marker()).not.toBeInTheDocument();
         await expect.element(button()).toHaveAttribute('aria-pressed', 'true');
         await expect.poll(() => location.hash).toMatch(/n2=_g($|&)/u);
-        // следующий клик снова ищет и открывает в том же окне
+        // the next click searches again and opens the panorama in the same window
         await click(map, P(41.6935, 44.781));
         await expect.element(panel()).toBeVisible();
         expect(street.viewers).toBe(1);

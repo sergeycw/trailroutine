@@ -5,16 +5,16 @@ import type { LatLng } from '@/tracks/model';
 import { CASING_COLOR, TRACK_LINE_OFFSET, UNROUTED_CASING_PAINT, UNROUTED_PAINT } from '@/tracks/style';
 import { legPath } from './line';
 
-// Редактируемая линия на карте (design add-web-route-editor, «Отрисовка»): источники есть в стиле всегда (пустые без
-// редактирования), чтобы порядок слоёв был стабильным. Вид — как у старого редактора (edit_line.css): тонкая
-// непрозрачная линия цвета трека, опорные точки — белые кружки с тёмной обводкой, начало зелёное, конец красный; белая
-// обводка под линией — как у треков (design map-chrome). Ожидающий отрезок не рисуется (разрыв со спиннером),
-// непроложенный — тем же пунктиром с обводкой, что у треков.
+// The edited line on the map (design add-web-route-editor, «Отрисовка»): the sources are always in the style (empty
+// without editing), so that the layer order is stable. The look is as in the old editor (edit_line.css): a thin opaque
+// line in the track color, waypoints are white circles with a dark outline, the start is green, the end is red; the
+// white outline under the line is as on tracks (design map-chrome). A pending leg is not drawn (a gap without a marker),
+// an unrouted leg has the same dashes with an outline as tracks.
 //
-// Превью (резинка при рисовании, перетаскиваемая точка с прямыми до соседей) меняется на каждое движение мыши, поэтому
-// его источник в стиле всегда пустой, а данные ему ставит MapEditor напрямую (setData), мимо стиля: diff стиля MapLibre
-// сравнивает данные всех GeoJSON-источников поэлементно, а у импортированной линии опорных точек тысячи. Любая
-// пересборка стиля сбрасывает превью до пустого — следующее движение мыши его вернёт.
+// The preview (the rubber band while drawing, the dragged point with straight lines to its neighbors) changes on each
+// mouse move, so its source in the style is always empty, and MapEditor sets its data directly (setData), past the
+// style: the MapLibre style diff compares the data of all GeoJSON sources element by element, and an imported line has
+// thousands of waypoints. Any style rebuild resets the preview to empty: the next mouse move brings it back.
 
 export const EDIT_LEGS = 'route-edit-legs';
 export const EDIT_LINE = 'route-edit-line';
@@ -31,7 +31,7 @@ function collection<T extends Feature>(features: T[]): GeoJSONSourceSpecificatio
     return { type: 'geojson', data: { type: 'FeatureCollection', features } };
 }
 
-// drag — номер перетаскиваемой опорной точки: её и её отрезки рисует превью
+// drag is the index of the dragged waypoint: the preview draws it and its legs
 export function editSources(
     edit: RouteEditState | null,
     color: string,
@@ -73,7 +73,7 @@ export function waypointRole(index: number, count: number): 'start' | 'end' | 'm
     return index === 0 ? 'start' : index === count - 1 ? 'end' : 'middle';
 }
 
-// Данные превью: прямые и, при перетаскивании, сама точка (рисуется как опорная)
+// Preview data: straight lines and, during a drag, the point itself (drawn as a waypoint)
 export function previewData(
     lines: readonly (readonly LatLng[])[],
     color: string,
@@ -94,9 +94,9 @@ export function previewData(
     return { type: 'FeatureCollection', features };
 }
 
-// Выбор на карте для Join и Shortcut (design add-web-line-tools, «Выбор на карте»): линия от начала к курсору — зелёный
-// пунктир над допустимым местом, красный над недопустимым (lineCursorValidStyle/InvalidStyle старого клиента), участок,
-// который Shortcut удалит, — красная линия
+// The map choice for Join and Shortcut (design add-web-line-tools, «Выбор на карте»): the line from the start to the
+// cursor is green dashes over a valid place, red dashes over an invalid place (lineCursorValidStyle/InvalidStyle of the
+// old client), and the part that Shortcut removes is a red line
 export const TOOL_VALID = '#16a34a';
 export const TOOL_INVALID = '#e11d48';
 

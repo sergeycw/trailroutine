@@ -3,31 +3,33 @@ import { reportEngineBackendError } from '@/errors/tracking';
 import { type EngineBackend, mainThreadBackend, workerBackend } from './backends';
 import { enginePaths } from './cheerpj-router';
 
-// Движок BRouter в браузере (спека browser-routing-engine). Синглтон вне React: CheerpJ даёт один
-// library-поток на страницу, а Strict Mode в dev вызывает эффекты дважды, поэтому движок не создаётся
-// в компоненте. Компоненты получают только промисы: startEngine() — прогрев при выборе активности,
-// routeInEngine() — маршрут в очереди. Пока их никто не вызвал, рантайм не грузится.
+// The BRouter engine in the browser (spec browser-routing-engine). A singleton outside React: CheerpJ gives one library
+// thread per page, and Strict Mode in dev calls effects two times, so a component does not create the engine.
+// App passes getEngine to the router (routing/router.ts): its warmUp() calls start() when an activity is selected or
+// is already selected at the page load, and a route goes to route() in the queue. Until the first getEngine() call,
+// the runtime does not load.
 
 export type EngineStatus = 'idle' | 'loading' | 'ready' | 'failed';
 
-// Движок не запустился ни в воркере, ни на главном потоке (или завис на главном потоке): для UI это «роутер недоступен».
+// The engine did not start in the worker or on the main thread (or hung there): for the UI it is «router unreachable».
 export class EngineStartError extends Error {
     override name = 'EngineStartError';
 }
 
-// Расчёт не закончился за routeTimeout: для UI — ошибка отрезка, роутер жив (движок в воркере перезапустится)
+// The calculation exceeded routeTimeout: for the UI a leg error, the router is alive (the worker engine restarts)
 export class EngineTimeoutError extends Error {
     override name = 'EngineTimeoutError';
 }
 
-// Таймаут расчёта (design add-engine-timeout): вдвое больше серверных 30 с — движок читает тайлы по сети и на
-// телефоне медленнее сервера. Отсчёт — с начала расчёта, очередь и холодный старт не входят
+// The calculation timeout (design add-engine-timeout): two times the server 30 s, because the engine reads tiles over
+// the network and on a phone it is slower than the server. The count starts with the calculation, the queue and the
+// cold start are not included
 export const ENGINE_ROUTE_TIMEOUT = 60_000;
 
 export interface EngineOptions {
     routeTimeout?: number;
-    // отказ запуска одного бэкенда, до перехода к следующему: трекер ошибок (спека clone-monitoring, «Движок не
-    // запустился»). Итоговый EngineStartError и отказ маршрута сюда не приходят
+    // a start failure of one backend, before the move to the next one: the error tracker (spec clone-monitoring,
+    // «Движок не запустился»). The final EngineStartError and a route failure do not come here
     onBackendError?: (backend: EngineBackend['name'], error: unknown) => void;
 }
 
@@ -35,24 +37,24 @@ export interface Engine {
     start(): Promise<void>;
     route(query: string, signal?: AbortSignal): Promise<string>;
     status(): EngineStatus;
-    // где сейчас работает движок; null, пока он не запущен
+    // where the engine runs now; null while it is not started
     backend(): EngineBackend['name'] | null;
     subscribe(listener: () => void): () => void;
 }
 
-// Бэкенды пробуются по порядку: первый поднявшийся становится движком. Неудачный выбрасывается
-// (воркер завершается), следующий запуск снова начинает с первого.
+// The backends are tried in order: the first one that starts becomes the engine. A failed one is discarded (the worker
+// stops), and the next start begins from the first one again.
 export function createEngine(
     backends: Array<() => EngineBackend>,
     { routeTimeout = ENGINE_ROUTE_TIMEOUT, onBackendError }: EngineOptions = {},
 ): Engine {
     let current: EngineBackend | null = null;
-    // движок на главном потоке завис: его не выгрузить и не запустить заново (повторный cheerpjInit бросает), так что
-    // до перезагрузки страницы роутер недоступен
+    // the engine on the main thread hung: it cannot be unloaded or started again (a second cheerpjInit throws), so the
+    // router is unreachable until a page reload
     let hung = false;
     let starting: Promise<EngineBackend> | null = null;
     let status: EngineStatus = 'idle';
-    // хвост очереди: запросы идут в движок строго по одному, хвост никогда не отклоняется
+    // the queue tail: requests go to the engine strictly one at a time, the tail never rejects
     let tail: Promise<void> = Promise.resolve();
     const listeners = new Set<() => void>();
 
@@ -90,7 +92,7 @@ export function createEngine(
         }
         if (!starting) {
             starting = startBackends().catch((error: unknown) => {
-                // сбой запуска не залипает: следующий запрос маршрута пробует снова
+                // a start failure does not stick: the next route request tries again
                 starting = null;
                 throw error;
             });
@@ -98,10 +100,10 @@ export function createEngine(
         return starting;
     }
 
-    // Зависший расчёт не прервать изнутри CheerpJ. Воркер завершается, и следующий запрос проходит ensureStarted с
-    // начала — новый воркер, чистый перезапуск; движок сразу прогревается, чтобы следующий клик не ждал холодный старт.
-    // Главный поток не выгрузить: движок помечается зависшим, пока расчёт не закончится (сработавший таймер значит,
-    // что CheerpJ отпускал поток, — скорее медленный маршрут, чем мёртвый)
+    // A hung calculation cannot be stopped from inside CheerpJ. The worker stops, and the next request goes through
+    // ensureStarted from the start: a new worker, a clean restart; the engine warms up immediately, so that the next
+    // click does not wait for a cold start. The main thread cannot be unloaded: the engine is marked as hung until the
+    // calculation ends (a fired timer shows that CheerpJ released the thread: probably a slow route, not a dead one)
     function afterTimeout(backend: EngineBackend, route: Promise<string>) {
         if (backend.name === 'main-thread') {
             hung = true;
@@ -114,7 +116,7 @@ export function createEngine(
                 });
             return;
         }
-        // dispose отклоняет зависший route — уже после таймаута, гонку выиграла ошибка таймаута (ревью диффа)
+        // dispose rejects the hung route after the timeout, so the timeout error already won the race (diff review)
         backend.dispose();
         current = null;
         starting = null;
@@ -154,8 +156,9 @@ export function createEngine(
                     reject(signal.reason);
                     return;
                 }
-                // Отмена снимает запрос из очереди. Начатый расчёт CheerpJ не прервать: вызывающий
-                // получает отказ сразу, а следующий запрос ждёт, пока движок освободится или выйдет таймаут.
+                // Cancellation removes the request from the queue. A started CheerpJ calculation cannot be stopped: the
+                // caller gets the rejection immediately, and the next request waits until the engine is free or the
+                // timeout fires.
                 const onAbort = () => reject(signal?.reason);
                 signal?.addEventListener('abort', onAbort, { once: true });
                 const run = async () => {
@@ -183,7 +186,7 @@ export function createEngine(
     };
 }
 
-// Рантайм CheerpJ — только с CDN Leaning Technologies (лицензия Community, спека browser-routing-engine).
+// The CheerpJ runtime comes only from the Leaning Technologies CDN (Community license, spec browser-routing-engine).
 function defaultBackends(): Array<() => EngineBackend> {
     const paths = enginePaths(config.routingEngineRuntimeUrl, config.routingTilesPath);
     return [() => workerBackend(paths), () => mainThreadBackend(paths)];
@@ -192,10 +195,7 @@ function defaultBackends(): Array<() => EngineBackend> {
 let engine: Engine | null = null;
 
 export function getEngine(): Engine {
-    // отчёт трекера — только у движка приложения: стенд /engine-bench.html и тесты собирают свой без него
+    // tracker reports only from the app engine: /engine-bench.html and the tests build their own engine without it
     engine ??= createEngine(defaultBackends(), { onBackendError: reportEngineBackendError });
     return engine;
 }
-
-export const startEngine = () => getEngine().start();
-export const routeInEngine = (query: string, signal?: AbortSignal) => getEngine().route(query, signal);

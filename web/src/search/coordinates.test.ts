@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { isCoordinatesQuery, searchCoordinates } from './coordinates';
 
-// Случаи karma-теста старого клиента test/test_search_coordinates.js без изменений
+// The cases of the karma test of the old client test/test_search_coordinates.js without changes
 
 const GOOD: [string, string[]][] = [
     // Well formatted

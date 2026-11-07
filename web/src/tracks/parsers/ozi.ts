@@ -1,8 +1,8 @@
 import { type GeoData, type GeoError, geoData, type LatLng, type Waypoint } from '../model';
 import { decode, hasUtf8Bom, startsWithAscii } from './text';
 
-// Ozi Explorer (parsers/ozi.js старого клиента): plt — трек, rte — маршруты, wpt — точки. Файлы Ozi — в кодировке
-// Windows (названия точек — Windows-1251, как decodeCP1251 старого клиента); с BOM — UTF-8.
+// Ozi Explorer (parsers/ozi.js of the old client): plt is a track, rte is routes, wpt is points. Ozi files use a
+// Windows encoding (point names are Windows-1251, as decodeCP1251 of the old client); with a BOM, they are UTF-8.
 
 function lines(bytes: Uint8Array): string[] {
     return decode(bytes, hasUtf8Bom(bytes) ? 'utf-8' : 'windows-1251').split('\n');
@@ -39,7 +39,7 @@ export function parseOziPlt(bytes: Uint8Array, name: string): GeoData[] | null {
         current.push({ lat, lng });
         total += 1;
     }
-    // в шестой строке — число точек; 0 — не указано
+    // the sixth line has the number of points; 0 means not given
     const expected = Number.parseInt(text[5], 10);
     if (Number.isNaN(expected) || (expected !== 0 && expected !== total)) {
         error = 'CORRUPT';

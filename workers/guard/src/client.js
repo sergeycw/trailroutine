@@ -1,11 +1,11 @@
-// Middleware функций Pages (functions/*/_middleware.js): спрашивает nakarte-guard по service binding GUARD,
-// укладывается ли IP клиента в лимит. Вызов по service binding не тарифицируется как запрос.
-// Без CF-Connecting-IP, без привязки (локальный wrangler pages dev, тесты) и при сбое счётчика запрос
-// проходит: отказ счётчика не должен ломать прокладку маршрута.
+// Middleware of the Pages functions (functions/*/_middleware.js): asks nakarte-guard through the service binding
+// GUARD if the client IP is within the limit. A call through a service binding is not billed as a request.
+// Without CF-Connecting-IP, without the binding (local wrangler pages dev, tests) and on a counter failure, the
+// request passes: a counter failure must not break the routing.
 
-// Длина окна [[ratelimits]] в workers/guard/wrangler.toml.
+// The window length of [[ratelimits]] in workers/guard/wrangler.toml.
 const RETRY_AFTER_SECONDS = '60';
-// Адрес для service binding ни на что не влияет: запрос уходит прямо в Worker.
+// The address has no effect for a service binding: the request goes directly to the Worker.
 const GUARD_URL = 'https://guard/';
 
 async function allowed(request, env) {

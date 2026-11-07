@@ -1,15 +1,16 @@
 import { distance, SIMPLIFY_TOLERANCE, simplify, wrapLng } from '@/tracks/geometry';
 import type { LatLng } from '@/tracks/model';
 
-// Запрос BRouter и разбор ответа в точки отрезка (спека routing). Перевод src/lib/brouter/index.js старого клиента:
-// те же профили, параметры, упрощение и отсев крайних точек, те же тексты ошибок. Движок в браузере и серверный BRouter
-// понимают одну и ту же строку запроса и отдают один и тот же GeoJSON (спека browser-routing-engine, «Паритет»).
+// The BRouter request and the parse of the response into leg points (spec routing). Translation of
+// src/lib/brouter/index.js of the old client: the same profiles, parameters, simplification and end point removal, the
+// same error texts. The in-browser engine and the server BRouter understand one query string and return one GeoJSON
+// (spec browser-routing-engine, «Паритет»).
 
 export interface Activity {
     id: string;
     title: string;
     profile: string;
-    // переопределения переменных профиля: profile:<имя>=<значение>
+    // overrides of profile variables: profile:<name>=<value>
     params?: readonly (readonly [string, number])[];
 }
 
@@ -31,13 +32,13 @@ export function getActivity(id: string | null | undefined): Activity | null {
     return ACTIVITIES.find((activity) => activity.id === id) ?? null;
 }
 
-// Крайняя точка маршрута ближе этого к своей опорной отбрасывается: опорная точка соединяется с дорогой без хвостика
+// A route end point nearer than this to its waypoint is dropped: the waypoint connects to the road without a small tail
 const SNAP_DISTANCE = 20;
-// BRouter (и движок, и сервер) отвечает так, когда тайла района нет; имя файла пользователю ничего не говорит
+// BRouter (both engine and server) answers so when the area has no tile; the file name tells the user nothing
 const MISSING_TILE_ERROR = /^datafile \S+\.rd5 not found$/u;
 
-// Ошибка прокладки. unreachable — роутер недоступен целиком (сервер не отвечает, движок не запустился): для UI это
-// красная кнопка и одно предупреждение, а не «Routing failed» на каждый отрезок.
+// A routing error. unreachable: the whole router is not available (the server does not answer, the engine did not
+// start): for the UI this is a red button and one warning, not «Routing failed» for each leg.
 export class RoutingError extends Error {
     override name = 'RoutingError';
     readonly unreachable: boolean;
@@ -52,8 +53,8 @@ function lonLat(point: LatLng): string {
     return `${wrapLng(point.lng).toFixed(6)},${point.lat.toFixed(6)}`;
 }
 
-// Строка запроса BRouter: основной маршрут (alternativeidx=0) в GeoJSON. Долгота приводится к [−180, 180]:
-// у MapLibre есть копии мира, и точку на соседней копии BRouter не поймёт.
+// The BRouter query string: the main route (alternativeidx=0) in GeoJSON. The longitude is brought to [−180, 180]:
+// MapLibre has world copies, and BRouter does not understand a point on a neighbor copy.
 export function routeQuery(from: LatLng, to: LatLng, activity: Activity): string {
     const params = new URLSearchParams();
     params.set('lonlats', `${lonLat(from)}|${lonLat(to)}`);
@@ -66,8 +67,9 @@ export function routeQuery(from: LatLng, to: LatLng, activity: Activity): string
     return params.toString();
 }
 
-// Точки отрезка между опорными from и to (без них самих): ответ сдвигается в ту копию мира, где лежит from,
-// упрощается допуском импорта (≈ 2.4 м) и теряет крайние точки ближе 20 м к опорным (buildSegmentNodes старого клиента).
+// Leg points between the waypoints from and to (without them): the response moves to the world copy of from, is
+// simplified with the import tolerance (≈ 2.4 m) and loses the end points nearer than 20 m to the waypoints
+// (buildSegmentNodes of the old client).
 export function parseRoute(geojson: string, from: LatLng, to: LatLng): LatLng[] {
     let coordinates: unknown;
     try {
@@ -75,7 +77,7 @@ export function parseRoute(geojson: string, from: LatLng, to: LatLng): LatLng[] 
     } catch {
         throw new RoutingError('invalid router response');
     }
-    // пустой маршрут — ошибка, а не прямая без пометки (спека browser-routing-engine, «Пустой результат — ошибка»)
+    // empty route: an error, not an unmarked straight line (spec browser-routing-engine, «Пустой результат — ошибка»)
     if (!Array.isArray(coordinates) || coordinates.length < 2) {
         throw new RoutingError('no route found');
     }

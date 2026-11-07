@@ -17,8 +17,8 @@ import { withDate } from './dated';
 import { outdoorLayers } from './outdoor';
 import { BACKGROUND_LAYER, buildStyle, HILLSHADE_PAINT, layerCodeOfSource, overlaySources } from './style';
 
-// слои треков и редактора над всеми слоями карты (есть всегда, пустые без треков)
-// выделенный участок профиля высот — под треками, треки — под редактируемой линией
+// the track and editor layers are above all map layers (always present, empty without tracks)
+// the selected section of the elevation profile is under the tracks, the tracks are under the edited line
 const TRACKS = [
     PROFILE_SELECTION,
     TRACK_CASING,
@@ -66,7 +66,7 @@ test('Горизонтали над отмывкой: линии и подпис
     ]);
     expect(Object.keys(style.sources)).toContain('Ct');
     const [lines, labels] = style.layers.filter((layer) => layer.id.startsWith('Ct'));
-    // основные (level 1) толще промежуточных
+    // the main lines (level 1) are thicker than the intermediate lines
     expect(lines).toMatchObject({
         type: 'line',
         source: 'Ct',
@@ -74,7 +74,7 @@ test('Горизонтали над отмывкой: линии и подпис
         minzoom: 10,
         paint: { 'line-width': ['match', ['get', 'level'], 1, 1, 0.5] },
     });
-    // подписи — только у основных горизонталей (level 1), высота числом
+    // labels only on the main contour lines (level 1), the elevation as a number
     expect(labels).toMatchObject({
         type: 'symbol',
         source: 'Ct',
@@ -123,7 +123,7 @@ test('отмывка — слой hillshade поверх raster-dem', () => {
         source: 'Hs',
         paint: HILLSHADE_PAINT,
     });
-    // без белой подсветки: она высветляет подложку
+    // no white highlight: it makes the basemap lighter
     expect(HILLSHADE_PAINT['hillshade-highlight-color']).toMatch(/, 0\)$/);
 });
 
@@ -189,11 +189,11 @@ test('Трек над слоями: линии и точки треков — п
     expect(style.sources[TRACK_POINTS]).toMatchObject({
         data: { features: [{ properties: { name: 'P', color: TRACK_COLORS[1] }, geometry: { coordinates: [2, 1] } }] },
     });
-    // подписи без glyphs: MapLibre рисует их локально
+    // labels without glyphs: MapLibre draws them locally
     expect(style.glyphs).toBeUndefined();
 });
 
-// Смещение линии на зуме: выражение стиля вычисляет style-spec MapLibre, как карта
+// The line offset at a zoom: the MapLibre style-spec calculates the style expression, as the map does
 const LINE_OFFSET = latest.paint_line['line-offset'] as unknown as StylePropertySpecification;
 function offsetAt(value: unknown, zoom: number): number {
     const parsed = createExpression(value, 'line-offset', LINE_OFFSET);
@@ -211,7 +211,8 @@ function lineOffsets(): Record<string, unknown> {
     );
 }
 
-// линии, которые смещаются вместе: треки, непроложенные отрезки, выделение профиля и редактор без резинки
+// the lines that are offset together: tracks, legs that are not routed, the profile selection and the editor without
+// the rubber band
 const OFFSET_LINES = [
     TRACK_CASING,
     TRACK_LINES,
@@ -227,11 +228,11 @@ test('Радиалка: с зума 14 линии треков, редактор
         paint: { 'line-width': number };
     };
     for (const id of OFFSET_LINES) {
-        // обводки двух направлений соприкасаются: смещение — половина ширины обводки трека
+        // the casings of the two directions touch: the offset is half of the track casing width
         expect(offsetAt(offsets[id], 14), id).toBe(casing.paint['line-width'] / 2);
         expect(offsetAt(offsets[id], 16), id).toBe(casing.paint['line-width'] / 2);
     }
-    // резинка — прямая к курсору, её не смещать
+    // the rubber band is a straight line to the cursor, do not offset it
     expect(offsets[EDIT_PREVIEW]).toBeUndefined();
 });
 
@@ -240,7 +241,7 @@ test('Радиалка на обзоре: до зума 13 включитель�
     for (const id of OFFSET_LINES) {
         expect(offsetAt(offsets[id], 12), id).toBe(0);
         expect(offsetAt(offsets[id], 13), id).toBe(0);
-        // между порогами линии расходятся плавно, без скачка
+        // between the thresholds, the lines move apart smoothly, without a jump
         expect(offsetAt(offsets[id], 13.5), id).toBeCloseTo(1.75);
     }
 });

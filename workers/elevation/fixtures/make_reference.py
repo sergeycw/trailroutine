@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Снимает эталоны контрактного теста с сервиса автора. Запускается вручную, один раз.
+"""Records the reference answers of the contract test from the service of the author.
+Run it manually, one time.
 
     python3 make_reference.py > reference.txt
 
-Точки — в 10 четвертях градуса (по куску 301×301 на каждую), список кусков для
-`elevation-repack --only` печатается в stderr: из них собираются прореженные `dem3/*`.
-Сид фиксирован, поэтому повторный запуск даёт те же точки; ответы автора берутся живые.
-Формат строки reference.txt: `<lat> <lng> <ответ автора>`; координаты с 6 знаками, как
-шлёт клиент (`src/lib/elevations/index.js`).
+The points are in 10 quarter degrees (one 301×301 chunk for each); the script prints the chunk
+list for `elevation-repack --only` to stderr: the thinned `dem3/*` are built from these chunks.
+The seed is fixed, thus a repeated run gives the same points; the answers of the author are live.
+The line format of reference.txt: `<lat> <lng> <answer of the author>`; coordinates with 6 digits,
+as the client sends them (`web/src/elevation/api.ts`).
 """
 
 import random
@@ -17,7 +18,7 @@ import urllib.request
 AUTHOR = 'https://elevation.nakarte.me/'
 POINTS_PER_CELL = 28
 
-# Юго-западный угол четверти градуса и что в ней проверяется.
+# The south-west corner of the quarter degree and what the test checks in it.
 CELLS = [
     (43.25, 42.25, 'Эльбрус'),
     (42.5, 44.5, 'Казбек'),
@@ -31,7 +32,7 @@ CELLS = [
     (78.0, 15.5, 'Шпицберген'),
 ]
 
-# Точки без данных и вне сетки: для них фикстуры не нужны.
+# Points without data and outside the grid: they need no fixtures.
 EXTRA = [(43.0, 35.0), (90.0, 0.0), (90.5, 0.0), (43.35, 202.44), (43.0, 180.0), (43.0, -180.0)]
 
 

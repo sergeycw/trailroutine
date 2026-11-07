@@ -14,26 +14,28 @@ import { COLUMN_BUTTON, QuickBases, QuickDated, QuickOverlays } from './QuickLay
 import { quickGroupOf } from './quick-layers';
 import { isListed } from './settings';
 
-// Переключатель слоёв справа сверху: столбец быстрых слоёв — круги подложек и кнопка хитмэпа с меню групп (QuickLayers,
-// design layer-thumbnails, design quick-layer-menus), под ними кнопка All layers с полным списком (design add-web-map-layers, «Переключатель»:
-// развёрнутый список старого клиента на телефоне закрывал пол-экрана). В полном списке свои подложки — радиокнопками
-// (подложки каталога — в кругах столбца, design custom-bases-in-list), оверлеи — чекбоксами, порядок — порядок
-// наложения каталога. Столбец — контрол MapLibre (ControlPortal): рендерится
-// внутри BaseMap до MapButtons, и кнопки карты встают под ним.
+// The layer switcher at the top right: the column of quick layers, which has the basemap circles and the heatmap
+// button with group menus (QuickLayers, design layer-thumbnails, design quick-layer-menus), and under them the All
+// layers button with the full list (design add-web-map-layers, «Переключатель»: the expanded list of the old client
+// covered half of the screen on a phone). In the full list, custom basemaps are radio buttons (the catalog basemaps are
+// in the column circles, design custom-bases-in-list), overlays are check boxes, and the order is the stacking order of
+// the catalog. The column is a MapLibre control (ControlPortal): it renders
+// inside BaseMap before MapButtons, and the map buttons go under it.
 //
-// Оверлеи — секциями без сворачивания (design uniform-layer-menus; раньше свёрнутыми, design compact-all-layers): после
-// custom-bases-in-list в панели почти одни оверлеи, и свёрнутая секция прятала весь список. Секция «Overlays» —
-// оверлеи групп каталога, где есть слой по умолчанию (Default layers, Miscellaneous, Routes and traces); группы без
-// слоёв по умолчанию (Topo maps, Norway, свои слои) — редкие, у каждой своя секция с заголовком.
+// Overlays are in sections that do not collapse (design uniform-layer-menus; before, they were collapsed, design
+// compact-all-layers): after custom-bases-in-list the panel has almost only overlays, and a collapsed section hid the
+// full list. The «Overlays» section has the overlays of the catalog groups that have a default layer (Default layers,
+// Miscellaneous, Routes and traces). The groups without default layers (Topo maps, Norway, custom layers) are rare, and
+// each of them has its own section with a heading.
 
 const OVERLAYS_SECTION = 'Overlays';
-// своя группа слоёв по URL — как в custom.ts и ConfigureLayersDialog
+// the group of custom layers by URL, as in custom.ts and ConfigureLayersDialog
 const SECTION_ORDER = [OVERLAYS_SECTION, ...GROUPS, 'Custom layers'];
 
 function overlaySections(overlays: LayerDef[], layers: ReadonlyMap<string, LayerDef>): [string, LayerDef[]][] {
     const common = new Set([...layers.values()].filter((layer) => layer.isDefault).map((layer) => layer.group));
     const sectionOf = (layer: LayerDef) => (common.has(layer.group) ? OVERLAYS_SECTION : layer.group);
-    // группа не из GROUPS (новая в каталоге) — секцией в конце, а не пропадает из списка
+    // a group that is not in GROUPS (new in the catalog) gets a section at the end and does not disappear from the list
     const names = new Set([...SECTION_ORDER, ...overlays.map(sectionOf)]);
     return [...names].flatMap((name): [string, LayerDef[]][] => {
         const items = overlays.filter((layer) => sectionOf(layer) === name);
@@ -45,7 +47,7 @@ function LayerHint({ layer }: { layer: LayerDef }) {
     if (layer.minZoom === undefined) {
         return null;
     }
-    // зум — в единицах старого клиента (Leaflet), как подпись «zoom ≥ 12» у его обзора покрытия
+    // the zoom is in the units of the old client (Leaflet), as the label "zoom ≥ 12" of its coverage overview
     return <span className="whitespace-nowrap text-muted-foreground text-xs">zoom ≥ {layer.minZoom + 1}</span>;
 }
 
@@ -57,7 +59,7 @@ export function LayerSwitcher() {
     const toggleOverlay = useAppStore((state) => state.toggleOverlay);
     const [open, setOpen] = useState(false);
     const [configOpen, setConfigOpen] = useState(false);
-    // null — диалог закрыт, '' — новый слой, код — правка своего слоя
+    // null — the dialog is closed, '' — a new layer, a code — an edit of a custom layer
     const [customCode, setCustomCode] = useState<string | null>(null);
 
     const listed = useMemo(() => {
@@ -67,10 +69,11 @@ export function LayerSwitcher() {
         );
         return visible.sort((a, b) => a.order - b.order || a.code.localeCompare(b.code));
     }, [layers, settings, selection]);
-    // подложки каталога выбирают круги столбца и их меню, снимки по датам — своя кнопка (QuickLayers): в списке только
-    // свои подложки, у них нет группы и другого места (design custom-bases-in-list)
+    // the column circles and their menus select the catalog basemaps, and dated imagery has its own button
+    // (QuickLayers): the list has only custom basemaps, because they have no group and no other place (design
+    // custom-bases-in-list)
     const bases = listed.filter((layer) => !layer.isOverlay && isCustomLayerCode(layer.code));
-    // хитмэпы Strava — только кнопка столбца с меню (владелец 2026-10-29, design custom-bases-in-list)
+    // Strava heatmaps are only in the column button with a menu (owner 2026-10-29, design custom-bases-in-list)
     const overlays = listed.filter((layer) => layer.isOverlay && !quickGroupOf(layer.code));
     const sections = overlaySections(overlays, layers);
 
@@ -80,7 +83,7 @@ export function LayerSwitcher() {
                 {layer.title} <LayerHint layer={layer} />
             </span>
         );
-        // строка 24 px со шрифтом 14 px — как пункты меню (правило единообразия в AGENTS.md, design uniform-layer-menus)
+        // a 24 px row with a 14 px font, as menu items (the uniformity rule in AGENTS.md, design uniform-layer-menus)
         const labelClass = 'flex min-h-6 flex-1 cursor-pointer items-center gap-2';
         return (
             <div key={layer.code} className="flex items-center gap-1 px-1">
@@ -117,14 +120,14 @@ export function LayerSwitcher() {
 
     function section([name, items]: [string, LayerDef[]]) {
         return (
-            // без своих подложек секция — первая в панели, линия над ней лишняя
+            // without custom basemaps, the section is the first in the panel, and the line above it is extra
             <fieldset
                 key={name}
-                // clear-left: без него w-max панели считает плавающий legend и первую строку одной линией, и панель
-                // шире нужного
+                // clear-left: without it, w-max of the panel counts the floating legend and the first row as one line,
+                // and the panel becomes wider than necessary
                 className="border-border border-t pt-0.5 first:border-t-0 first:pt-0 [&>legend+*]:clear-left"
             >
-                {/* заголовок — как подпись DropdownMenuLabel: 12 px, приглушённый (правило единообразия в AGENTS.md) */}
+                {/* the heading is like the DropdownMenuLabel label: 12 px, muted (the uniformity rule in AGENTS.md) */}
                 <legend className="float-left w-full px-1 py-1 font-medium text-muted-foreground text-xs">
                     {name}
                 </legend>
@@ -134,20 +137,20 @@ export function LayerSwitcher() {
     }
 
     return (
-        // между кругами — карта: контейнер прозрачен для указателя, кнопки (COLUMN_BUTTON) — нет. pointer-events с !:
-        // CSS MapLibre вне @layer задаёт .maplibregl-ctrl pointer-events: auto
+        // the map is between the circles: the container lets the pointer through, the buttons (COLUMN_BUTTON) do not.
+        // pointer-events with !: the MapLibre CSS outside @layer sets pointer-events: auto on .maplibregl-ctrl
         <ControlPortal className="pointer-events-none! flex flex-col items-center gap-2" first>
-            {/* быстрые слои уступают место кнопкам карты над нижними панелями: что не влезает по высоте, уходит во
-                второй столбец обёртки и обрезается (flex-wrap + overflow-hidden), и Street View, зум и геолокация не
-                прячутся под профиль и панораму. 15rem — All layers, Street View, зум, геолокация с отступами. Поля
-                съедены отрицательными отступами, и столбец остаётся шириной круга: py-1 и pr-1 — под обводку
-                отмеченного круга, pl-2.5 — под значок меню у левого края круга с его зоной нажатия (QuickLayers).
-                gap-x-4 уводит перенесённую часть целиком за обрезку: при gap-2 её значки и обводки торчали в правом
-                поле и нажимались */}
+            {/* the map buttons above the bottom panels have priority over the quick layers: what does not fit in height
+                goes to the second column of the wrapper and is cut off (flex-wrap + overflow-hidden), so Street View,
+                zoom and geolocation do not go under the profile and the panorama. 15rem is All layers, Street View,
+                zoom, geolocation with gaps. Negative margins cancel the paddings, and the column keeps the width of a
+                circle: py-1 and pr-1 are for the outline of the marked circle, pl-2.5 is for the menu badge at the left
+                edge of the circle with its touch area (QuickLayers). gap-x-4 moves the wrapped part fully out of the
+                cut: with gap-2, its badges and outlines stuck out into the right padding and received clicks */}
             <fieldset className="-my-1 -mr-1 -ml-2.5 flex max-h-[calc(100dvh-var(--bottom-inset)-15rem)] w-12.5 flex-col flex-wrap items-center gap-x-4 gap-y-2 overflow-hidden py-1 pr-1 pl-2.5">
                 <legend className="sr-only">Quick layers</legend>
-                {/* функции столбца, есть всегда: сверху кнопки с меню — три круга подложек и хитмэп, под ними снимки по
-                    датам (владелец 2026-10-29, design custom-bases-in-list) */}
+                {/* the column functions, always present: at the top, the buttons with menus (three basemap circles and
+                    the heatmap), under them dated imagery (owner 2026-10-29, design custom-bases-in-list) */}
                 <QuickBases />
                 <QuickOverlays />
                 <QuickDated />
@@ -167,9 +170,9 @@ export function LayerSwitcher() {
                 >
                     <LayersIcon />
                 </PopoverTrigger>
-                {/* влево от столбца, а не вниз поверх Street View и зума. Ширина — по самой длинной строке, но не шире
-                    окна без столбца кнопок справа (4.5rem); высота — не больше места, которое отдаёт позиционер Base UI
-                    (--available-height), остальное прокручивается */}
+                {/* to the left of the column, not down over Street View and zoom. The width follows the longest row,
+                    but is not more than the window without the button column on the right (4.5rem). The height is not
+                    more than the space that the Base UI positioner gives (--available-height), the rest scrolls */}
                 <PopoverContent
                     side="left"
                     align="start"
@@ -187,7 +190,8 @@ export function LayerSwitcher() {
                         </RadioGroup>
                     )}
                     {sections.map(section)}
-                    {/* первая в панели — без своих подложек и оверлеев в списке: линия над ней лишняя */}
+                    {/* first in the panel when the list has no custom basemaps and no overlays: the line above it is
+                        extra */}
                     <div className="flex flex-col border-border border-t pt-0.5 first:border-t-0 first:pt-0">
                         <Button
                             variant="ghost"

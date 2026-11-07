@@ -1,25 +1,27 @@
-// Кладёт куки CloudFront и _strava_idcf аккаунта Strava в секрет STRAVA_COOKIES прокси nakarte-cors-proxy и проверяет
-// тайл heatmap через прокси. Без этих кук CloudFront отдаёт тайлы Strava heatmap с 403 (`MissingKey`);
-// прокси подставляет секрет только в запросы content-*.strava.com/identified/globalheat/ (workers/cors-proxy).
+// Puts the CloudFront cookies and _strava_idcf of a Strava account into the secret STRAVA_COOKIES of the proxy
+// nakarte-cors-proxy and checks a heatmap tile through the proxy. Without these cookies CloudFront serves the Strava
+// heatmap tiles with 403 (`MissingKey`); the proxy adds the secret only to requests to
+// content-*.strava.com/identified/globalheat/ (workers/cors-proxy).
 //
-// Как взять куки: войти на strava.com, открыть https://www.strava.com/maps/global-heatmap, DevTools →
-// Network → фильтр `globalheat` → любой тайл → Request Headers → Cookie → Copy value. Страница сама
-// эти куки не видит (их нет в document.cookie), поэтому только так.
+// How to get the cookies: log in on strava.com, open https://www.strava.com/maps/global-heatmap, DevTools →
+// Network → filter `globalheat` → any tile → Request Headers → Cookie → Copy value. The page itself
+// does not see these cookies (they are not in document.cookie), so this is the only way.
 //
-// Запуск из корня репозитория: pbpaste | PATH=/usr/local/bin:$PATH node scripts/strava-heatmap-secret.mjs
-// wrangler 4 требует Node ≥ 22, а по умолчанию здесь nvm-шный Node 20; Node 22 лежит в /usr/local/bin.
-// Куки живут около суток (2026-10-08 срок был +24 ч), обновлять ежедневно.
-// Значение читается из stdin, а не из аргументов, чтобы не попасть в историю shell. Из заголовка
-// остаются только CloudFront-* и _strava_idcf: сессия Strava (_strava4_session и т. п.) в секрет не уходит.
-// _strava_idcf — JWT с athleteId и тем же сроком, что у политики: без него функция CloudFront перед
-// тайлами отвечает 401 (`x-cache: FunctionGeneratedResponse`), хотя подписанные куки верны (2026-10-08).
-// --dry-run: только разобрать и показать имена и срок, без wrangler и проверки.
+// Run from the repository root: pbpaste | PATH=/usr/local/bin:$PATH node scripts/strava-heatmap-secret.mjs
+// wrangler 4 requires Node ≥ 22, but the default here is Node 20 from nvm; Node 22 is in /usr/local/bin.
+// The cookies live for about one day (on 2026-10-08 the expiry was +24 h), update them daily.
+// The script reads the value from stdin, not from the arguments, so that it does not get into the shell history. From
+// the header only CloudFront-* and _strava_idcf stay: the Strava session (_strava4_session etc.) does not go to the
+// secret.
+// _strava_idcf is a JWT with athleteId and the same expiry as the policy: without it a CloudFront function before
+// the tiles answers 401 (`x-cache: FunctionGeneratedResponse`), although the signed cookies are correct (2026-10-08).
+// --dry-run: only parse and show the names and the expiry, without wrangler and without the check.
 import {spawnSync} from 'node:child_process';
 
 const REQUIRED = ['CloudFront-Key-Pair-Id', 'CloudFront-Policy', 'CloudFront-Signature', '_strava_idcf'];
 const PROXY = 'https://nakarte-cors-proxy.nakarte-routing.workers.dev';
 const ORIGIN = 'https://trailroutine.com';
-// тайл Тбилиси z12, на нём точно есть треки
+// tile of Tbilisi z12, it surely has tracks
 const TEST_TILE = 'https/content-a.strava.com/identified/globalheat/all/hot/12/2557/1514.png?px=256';
 const dryRun = process.argv.includes('--dry-run');
 const MIN_NODE_MAJOR = 22;
@@ -40,7 +42,7 @@ async function readStdin() {
     return Buffer.concat(chunks).toString('utf8');
 }
 
-// Заголовок Cookie, строка из DevTools или «имя=значение» по строкам — всё сводится к парам.
+// A Cookie header, a line from DevTools or «name=value» on separate lines: all of them become pairs.
 function heatmapCookies(raw) {
     const cookies = new Map();
     for (const part of raw.replace(/^\s*cookie:\s*/iu, '').split(/[;\n]/u)) {
@@ -53,8 +55,8 @@ function heatmapCookies(raw) {
     return cookies;
 }
 
-// CloudFront-Policy — JSON политики в base64 с заменами CloudFront: + → -, = → _, / → ~.
-// Срок — Condition.DateLessThan['AWS:EpochTime'] первого Statement.
+// CloudFront-Policy is the policy JSON in base64 with the CloudFront replacements: + → -, = → _, / → ~.
+// The expiry is Condition.DateLessThan['AWS:EpochTime'] of the first Statement.
 function policyExpiry(policy) {
     try {
         const json = Buffer.from(policy.replace(/-/gu, '+').replace(/_/gu, '=').replace(/~/gu, '/'), 'base64');
@@ -88,7 +90,7 @@ if (dryRun) {
 }
 
 const value = REQUIRED.map((name) => `${name}=${cookies.get(name)}`).join('; ');
-// wrangler читает значение секрета из stdin, если он не терминал
+// wrangler reads the secret value from stdin if stdin is not a terminal
 const put = spawnSync('npx', ['--yes', 'wrangler@4', 'secret', 'put', 'STRAVA_COOKIES'], {
     cwd: new URL('../workers/cors-proxy/', import.meta.url),
     input: value,
@@ -98,9 +100,9 @@ if (put.status !== 0) {
     fail('wrangler secret put failed');
 }
 
-// Секрет применяется к новой версии Worker'а не мгновенно: несколько попыток.
+// The secret does not apply to the new Worker version immediately: several attempts.
 for (let attempt = 1; attempt <= 5; attempt++) {
-    // сбой сети на этой машине — не повод падать: секрет уже записан, пробуем ещё раз
+    // a network failure on this machine is not a reason to fail: the secret is already written, try again
     try {
         const response = await fetch(`${PROXY}/${TEST_TILE}&check=${Date.now()}`, {headers: {Origin: ORIGIN}});
         const type = response.headers.get('content-type');

@@ -8,13 +8,15 @@ import type { LayerDef } from './catalog';
 import { CONTOUR_ELEVATION, CONTOUR_LAYER, CONTOUR_LEVEL } from './contours';
 import { outdoorLayers } from './outdoor';
 
-// Стиль карты из включённых слоёв: подложка снизу, оверлеи — по порядку наложения каталога, а не по порядку
-// включения (titlesByOrder старого клиента). Один источник и один слой на код (у горизонталей ещё подписи, у снимков по датам — по источнику на слой GIBS), id = код: при смене выбора
-// react-maplibre отдаёт новый стиль в setStyle с diff, и источники, которые остались, не перезагружаются.
-// Под слоями — серый фон, как у старого клиента: пока тайлы грузятся или подложка сменилась, виден он, а не белая
-// страница (решение владельца, change gray-map-background). Треки — над всеми слоями (src/tracks/style.ts), над ними —
-// редактируемая линия (src/routing/edit-style.ts); выделенный участок профиля высот — под треками (src/elevation/style.ts). Их источники (overlay) карта собирает сама и мемоизирует отдельно:
-// diff стиля MapLibre сравнивает данные GeoJSON всех источников на каждое обновление.
+// The map style from the layers that are on: the basemap at the bottom, the overlays in the catalog stacking order, not
+// in the order in which they were turned on (titlesByOrder of the old client). One source and one layer per code (the
+// contour lines also have labels, dated imagery has one source for each GIBS layer), id = code: when the selection
+// changes, react-maplibre gives the new style to setStyle with diff, and the sources that stayed do not reload.
+// Under the layers is a gray background, as in the old client: while the tiles load or after a basemap change, it
+// shows, not a white page (owner decision, change gray-map-background). The tracks are above all layers
+// (src/tracks/style.ts), the edited line is above them (src/routing/edit-style.ts); the selected section of the
+// elevation profile is under the tracks (src/elevation/style.ts). The map builds their sources (overlay) itself and
+// memoizes them separately: the MapLibre style diff compares the GeoJSON data of all sources on each update.
 export function overlaySources(
     tracks: readonly Track[] = [],
     edit: { state: RouteEditState | null; color: string; drag: number | null } | null = null,
@@ -45,9 +47,10 @@ export function buildStyle(
     };
 }
 
-// multidirectional — рекомендация ресёрча new-ui.md («Подложка по умолчанию»): тени с нескольких сторон читаются на
-// любой подложке. Подсветка склонов прозрачная: белая по умолчанию высветляет растровую подложку так, что подписи и
-// дороги OSM почти не видны (замечание владельца 2026-10-08); остаются только тени.
+// multidirectional is the recommendation of the research new-ui.md («Подложка по умолчанию»): shadows from several
+// directions are readable on any basemap. The slope highlight is transparent: the default white highlight makes a
+// raster basemap so light that the OSM labels and roads are almost not visible (owner remark 2026-10-08); only the
+// shadows stay.
 export const HILLSHADE_PAINT = {
     'hillshade-method': 'multidirectional',
     'hillshade-highlight-color': 'rgba(255, 255, 255, 0)',
@@ -55,17 +58,17 @@ export const HILLSHADE_PAINT = {
     'hillshade-accent-color': 'rgba(0, 0, 0, 0.2)',
 } as const;
 
-// #ddd — фон .leaflet-container в leaflet.css 1.0.3 старого клиента (в src/ не переопределён). id не пересекается с
-// кодами слоёв каталога и своих слоёв (-cs…).
+// #ddd is the background of .leaflet-container in leaflet.css 1.0.3 of the old client (src/ does not override it). The
+// id does not overlap with the codes of the catalog layers and of custom layers (-cs…).
 export const BACKGROUND_LAYER = {
     id: 'background',
     type: 'background',
     paint: { 'background-color': '#ddd' },
 } as const satisfies LayerSpecification;
 
-// Горизонтали (design add-contour-lines, «Вид»). Цвет рыже-коричневый: тёмно-коричневый топокарт не виден на спутнике в
-// лесу. Основные толще и подписаны числом без единиц; шрифт — CSS-семейство без glyphs, как у подписей точек треков
-// (src/tracks/style.ts)
+// Contour lines (design add-contour-lines, «Вид»). The color is orange-brown: the dark brown of topo maps is not
+// visible on a satellite image in a forest. The main lines are thicker and have a number label without units; the font
+// is a CSS family without glyphs, as the labels of track points (src/tracks/style.ts)
 function contourLayers(code: string, zoom: { minzoom?: number }): LayerSpecification[] {
     return [
         {
@@ -101,9 +104,10 @@ function contourLayers(code: string, zoom: { minzoom?: number }): LayerSpecifica
     ];
 }
 
-// Снимки по датам (design add-dated-imagery): каждый шаблон слоя с dated — свой источник и слой, снизу вверх; верхний
-// с id = код, нижние — код@номер. «@» нет ни в кодах каталога, ни в base64url своих слоёв (-cs…), поэтому код слоя по
-// id источника — часть до «@» (layerCodeOfSource: ошибки тайлов)
+// Dated imagery (design add-dated-imagery): each template of a layer with dated is its own source and layer, from
+// bottom to top; the top one has id = code, the lower ones code@index. «@» is not in the catalog codes and not in the
+// base64url of custom layers (-cs…), so the layer code of a source id is the part before «@» (layerCodeOfSource: tile
+// errors)
 function datedIds(layer: LayerDef): string[] {
     const count = layer.source.tiles?.length ?? 0;
     return Array.from({ length: count }, (_, index) => (index === count - 1 ? layer.code : `${layer.code}@${index}`));
@@ -121,8 +125,9 @@ function layerSources(layer: LayerDef): [string, LayerDef['source']][] {
     return datedIds(layer).map((id, index) => [id, { ...layer.source, tiles: [tiles[index]] }]);
 }
 
-// Векторные источники каталога: подложка OpenFreeMap Outdoor (свой стиль из многих слоёв, src/layers/outdoor.ts) и
-// оверлей горизонталей (свои слои растровые). Id слоёв с суффиксом не пересекается с кодами каталога и своих слоёв (-cs…)
+// Vector sources of the catalog: the basemap OpenFreeMap Outdoor (a custom style of many layers, src/layers/outdoor.ts)
+// and the contour line overlay (custom layers are raster). Layer ids with a suffix do not overlap with the codes of the
+// catalog and of custom layers (-cs…)
 function layerSpecs(layer: LayerDef): LayerSpecification[] {
     const zoom = layer.minZoom === undefined ? {} : { minzoom: layer.minZoom };
     if (layer.source.type === 'vector' && !layer.isOverlay) {

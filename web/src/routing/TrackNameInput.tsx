@@ -13,23 +13,23 @@ function commit(latest: RefObject<Latest>) {
     }
 }
 
-// Название трека в строке редактора (design editor-name-share): поле, которое выглядит как текст. Пока поле в фокусе,
-// название — черновик; Enter и уход фокуса зовут rename (пустое не меняет трек), Escape возвращает прежнее. Клавиши
-// редактора в поле не работают (фильтр INPUT в MapEditor.tsx), поэтому Escape здесь не заканчивает редактирование.
+// The track name in the editor row (design editor-name-share): a field that looks like text. While the field has focus,
+// the name is a draft. Enter and a focus loss call rename (an empty name does not change the track). Escape restores
+// the previous name. Editor keys do not work in the field (INPUT filter in MapEditor.tsx): Escape does not end editing.
 export function TrackNameInput({ track }: { track: Track }) {
     const actions = useTrackActions();
     const [draft, setDraft] = useState<string | null>(null);
-    // черновик и трек в ref: их читает и blur (он идёт синхронно, до нового рендера), и размонтирование
+    // the draft and the track are in a ref: blur (it runs synchronously, before the new render) and unmount read them
     const latest = useRef<Latest>({ draft, track, actions });
     latest.current = { draft, track, actions };
 
-    // панель исчезла, пока поле в фокусе: iOS Safari не переводит фокус на нажатую кнопку Finish editing, а при удалении поля
-    // blur не шлёт — черновик сохраняется здесь
+    // the panel disappeared while the field had focus: iOS Safari does not move the focus to the pressed button
+    // Finish editing, and it does not send blur when the field is removed, so the draft is saved here
     useEffect(() => () => commit(latest), []);
 
     function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-        // Enter и Escape, которыми IME подтверждает или отменяет набор, — ещё не конец правки; Safari шлёт keydown после
-        // compositionend, там узнать набор можно только по keyCode 229
+        // Enter and Escape that confirm or cancel an IME composition do not end the edit; Safari sends keydown after
+        // compositionend, and there only keyCode 229 shows the composition
         if (event.nativeEvent.isComposing || event.keyCode === 229) {
             return;
         }
@@ -49,7 +49,7 @@ export function TrackNameInput({ track }: { track: Track }) {
             className="min-w-0 flex-1 truncate border-transparent px-1 font-medium hover:border-input"
             onFocus={(event) => {
                 setDraft(track.name);
-                // чаще название заменяют целиком («Track 1» → своё)
+                // people usually replace the whole name («Track 1» → their own name)
                 event.currentTarget.select();
             }}
             onChange={(event) => setDraft(event.target.value)}

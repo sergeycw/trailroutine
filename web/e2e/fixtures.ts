@@ -5,8 +5,9 @@ import { buildCatalog, OPENFREEMAP_TILEJSON } from '../src/layers/catalog.ts';
 import { COVERAGE_CODE, COVERAGE_TILES } from '../src/streetview/coverage.ts';
 
 const TILE_FIXTURE = fileURLToPath(new URL('../src/test/tile.png', import.meta.url));
-// векторная подложка по умолчанию OpenFreeMap Outdoor (Of): описание тайлов (TileJSON) — свой ответ с адресом тайлов,
-// как у настоящего (с версией сборки), тайлы — фикстура browser-тестов, настоящий тайл z12 (src/test/tiles.ts)
+// the default vector basemap OpenFreeMap Outdoor (Of): the tile description (TileJSON) is our own answer with a tile
+// URL as in the real one (with a build version), the tiles are the browser test fixture, a real z12 tile
+// (src/test/tiles.ts)
 const VECTOR_TILE_FIXTURE = fileURLToPath(new URL('../src/test/openfreemap-tile.pbf', import.meta.url));
 const OPENFREEMAP_TILES = 'https://tiles.openfreemap.org/planet/fixture/';
 const OPENFREEMAP_TILEJSON_BODY = JSON.stringify({
@@ -15,32 +16,33 @@ const OPENFREEMAP_TILEJSON_BODY = JSON.stringify({
     minzoom: 0,
     maxzoom: 14,
 });
-// сохранённые ответы поисковиков (src/search/fixtures/, 2026-10-09)
+// saved answers of the search providers (src/search/fixtures/, 2026-10-09)
 const MAPYCZ_FIXTURE = fileURLToPath(new URL('../src/search/fixtures/mapycz-mtatsminda.json', import.meta.url));
 const PHOTON_FIXTURE = fileURLToPath(new URL('../src/search/fixtures/photon-mtatsminda.json', import.meta.url));
-// адреса прокси и хранилища треков клона — те же, что в сборке (vite build --mode clone)
+// the URLs of the proxy and the track storage of the clone are the same as in the build (vite build --mode clone)
 export const CORS_PROXY_URL = makeConfig('clone').corsProxyUrl;
 export const TRACKS_STORAGE = makeConfig('clone').tracksStorageServer;
 // vite preview of the build, the same address as baseURL in playwright.config.ts
 const PREVIEW_ORIGIN = 'http://localhost:4173';
-// сервис высот клона: в тестах отвечает заглушка, высота — функция широты (elevationAt)
+// elevation service of the clone: in the tests a stub answers, the elevation is a function of latitude (elevationAt)
 export const ELEVATION_SERVER = makeConfig('clone').elevationsServer;
 export const elevationAt = (lat: number) => Math.round((lat - 41.6) * 10000 * 100) / 100;
-// сервер своего слоя в тестах: выдуманный хост, ответы — фикстура
+// server of the custom layer in the tests: an invented host, the answers are a fixture
 export const CUSTOM_TILE_HOST = 'tiles.example.test';
-// загрузчик рантайма CheerpJ клона (CDN Leaning Technologies)
+// loader of the CheerpJ runtime of the clone (CDN of Leaning Technologies)
 export const CHEERPJ_LOADER = makeConfig('clone').routingEngineRuntimeUrl;
 
-// Заглушка рантайма CheerpJ вместо настоящего с CDN (design add-web-route-editor, «Тесты»): те же глобальные
-// cheerpjInit и cheerpjRunLibrary, а WasmRouter.route отвечает GeoJSON без расчёта — прямая с изломом далеко в сторону
-// (так проложенный отрезок заметно длиннее прямой). Отрезок, конец которого севернее NO_ROUTE_LAT, падает исключением
-// «Java» с текстом BRouter про отсутствующий тайл. Воркер движка, его протокол и очередь при этом настоящие.
+// Stub of the CheerpJ runtime in place of the real one from the CDN (design add-web-route-editor, «Тесты»): the same
+// globals cheerpjInit and cheerpjRunLibrary, and WasmRouter.route answers with GeoJSON without a calculation: a line
+// with a bend far to the side (so a routed segment is much longer than the straight line). A segment with an end north
+// of NO_ROUTE_LAT fails with a «Java» exception with the BRouter text about a missing tile. The engine worker, its
+// protocol and its queue are real.
 //
-// Запросы importScripts из воркера context.route Playwright перехватывает не всегда: воркер успевает сходить в сеть до
-// того, как к нему подключился перехват, и тогда грузится настоящий рантайм с CDN (проверено 2026-10-09: cj3.wasm,
-// 11/lib/modules). Поэтому подменяется сам скрипт воркера — его запрашивает страница: перед кодом воркера встаёт
-// importScripts, который вместо загрузчика CheerpJ выполняет заглушку и в сеть не ходит. Адрес CDN тоже отвечает
-// заглушкой — для запасного пути на главном потоке.
+// Playwright context.route does not always intercept the importScripts requests from the worker: the worker can go to
+// the network before the interception connects to it, and then the real runtime loads from the CDN (checked 2026-10-09:
+// cj3.wasm, 11/lib/modules). So the fixture replaces the worker script itself, which the page requests: before the
+// worker code it puts an importScripts that runs the stub in place of the CheerpJ loader and does not go to the
+// network. The CDN address also answers with the stub, for the fallback on the main thread.
 export const NO_ROUTE_LAT = 41.692;
 const FAKE_CHEERPJ = `
 self.cheerpjInit = async () => {};
@@ -73,9 +75,10 @@ const WORKER_PRELUDE = `
 `;
 const ENGINE_WORKER = /\/assets\/engine\.worker-[^/]+\.js$/;
 
-// Заглушка Maps JavaScript API (design add-web-search-panoramas, «Тесты»): те же глобальные google.maps, что зовёт
-// src/streetview/google.ts, без сети. Панорамы — в точках STREET_VIEW_PANORAMAS, ближайшая в радиусе; окно — div
-// google-panorama с видом в data-view. Колбэк загрузки — из параметра callback адреса скрипта.
+// Stub of the Maps JavaScript API (design add-web-search-panoramas, «Тесты»): the same globals google.maps that
+// src/streetview/google.ts calls, without the network. The panoramas are at the points STREET_VIEW_PANORAMAS, the
+// nearest one in the radius; the window is a div google-panorama with the view in data-view. The load callback comes
+// from the parameter callback of the script URL.
 export const GOOGLE_MAPS_API = 'https://maps.googleapis.com/maps/api/js';
 export const STREET_VIEW_PANORAMAS = [
     { lat: 41.693, lng: 44.78 },
@@ -139,8 +142,9 @@ function escapeRegExp(text: string) {
     return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// Шаблон адреса тайла → регулярка: токены MapLibre — числа и квадключ, {ratio} — необязательный @2x, язык
-// подписей Google — любой (в браузере теста navigator.language свой), {date} снимков по датам — любая дата
+// Tile URL template → regular expression: the MapLibre tokens are numbers and a quadkey, {ratio} is an optional @2x,
+// the Google label language is any (the test browser has its own navigator.language), {date} of the dated imagery is
+// any date
 function templateToRegExp(template: string) {
     const pattern = escapeRegExp(template)
         .replace(/\\\{[zxy]\\\}/g, '\\d+')
@@ -151,7 +155,7 @@ function templateToRegExp(template: string) {
     return new RegExp(`^${pattern}$`);
 }
 
-// Каталог тем же модулем, что приложение: и обычный, и retina (адреса Strava отличаются px=)
+// The catalog from the same module as the app: both the regular one and retina (the Strava URLs differ in px=)
 const LAYER_TILES: [code: string, pattern: RegExp][] = [1, 2].flatMap((pixelRatio) =>
     buildCatalog({ pixelRatio, language: 'LANG', corsProxyUrl: CORS_PROXY_URL }).flatMap((layer) =>
         (layer.source.tiles ?? []).map((template): [string, RegExp] => [layer.code, templateToRegExp(template)]),
@@ -162,59 +166,54 @@ const CUSTOM_TILE = new RegExp(`^https://${escapeRegExp(CUSTOM_TILE_HOST)}/`);
 const PROXIED_CUSTOM_TILE = new RegExp(`^${escapeRegExp(CORS_PROXY_URL)}https/${escapeRegExp(CUSTOM_TILE_HOST)}/`);
 
 interface Network {
-    // запрошенные тайлы: код слоя (или 'custom') и адрес
+    // requested tiles: the layer code (or 'custom') and the URL
     tiles: { code: string; url: string }[];
-    // запросы мимо localhost и подменённых тайлов: тест обязан закончиться с пустым списком
+    // requests that are not to localhost and not to replaced tiles: the test must end with an empty list
     external: string[];
-    // внешние запросы по-прежнему обрываются, но тест не валят: старые ссылки несут свои слои на чужих серверах
-    // и ссылки на файлы треков, ответы на которые тесту не нужны
+    // external requests are still aborted, but they do not fail the test: old links have custom layers on third-party
+    // servers and links to track files, and the test does not need the answers
     allowExternal(): void;
-    // адреса тайлов слоя
+    // tile URLs of a layer
     tilesOf(code: string): string[];
-    // ответить ошибкой 503 на тайлы слоя
+    // answer the tiles of a layer with error 503
     failTiles(code: string): void;
-    // сервер своего слоя отвечает без CORS (как многие частные серверы тайлов)
+    // the server of the custom layer answers without CORS (as many private tile servers do)
     customWithoutCors(): void;
-    // хранилище треков (POST/GET /track/{key}) в памяти: ключ → тело
+    // track storage (POST/GET /track/{key}) in memory: key → body
     storage: Map<string, string>;
-    // тела запросов к сервису высот (POST строк «lat lng»); ответ — elevationAt по широте
+    // bodies of the requests to the elevation service (POST of «lat lng» lines); the answer is elevationAt by latitude
     elevationRequests: string[];
-    // ответ прокси клона на адрес (импорт по ссылке): файл фикстуры или статус
+    // answer of the clone proxy for a URL (import by link): a fixture file or a status
     proxyResponds(url: string, response: { path?: string; body?: string; status?: number }): void;
-    // сколько раз запущен воркер движка с заглушкой CheerpJ (или отдана заглушка загрузчика главному потоку)
+    // how many times the engine worker started with the CheerpJ stub (or the loader stub went to the main thread)
     engineLoads: number;
-    // запросы к CDN CheerpJ, которые увидел браузер: с заглушкой их быть не должно
+    // requests to the CheerpJ CDN that the browser saw: with the stub there must be none
     cdnRequests: string[];
-    // та же сеть для другого контекста браузера (другой пользователь со своим IndexedDB, но общим хранилищем треков)
+    // the same network for a different browser context (a different user with own IndexedDB, but shared track storage)
     attach(context: BrowserContext): Promise<void>;
-    // запросы поиска: mapy.cz через прокси и photon — сохранёнными ответами или заданным статусом
+    // search requests: mapy.cz through the proxy and photon, with saved answers or a given status
     searchRequests: string[];
     searchResponds(service: 'mapycz' | 'photon', response: { status: number }): void;
-    // адреса загрузки Maps JavaScript API (заглушка FAKE_GOOGLE_MAPS)
+    // load URLs of the Maps JavaScript API (stub FAKE_GOOGLE_MAPS)
     googleApiLoads: string[];
-    // тела конвертов, принятых вместо Sentry (сборка с DSN, спека clone-monitoring)
+    // bodies of the envelopes received in place of Sentry (build with a DSN, spec clone-monitoring)
     sentryEnvelopes: string[];
     // serve the build of vite preview under real host names (the move between two origins, e2e/move.spec.ts):
     // each host is its own origin with its own storage; /__seed__ on it is an empty page for writing test data
     serveSite(...hosts: string[]): void;
-    // забрать принятые конверты: тест, который ждёт отчёт, забирает его, остальные к концу обязаны остаться без отчётов
+    // take the received envelopes: a test that expects a report takes it, all other tests must end without reports
     takeSentryEnvelopes(): string[];
 }
 
-// приём отчётов Sentry: o<организация>.ingest.sentry.io, с регионом — o<…>.ingest.us.sentry.io, o<…>.ingest.de.sentry.io.
-// Сборка деплоя несёт настоящий DSN, check-web — поддельный o0: заглушка принимает оба
+// Sentry report intake: o<organization>.ingest.sentry.io, with a region o<…>.ingest.us.sentry.io,
+// o<…>.ingest.de.sentry.io. The deploy build has the real DSN, check-web has the fake o0: the stub accepts both
 const SENTRY_INGEST = /^o\d+\.ingest\.(?:[a-z]+\.)?sentry\.io$/;
 
-// Сеть теста: localhost — как есть, хранилище треков — в памяти, сервис высот — заглушка, прокси — заданные ответы, тайлы слоёв каталога и
-// своего слоя — фикстура с CORS (или ошибка), всё остальное обрывается и валит тест в конце. Так e2e не ходит к
-// провайдерам и сервисам и ловит лишние внешние запросы.
-// auto: фикстура Playwright ленивая, и тест, который не просит network в аргументах, иначе шёл бы без перехвата —
-// в настоящую сеть (так было до 2026-10-09 у тестов вида `async ({ page }) =>`)
-// Список треков в приложении закрыт до кнопки Tracks (макет 4a, design polish-web-ui), а e2e списка и редактора нужен
-// открытым: после каждого goto и reload страницы приложения фикстура его открывает. Страница без приложения (стенд
-// движка, редирект) кнопки не дождётся — тогда ничего.
+// The track list in the app is closed until the button Tracks (mockup 4a, design polish-web-ui), but the e2e of the
+// list and the editor need it open: after each goto and reload of an app page the fixture opens it. A page without the
+// app (engine bench, redirect) does not get the button, then the fixture does nothing.
 export async function openTracks(page: Page) {
-    // не страница приложения или верхняя строка — редактор линии или точек: кнопки Tracks нет
+    // not an app page, or the top bar is the line or point editor: there is no button Tracks
     if (
         !page.url().startsWith('http') ||
         (await page.locator('[data-testid="edit-panel"], [data-testid="point-panel"]').count())
@@ -233,7 +232,7 @@ export async function openTracks(page: Page) {
 }
 
 export const test = base.extend<{ network: Network; tracksOpen: boolean }>({
-    // false — список не открывается сам после goto и reload (тест открывает его openTracks, где нужно)
+    // false: the list does not open itself after goto and reload (the test opens it with openTracks where necessary)
     tracksOpen: [true, { option: true }],
     page: async ({ page, tracksOpen }, use) => {
         if (!tracksOpen) {
@@ -254,6 +253,13 @@ export const test = base.extend<{ network: Network; tracksOpen: boolean }>({
         };
         await use(page);
     },
+    // Test network: localhost as is, the track storage in memory, the elevation service a stub, the proxy given
+    // answers, the tiles of the catalog layers and of the custom layer a fixture with CORS (or an error), all else is
+    // aborted and fails the test at the end. Thus e2e does not go to the providers and services, and catches extra
+    // external requests.
+    // auto: a Playwright fixture is lazy, and a test that does not ask for network in its arguments would else run
+    // without interception, into the real network (this was so before 2026-10-09 for tests of the form
+    // `async ({ page }) =>`)
     network: [
         async ({ context }, use) => {
             const failing = new Set<string>();
@@ -328,9 +334,10 @@ export const test = base.extend<{ network: Network; tracksOpen: boolean }>({
                         }
                         return route.continue();
                     }
-                    // CORS отражённым Origin, как у Worker'ов клона (route.fulfill браузер на CORS не проверяет, но пусть
-                    // ответ будет как настоящий)
-                    // загрузчик — до чтения заголовков: importScripts воркера идёт без CORS, а headerValue ждёт сырые заголовки
+                    // CORS with the reflected Origin, as the Workers of the clone do (the browser does not check
+                    // CORS on route.fulfill, but the answer must look real)
+                    // the loader comes before the header read: the worker importScripts goes without CORS, and
+                    // headerValue waits for the raw headers
                     if (url === CHEERPJ_LOADER) {
                         network.engineLoads += 1;
                         return route.fulfill({ status: 200, body: FAKE_CHEERPJ, contentType: 'text/javascript' });
@@ -343,7 +350,7 @@ export const test = base.extend<{ network: Network; tracksOpen: boolean }>({
                         return route.fulfill({ status: 200, body: FAKE_GOOGLE_MAPS, contentType: 'text/javascript' });
                     }
                     if (SENTRY_INGEST.test(new URL(url).hostname)) {
-                        // preflight тоже сюда: ответ с CORS, тело конверта — только у POST
+                        // the preflight also comes here: an answer with CORS, only a POST has an envelope body
                         if (route.request().method() === 'POST') {
                             network.sentryEnvelopes.push(route.request().postData() ?? '');
                         }
@@ -388,7 +395,8 @@ export const test = base.extend<{ network: Network; tracksOpen: boolean }>({
                             headers: cors,
                         });
                     }
-                    // OpenFreeMap: описание и тайлы — один слой Of; failTiles('Of') роняет оба, как недоступный сервис
+                    // OpenFreeMap: the description and the tiles are one layer Of; failTiles('Of') fails both, as an
+                    // unavailable service
                     if (url === OPENFREEMAP_TILEJSON || url.startsWith(OPENFREEMAP_TILES)) {
                         network.tiles.push({ code: 'Of', url });
                         if (failing.has('Of')) {
@@ -425,14 +433,14 @@ export const test = base.extend<{ network: Network; tracksOpen: boolean }>({
                         return route.abort();
                     }
                     network.tiles.push({ code, url });
-                    // Сервер без CORS: на ответ route.fulfill браузер CORS не проверяет, поэтому CORS-запрос (fetch с
-                    // mode: 'cors', тайл MapLibre) обрывается — для страницы это та же TypeError, что и отказ CORS;
-                    // no-cors запрос получает ответ. Отличаем по Origin: Chromium шлёт его только в CORS-запросе
-                    // (Sec-Fetch-Mode перехват Playwright не показывает)
+                    // Server without CORS: the browser does not check CORS on a route.fulfill answer, so a CORS request
+                    // (fetch with mode: 'cors', a MapLibre tile) is aborted: for the page it is the same TypeError as a
+                    // CORS denial; a no-cors request gets the answer. The difference is the Origin: Chromium sends it
+                    // only in a CORS request (the Playwright interception does not show Sec-Fetch-Mode)
                     if (custom && !customCors && (await route.request().headerValue('origin'))) {
                         return route.abort();
                     }
-                    // WebGL берёт растр только с CORS: подменённый ответ несёт заголовок, как настоящие серверы слоёв
+                    // WebGL takes a raster only with CORS: the replaced answer has the header, as real layer servers do
                     if (failing.has(code)) {
                         return route.fulfill({ status: 503, body: 'unavailable', headers: cors });
                     }
@@ -443,8 +451,8 @@ export const test = base.extend<{ network: Network; tracksOpen: boolean }>({
             await use(network);
             expect(network.external, 'запросы мимо localhost и подменённых тайлов').toEqual([]);
             expect(network.cdnRequests, 'запросы к CDN CheerpJ мимо заглушки').toEqual([]);
-            // на сборке с DSN — сценарий «Заход без ошибок» спеки clone-monitoring во всех e2e: прокладка, профиль,
-            // слои, поиск не дают отчётов
+            // on a build with a DSN, the scenario «Заход без ошибок» of the spec clone-monitoring in all e2e: routing,
+            // profile, layers, search give no reports
             expect(network.sentryEnvelopes, 'отчёты Sentry, которых тест не ждал').toEqual([]);
         },
         { auto: true },

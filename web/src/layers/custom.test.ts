@@ -111,7 +111,7 @@ describe('слой из полей', () => {
     });
 
     test('пробный тайл — в центре вида, зум тайлов на 1 больше зума карты и не глубже maxZoom', () => {
-        // Тбилиси, зум карты 14 → тайл z15
+        // Tbilisi, map zoom 14 → tile z15
         expect(probeTileUrl(FIELDS, { lat: 41.687, lng: 44.776 }, 14, PROXY)).toBe(
             'https://tiles.example.test/15/20459/12202.png',
         );

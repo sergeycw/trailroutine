@@ -28,9 +28,9 @@ import { TRACK_LINES } from '@/tracks/style';
 import { RoutingError } from './brouter';
 import { EDIT_PREVIEW } from './edit-style';
 
-// Редактор маршрута в App на настоящей карте MapLibre: тайлы — фикстура, роутер — поддельный (тест сам отвечает на
-// запросы). Мышь — синтетические события на холсте по map.project: так их получает и MapLibre, и обработчики
-// перетаскивания на window. Названия тестов — сценарии спек route-editing, routing и tracks.
+// The route editor in App on a real MapLibre map: tiles come from a fixture, the router is fake (the test answers the
+// requests itself). Mouse: synthetic events on the canvas by map.project, so that both MapLibre and the drag handlers
+// on window get them. Test names are scenarios of the specs route-editing, routing and tracks.
 
 let tiles: FixtureTiles;
 
@@ -44,10 +44,10 @@ afterEach(() => {
     expect(tiles.external, 'запросы мимо localhost и тайлов').toEqual([]);
 });
 
-// Тбилиси, зум старого клиента 15: между точками ≈ 100 px
-// подложка — растровый OpenStreetMap: тесту она не важна, а векторная по умолчанию (OpenFreeMap) с фикстурой —
-// настоящим тайлом z12 — рисуется во всех тайлах экрана и под общей нагрузкой браузерных тестов не укладывалась в
-// таймауты (change openfreemap-default-basemap)
+// Tbilisi, zoom 15 of the old client: ≈ 100 px between the points
+// the basemap is the raster OpenStreetMap: it does not matter for the test, and the default vector basemap
+// (OpenFreeMap) with a fixture (a real z12 tile) is drawn in all screen tiles and did not fit into the timeouts under
+// the shared load of the browser tests (change openfreemap-default-basemap)
 const VIEW = '#m=15/41.69/44.785&l=O';
 const badge = () => page.getByTestId('routing-badge');
 const A = P(41.687, 44.78);
@@ -118,7 +118,7 @@ describe('Название трека в панели редактировани
         await click(map, B);
         const name = editPanel().getByRole('textbox', { name: 'Track name' });
         await name.fill('');
-        // уход фокуса — как клик по карте, без конца редактирования
+        // a focus loss acts as a map click, without the end of editing
         (name.element() as HTMLInputElement).blur();
         await expect.element(name).toHaveValue('Walk');
     });
@@ -152,9 +152,9 @@ describe('Меню «Share track»', () => {
             await click(map, B);
             await page.getByRole('button', { name: 'Share track' }).click();
             await page.getByRole('menuitem', { name: 'Save as GPX', exact: true }).click();
-            // API высот в тесте недоступен — тот же GPX без высот (спека track-files, «GPX с высотами»)
+            // the test has no elevation API: the same GPX, no elevations (spec track-files, «GPX с высотами»)
             await expect.poll(() => saved).toEqual(['Kazbek.gpx']);
-            // в файле — линия трека: отрезок с точками
+            // the file has the track line: a segment with points
             const gpx = await blobs[0].text();
             expect(gpx).toContain('<name>Kazbek</name>');
             expect(gpx.match(/<trkpt /gu)?.length).toBeGreaterThanOrEqual(2);
@@ -170,7 +170,7 @@ describe('Меню «Share track»', () => {
         await page.getByRole('button', { name: 'Share track' }).click();
         const menu = page.getByRole('menu');
         await expect.element(menu).toBeVisible();
-        // GPX — с высотами без отдельного пункта, «Send to device» удалён (design trim-track-menus)
+        // GPX comes with elevations without a separate item, «Send to device» is removed (design trim-track-menus)
         expect(
             menu
                 .getByRole('menuitem')
@@ -190,7 +190,7 @@ describe('Цвет трека в панели редактирования', () 
         await editPanel().getByRole('button', { name: 'Color of New track' }).click();
         await page.getByRole('button', { name: 'Color 3' }).click();
         await expect.poll(() => legs(map).map((leg) => leg.properties?.color)).toEqual([TRACK_COLORS[2]]);
-        // рисование продолжается: следующий клик ставит третью точку того же цвета
+        // drawing continues: the next click places a third point of the same color
         await expect.element(editPanel()).toHaveAttribute('data-drawing');
         await click(map, C);
         await expect.poll(() => waypoints(map)).toHaveLength(3);
@@ -238,7 +238,7 @@ describe('Клик при рисовании', () => {
     test('Несколько кликов подряд', async () => {
         const { map, router } = await render(VIEW, fakeRouter(), 'hiking');
         await newTrack(map, [A, B, C]);
-        // все три опорные точки сразу, отрезки ждут
+        // all three waypoints at once, the legs wait
         await expect.poll(() => waypoints(map)).toHaveLength(3);
         expect(router.live()).toHaveLength(2);
         router.live()[1].resolve([P(41.6915, 44.7875)]);
@@ -249,17 +249,17 @@ describe('Клик при рисовании', () => {
     test('Ожидание маршрута', async () => {
         const { map, router } = await render(VIEW, fakeRouter(), 'hiking');
         await newTrack(map, [A, B]);
-        // между опорными точками разрыв, ожидание — бейджем у указателя
+        // a gap between the waypoints, the badge at the pointer shows the wait
         await expect.element(badge()).toBeInTheDocument();
         expect(legs(map)).toHaveLength(0);
-        // конец правки запрос не отменяет: бейдж ждёт, пока отрезок не проложен
+        // the end of the edit does not cancel the request: the badge waits until the leg is routed
         await page.getByRole('button', { name: 'Finish editing' }).click();
         await expect.poll(() => page.getByRole('button', { name: 'Finish editing' }).query()).toBeNull();
         fire(map, 'mousemove', C);
         await expect.element(badge()).toBeInTheDocument();
         expect(features(map, TRACK_LINES)).toHaveLength(0);
         router.live()[0].resolve([]);
-        // ответ пришёл после правки — отрезок рисует уже слой треков
+        // the response came after the edit: the track layer draws the leg now
         await expect.poll(() => features(map, TRACK_LINES)).toHaveLength(1);
         await expect.element(badge()).not.toBeInTheDocument();
     });
@@ -294,7 +294,7 @@ describe('Ошибка прокладки', () => {
         const { map, router } = await render(VIEW, fakeRouter(), 'hiking');
         await newTrack(map, [A, B]);
         router.live()[0].reject(new RoutingError('no route found'));
-        // между опорными точками помеченная прямая, уведомление с причиной, курсор больше не ждёт
+        // a marked straight line between the waypoints, a notice with the reason, no wait badge at the pointer
         await expect.element(page.getByText('Routing failed: no route found')).toBeVisible();
         await expect.poll(() => legs(map).map((f) => f.properties?.unrouted)).toEqual([true]);
         await expect.element(badge()).not.toBeInTheDocument();
@@ -310,13 +310,13 @@ describe('Бейдж ожидания у указателя', () => {
         await expect.element(badge()).not.toBeInTheDocument();
         fire(map, 'mousemove', C);
         await expect.element(badge()).toBeInTheDocument();
-        // бейдж правее и ниже острия
+        // the badge is to the right of and below the tip
         const canvas = map.getCanvas().getBoundingClientRect();
         const point = map.project([C.lng, C.lat]);
         const box = badge().element().getBoundingClientRect();
         expect(box.left - (canvas.left + point.x)).toBeGreaterThan(0);
         expect(box.top - (canvas.top + point.y)).toBeGreaterThan(0);
-        // бейдж на месте едет за указателем
+        // the badge is still there and follows the pointer
         fire(map, 'mousemove', D);
         const to = map.project([D.lng, D.lat]);
         const moved = badge().element().getBoundingClientRect();
@@ -328,7 +328,7 @@ describe('Бейдж ожидания у указателя', () => {
         const { map } = await render(VIEW, fakeRouter(), 'hiking');
         await newTrack(map, [A, B]);
         await expect.element(badge()).toBeInTheDocument();
-        // нажатие на бейдж попадает в холст: синтетический клик ниже идёт в холст напрямую и этого не проверяет
+        // a badge press hits the canvas: the synthetic click below goes straight to the canvas and does not check this
         const box = badge().element().getBoundingClientRect();
         expect(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)).toBe(map.getCanvas());
         await click(map, C);
@@ -339,8 +339,8 @@ describe('Бейдж ожидания у указателя', () => {
     test('Касание без бейджа', async () => {
         const { map } = await render(VIEW, fakeRouter(), 'hiking');
         await page.getByRole('button', { name: 'New track' }).first().click();
-        // касание: указатель типа touch, за ним совместимые события мыши — mousemove без pointermove мыши (fire его
-        // добавил бы), бейдж по нему вставать не должен
+        // a touch: a pointer of type touch, then compatibility mouse events: mousemove without a mouse pointermove
+        // (fire would add it), and the badge must not appear on it
         for (const point of [A, B]) {
             await idle(map);
             const rect = map.getCanvas().getBoundingClientRect();
@@ -358,7 +358,7 @@ describe('Бейдж ожидания у указателя', () => {
 });
 
 describe('Ожидание прокладки в верхней строке', () => {
-    // в строке редактора: открытый список треков под ней показывает свою кнопку прокладки
+    // in the editor row: the open track list under it shows its own routing button
     const routingButton = () => editPanel().getByRole('button', { name: /^Routing/ });
 
     test('Ожидание в строке редактора', async () => {
@@ -433,7 +433,7 @@ describe('Вид ожидания прокладки', () => {
         await expect.element(thread()).toBeInTheDocument();
         expect(routingButton().element().querySelector('.animate-spin')).toBeNull();
         expect(stroke().animationName).toBe('route-thread');
-        // после конца правки — на Tracks
+        // after the end of the edit, on Tracks
         await page.getByRole('button', { name: 'Finish editing' }).click();
         await expect.element(tracksButton().getByTestId('route-thread')).toBeInTheDocument();
         router.live()[0].resolve([]);
@@ -441,7 +441,7 @@ describe('Вид ожидания прокладки', () => {
     });
 
     test('Меньше движения', async () => {
-        // настройку системы подменяет Chromium: тест и его iframe — в одной странице
+        // Chromium replaces the system setting: the test and its iframe are in one page
         const reduce = (value: string) =>
             cdp().send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value }] });
         await reduce('reduce');
@@ -449,7 +449,7 @@ describe('Вид ожидания прокладки', () => {
             const { map } = await render(VIEW, fakeRouter(), 'hiking');
             await newTrack(map, [A, B]);
             await expect.element(thread()).toBeInTheDocument();
-            // нитка стоит целой: без анимации, штрих на видимом участке — и на кнопке, и на бейдже
+            // the thread stays whole: no animation, the stroke is on the visible part, on the button and on the badge
             expect(stroke().animationName).toBe('none');
             expect(stroke().strokeDashoffset).toBe('-270px');
             const onBadge = badge().element().querySelector('path');
@@ -477,7 +477,7 @@ describe('Перетаскивание опорной точки', () => {
         const { map, router } = await render(VIEW, fakeRouter(), 'hiking');
         await newTrack(map, [A, B, C]);
         pressEscape();
-        // оба отрезка проходят перекрёсток J в ≈ 8 м от B: когда проложен второй, B переезжает в J (ус у поворота)
+        // both legs pass the crossroads J ≈ 8 m from B: when the second leg is routed, B moves to J (a spur at a turn)
         const J = P(B.lat, B.lng - 0.0001);
         router.live()[0].resolve([J]);
         await idle(map);
@@ -515,11 +515,11 @@ describe('Вставка опорной точки на линию', () => {
         await expect.poll(() => waypoints(map)).toHaveLength(2);
         const target = P(41.6905, 44.7835);
         await drag(map, B, target);
-        // появилась опорная точка, после отпускания соседние прямые остались прямыми
+        // a waypoint appeared, after the release the neighbor straight legs stayed straight
         await expect.poll(() => waypoints(map)).toHaveLength(3);
         expect(near(waypoints(map)[1], target)).toBe(true);
         expect(router.calls).toHaveLength(0);
-        // вставка и перетаскивание — один шаг истории
+        // insertion and drag are one history step
         await page.getByRole('button', { name: 'Undo' }).click();
         await expect.poll(() => waypoints(map)).toHaveLength(2);
     });
@@ -565,14 +565,14 @@ describe('Продолжение линии с любого конца', () => {
         await newTrack(map, [A, B]);
         pressEscape();
         await click(map, C);
-        // клик по карте мимо линии без рисования заканчивает редактирование, новой точки нет
+        // a map click past the line without drawing ends editing, there is no new point
         await expect.element(editPanel()).not.toBeInTheDocument();
         await expect.poll(() => features(map, TRACK_LINES)).toHaveLength(1);
         expect(features<LineString>(map, TRACK_LINES)[0].geometry.coordinates).toHaveLength(2);
     });
 
     test('Дорисовать с начала', async () => {
-        // средняя точка не на прямой: ломаную из ссылки упрощают, и точка на прямой пропала бы
+        // the middle point is off the line: an nktk polyline is simplified, and a point on the line would disappear
         const { map, router } = await render(
             `${VIEW}&nktk=${line('Walk', [A, P(41.692, 44.783), C])}`,
             fakeRouter(),
@@ -594,7 +594,7 @@ describe('гонки и фокус', () => {
     test('быстрый клик по только что поставленной точке заканчивает рисование, а не ставит дубль', async () => {
         const { map } = await render(VIEW);
         await newTrack(map, [A]);
-        // без ожидания кадра: точка B ещё не дошла до отрисовки
+        // without a wait for a frame: the point B did not get to the paint yet
         for (let i = 0; i < 2; i++) {
             for (const type of ['mousemove', 'mousedown', 'mouseup', 'click']) {
                 fire(map, type, B);
@@ -616,7 +616,7 @@ describe('гонки и фокус', () => {
     test('Escape, закрывающий меню прокладки, рисование не заканчивает', async () => {
         const { map } = await render(VIEW);
         await newTrack(map, [A]);
-        // кнопка прокладки есть и в шапке списка, и в редакторе верхней строки — здесь та, что в редакторе
+        // the routing button is both in the list header and in the editor of the top row: here, the one in the editor
         await page
             .getByTestId('edit-panel')
             .getByRole('button', { name: /^Routing/ })
@@ -639,7 +639,7 @@ describe('Меню активностей', () => {
         await chooseActivity('Gravel bike');
         await expect.element(page.getByRole('button', { name: 'Routing: Gravel bike' })).toBeVisible();
         expect(localStorage.getItem('nakarte-web:routing-activity')).toBe('gravel');
-        // движок начинает загружаться до первого клика по карте
+        // the engine starts to load before the first map click
         expect(router.warmUps).toBeGreaterThan(0);
         await page.getByRole('button', { name: 'Routing: Gravel bike' }).click();
         await expect.element(page.getByRole('menuitemradio', { name: 'Gravel bike' })).toBeChecked();
@@ -659,23 +659,23 @@ describe('Меню активностей', () => {
         await render(VIEW, router, 'hiking');
         const loading = page.getByRole('button', { name: 'Routing: Hiking. BRouter engine is loading' });
         await expect.element(loading).toBeVisible();
-        // индикатор загрузки — нитка ожидания, как у ожидания маршрута (спека route-editing, «Вид ожидания прокладки»)
+        // the loading indicator is the wait thread, as for a route wait (spec route-editing, «Вид ожидания прокладки»)
         await expect.element(loading.getByTestId('route-thread')).toBeInTheDocument();
         router.setStatus('ready');
-        // Движок готов
+        // The engine is ready
         await expect.element(page.getByRole('button', { name: 'Routing: Hiking', exact: true })).toBeVisible();
     });
 
     test('Движок в браузере не запустился', async () => {
         const router = fakeRouter({ status: 'failed' });
         await render(VIEW, router, 'hiking');
-        // кнопка красная сразу, без маршрута и без открытия меню
+        // the button is red immediately, without a route and without opening the menu
         await expect.element(page.getByRole('button', { name: /^Routing/ })).toHaveAttribute('data-state', 'down');
         await page.getByRole('button', { name: /^Routing/ }).click();
         await expect
             .element(page.getByRole('menuitem', { name: 'BRouter is not running, start it with docker compose up -d' }))
             .toBeVisible();
-        // открытие меню перепроверяет живость: кнопка красная, подсказка говорит, что делать
+        // opening the menu checks again that the router is alive: the button is red, the hint tells what to do
         await expect
             .element(page.getByRole('button', { name: /^Routing: Hiking\. BRouter/ }))
             .toHaveAttribute('data-state', 'down');

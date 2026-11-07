@@ -1,6 +1,6 @@
 import type { TrackSources } from './sources';
 
-// Подставная сеть для unit-тестов треков: ответы по точному адресу, всё остальное — ошибка сети (тест в сеть не ходит)
+// Fake network for track unit tests: responses by exact address, a network error for other addresses (no real network)
 
 export const TEST_PROXY = 'https://proxy.test/';
 export const TEST_STORAGE = 'https://tracks.test';
@@ -31,7 +31,7 @@ export function fakeSources(responses: Record<string, FakeResponse> = {}) {
     return { sources, requested };
 }
 
-// Адрес через прокси, как его строит импорт: <прокси>https/host/path
+// Address through the proxy, as the import makes it: <proxy>https/host/path
 export function viaTestProxy(url: string) {
     return TEST_PROXY + url.replace(/^(https?):\/\//u, '$1/');
 }

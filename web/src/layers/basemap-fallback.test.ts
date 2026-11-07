@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'vitest';
 import { createFallbackGate } from './basemap-fallback';
 
-// Спека map-layers, «Откат подложки при ошибке тайлов»: когда ошибка источника подложки откатывает её сразу, когда — после
-// повторов, когда — никогда. Время и сеть подменены.
+// Spec map-layers, «Откат подложки при ошибке тайлов»: when a basemap source error causes the fallback at once, when
+// after retries, and when never. Time and the network are replaced.
 function gate(online = true) {
     let time = 0;
     const g = createFallbackGate(

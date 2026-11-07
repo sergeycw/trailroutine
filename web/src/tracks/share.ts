@@ -7,12 +7,14 @@ import type { Track } from './model';
 import { saveNktk } from './nktk';
 import type { TrackSources } from './sources';
 
-// Ссылка на треки nktl= (copyTracksLinkToClipboard старого клиента, контракт — спека track-storage): тело — строки
-// nktk через `/`, ключ — base64url(md5(тело)) без `=`. Старый клиент отдавал ссылку до ответа хранилища; здесь —
-// только после 200 (аудит системного дизайна, п. 2; design add-web-tracks, «Ссылка — после ответа хранилища»).
+// Link to tracks nktl= (copyTracksLinkToClipboard of the old client, contract: spec track-storage): the body is nktk
+// strings joined with `/`, the key is base64url(md5(body)) without `=`. The old client gave the link before the
+// storage response; here only after 200 (system design audit, item 2; design add-web-tracks, «Ссылка — после ответа
+// хранилища»).
 
-// forceVisible — видимость в ссылке: «Copy link for track» пишет трек видимым (trackToString(track, forceVisible)).
-// Отрезок с разметкой маршрута упрощается без опорных точек, и разметка уходит в ссылку (design add-web-autosave).
+// forceVisible is the visibility in the link: «Copy link for track» writes the track as visible
+// (trackToString(track, forceVisible)). A segment with route markup is simplified, its waypoints stay, and the markup
+// goes into the link (design add-web-autosave).
 export function shareBody(tracks: readonly Track[], forceVisible = false): string {
     return tracks
         .map((track) => {
@@ -29,7 +31,7 @@ export function shareBody(tracks: readonly Track[], forceVisible = false): strin
         .join('/');
 }
 
-// Тот же ключ, что считает Worker (workers/tracks/src/key.js, тоже blueimp-md5)
+// The same key that the Worker calculates (workers/tracks/src/key.js, also blueimp-md5)
 export function trackKey(body: string): string {
     return btoa(md5(body, undefined, true))
         .replace(/\//gu, '_')
@@ -37,8 +39,8 @@ export function trackKey(body: string): string {
         .replace(/=/gu, '');
 }
 
-// Адрес ссылки: текущий адрес приложения без поиска (q, r — keysToExcludeOnCopyLink старого клиента) и без
-// параметров треков (их место займёт nktl)
+// Link address: the current app address without the search (q, r: keysToExcludeOnCopyLink of the old client) and
+// without the track parameters (nktl takes their place)
 export function shareLink(location: { origin: string; pathname: string; hash: string }, key: string): string {
     let params = parseHash(location.hash);
     for (const name of ['q', 'r', ...TRACK_PARAMS]) {
@@ -50,7 +52,7 @@ export function shareLink(location: { origin: string; pathname: string; hash: st
 
 export class ShareError extends Error {}
 
-// POST в хранилище; ошибка — ShareError с текстом для «Error making link: …»
+// POST to the storage; an error gives ShareError with the text for «Error making link: …»
 export async function storeTracks(
     body: string,
     sources: Pick<TrackSources, 'fetch' | 'tracksStorageServer'>,
@@ -58,7 +60,7 @@ export async function storeTracks(
     const key = trackKey(body);
     let response: Response;
     try {
-        // строка в теле — text/plain, «простой» CORS-запрос без preflight, как xhr старого клиента
+        // the body is a string, text/plain: a "simple" CORS request without preflight, as xhr of the old client
         response = await sources.fetch(`${sources.tracksStorageServer}/track/${key}`, { method: 'POST', body });
     } catch {
         throw new ShareError('network error');

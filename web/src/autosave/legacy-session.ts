@@ -3,18 +3,19 @@ import type { LegMark, SegmentRoute } from '@/routing/line';
 import type { GeoData, LatLng } from '@/tracks/model';
 import { ARC_UNIT, parseNktkSequence } from '@/tracks/nktk';
 
-// Последняя сессия старого клиента (design switch-to-web-app, «Сессия старого клиента: последняя, один раз»). Старый
-// клиент хранил треки вкладки в IndexedDB sessions (src/lib/session-state и leaflet.control.sessions на коммите 015be893):
-// хранилище sessionData, keyPath sessionId, индекс mtime, запись {sessionId, mtime, data: {hash, tracks, trackNames,
-// routeMarkup}}. tracks — строки nktk через `/` (serializeTracks), routeMarkup — {legs: [[ключ начала, ключ конца,
-// activityId], …]} с ключами по сетке nktk (routeMarkupKey). База только читается: не меняется и не создаётся.
+// The last session of the old client (design switch-to-web-app, «Сессия старого клиента: последняя, один раз»). The
+// old client kept the tab tracks in the IndexedDB sessions (src/lib/session-state and leaflet.control.sessions at
+// commit 015be893): object store sessionData, keyPath sessionId, index mtime, record {sessionId, mtime, data: {hash,
+// tracks, trackNames, routeMarkup}}. tracks is nktk strings joined with `/` (serializeTracks), routeMarkup is {legs:
+// [[start key, end key, activityId], …]} with keys on the nktk grid (routeMarkupKey). The code only reads the
+// database: it does not change or create it.
 
 export const LEGACY_SESSIONS_DB = 'sessions';
 const STORE = 'sessionData';
 const MTIME_INDEX = 'mtime';
 
-// routeMarkupKey старого клиента: та же сетка ~2.4 м, что у координат nktk, поэтому ключи точек из разобранной строки
-// совпадают с ключами разметки точно
+// routeMarkupKey of the old client: the same ~2.4 m grid as the nktk coordinates, so the point keys from the parsed
+// string match the markup keys exactly
 function markupKey(point: LatLng): string {
     return `${Math.round(point.lat * ARC_UNIT)},${Math.round(point.lng * ARC_UNIT)}`;
 }
@@ -32,10 +33,11 @@ function legacyLegs(markup: unknown): LegacyLeg[] {
     );
 }
 
-// Разметка старой сессии → разметка отрезка (applyRouteMarkupToLine старого): от каждой опорной точки ищется ближайшая
-// дальше хотя бы через одну точку, с которой её связывает нога разметки, — точки между ними маршрутные. Нога неизвестной
-// активности не считается: прямой отрезок с промежуточными точками разметка нового приложения не допускает, и такие
-// точки остаются опорными. Без единой ноги — null, отрезок открывается ломаной.
+// The markup of an old session → the markup of a segment (applyRouteMarkupToLine of the old client): from each
+// waypoint, the code finds the nearest point at least one point further on that a markup leg connects to it; the
+// points between them are route points. A leg of an unknown activity does not count: the markup of the new app does
+// not allow a straight leg with intermediate points, so such points stay waypoints. Without a single leg, null: the
+// segment opens as a polyline.
 export function legacyRoute(points: readonly LatLng[], markup: unknown): SegmentRoute | null {
     const activities = new Map<string, string>();
     for (const [start, end, activityId] of legacyLegs(markup)) {
@@ -71,7 +73,8 @@ export function legacyRoute(points: readonly LatLng[], markup: unknown): Segment
     return legs.some((leg) => leg.state === 'routed') ? { waypoints, legs } : null;
 }
 
-// Запись сессии → треки с разметкой. Строка треков испорчена — то, что из неё прочиталось (как ссылка nktk).
+// A session record → tracks with markup. If the tracks string is corrupted, the result is what the parse could read
+// from it (as with an nktk link).
 export function legacySessionTracks(data: unknown): GeoData[] {
     const { tracks, routeMarkup } = (data ?? {}) as { tracks?: unknown; routeMarkup?: unknown };
     if (typeof tracks !== 'string' || !tracks) {
@@ -90,8 +93,9 @@ function requestResult<T>(request: IDBRequest<T>): Promise<T> {
     });
 }
 
-// Открыть базу старого клиента, не создавая её: open без версии создал бы пустую базу версии 1, поэтому транзакция
-// обновления, которая приходит только для новой базы, отменяется — open заканчивается AbortError, база не появляется.
+// Open the database of the old client without creating it: open without a version would create an empty database
+// of version 1. So the code aborts the upgrade transaction, which comes only for a new database: open ends with
+// AbortError, and the database does not appear.
 function openExisting(factory: IDBFactory, name: string): Promise<IDBDatabase | null> {
     return new Promise((resolve, reject) => {
         const request = factory.open(name);
@@ -103,7 +107,7 @@ function openExisting(factory: IDBFactory, name: string): Promise<IDBDatabase | 
         request.onsuccess = () => resolve(request.result);
         request.onerror = (event) => {
             if (missing) {
-                // ошибка отменённого обновления — не ошибка приложения
+                // the error of the aborted upgrade is not an error of the app
                 event.preventDefault();
                 resolve(null);
                 return;
@@ -122,8 +126,9 @@ function hasTracks(record: LegacyRecord | null | undefined): record is LegacyRec
     return typeof record?.data?.tracks === 'string' && record.data.tracks !== '';
 }
 
-// data последней по mtime сессии с треками или undefined (базы, хранилища или сессий с треками нет). Старый клиент
-// стирал запись вкладки без треков (clearState), но пустая строка не помешает и здесь.
+// data of the last session with tracks by mtime, or undefined (no database, no object store or no sessions with
+// tracks). The old client deleted the record of a tab without tracks (clearState), but an empty string does no harm
+// here either.
 export async function readLatestLegacySession(
     factory: IDBFactory = indexedDB,
     name = LEGACY_SESSIONS_DB,
@@ -137,7 +142,8 @@ export async function readLatestLegacySession(
             return undefined;
         }
         const store = db.transaction(STORE, 'readonly').objectStore(STORE);
-        // от новых к старым по индексу mtime, до первой сессии с треками: не поднимать в память все 100 сессий
+        // from new to old by the index mtime, until the first session with tracks: do not load all 100 sessions into
+        // memory
         const source = store.indexNames.contains(MTIME_INDEX) ? store.index(MTIME_INDEX) : null;
         if (!source) {
             const records = (await requestResult(store.getAll())) as LegacyRecord[];
@@ -162,7 +168,7 @@ export async function readLatestLegacySession(
     }
 }
 
-// Источник для автосохранения: треки последней сессии старого клиента
+// The source for the autosave: the tracks of the last session of the old client
 export function legacySessionSource(factory?: () => IDBFactory, name?: string): () => Promise<GeoData[]> {
     return async () => legacySessionTracks(await readLatestLegacySession(factory ? factory() : indexedDB, name));
 }

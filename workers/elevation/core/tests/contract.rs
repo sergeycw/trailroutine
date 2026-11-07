@@ -1,9 +1,9 @@
-// Контрактный тест: ответы ядра на прореженных объектах из `fixtures/dem3` против ответов
-// `elevation.nakarte.me`, снятых `fixtures/make_reference.py`. Сети не нужно.
-// Данные и арифметика те же, что у автора, поэтому допуск — точное совпадение строк ответа
-// (первый прогон 2026-10-07: 306 из 306). Расхождение значит, что поменялись данные
-// viewfinderpanoramas или сломалась интерполяция; см. раздел «Допуск контрактного теста» в
-// `openspec/changes/archive/2026-10-07-add-elevation-api/design.md`.
+// Contract test: the answers of the core on the thinned objects from `fixtures/dem3` against the
+// answers of `elevation.nakarte.me` that `fixtures/make_reference.py` recorded. The network is not
+// necessary. The data and the arithmetic are the same as the author has, thus the tolerance is an
+// exact match of the answer lines (first run 2026-10-07: 306 of 306). A difference means that the
+// viewfinderpanoramas data changed or the interpolation broke; see the section
+// «Допуск контрактного теста» in `openspec/changes/archive/2026-10-07-add-elevation-api/design.md`.
 
 mod common;
 

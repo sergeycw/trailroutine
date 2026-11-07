@@ -6,14 +6,16 @@ import type {
     LayerSpecification,
 } from 'maplibre-gl';
 
-// Туристический векторный стиль подложки OpenFreeMap Outdoor (design add-vector-outdoor-style): слои схемы OpenMapTiles
-// (https://openmaptiles.org/schema/) из тайлов OpenFreeMap. Стиль свой, а не Liberty: без glyphs и sprite — подписи
-// MapLibre 6 рисует шрифтом системы, как подписи треков (src/tracks/style.ts), значков POI нет.
+// The outdoor vector style of the basemap OpenFreeMap Outdoor (design add-vector-outdoor-style): the layers of the
+// OpenMapTiles schema (https://openmaptiles.org/schema/) from the OpenFreeMap tiles. The style is a custom one, not
+// Liberty: without glyphs and sprite, MapLibre 6 draws the labels with the system font, as the track labels
+// (src/tracks/style.ts), and there are no POI icons.
 //
-// id слоёв — <код>-<имя>: суффикс не пересекается с кодами каталога и своих слоёв (-cs…), как Ct-labels.
+// Layer ids are <code>-<name>: the suffix does not overlap with the codes of the catalog and of custom layers (-cs…),
+// as Ct-labels.
 
-// Цвета — свои, в духе топокарт: лес и луга заметны, тропы и грунтовки ярче улиц (ресёрч new-ui.md, «Рекомендация на
-// потом»)
+// The colors are custom, in the manner of topo maps: forest and meadows are visible, trails and dirt roads are brighter
+// than streets (research new-ui.md, «Рекомендация на потом»)
 const LAND = '#f5f2e9';
 const WOOD = '#c9dfae';
 const GRASS = '#e2ebc7';
@@ -37,21 +39,22 @@ const LABEL = '#333333';
 const HALO = 'rgba(255, 255, 255, 0.9)';
 const FONT = ['sans-serif'];
 
-// Размер второй строки подписи относительно первой
+// The size of the second label line relative to the first
 const SECOND_LINE_SCALE = 0.85;
 
-// Язык подписей — основной подтег navigator.language (ru-RU → ru), как у подписей Tracestrack (tracestrackMap в
-// catalog.ts). Поля name:<язык> в схеме OpenMapTiles — с основным подтегом
+// The label language is the primary subtag of navigator.language (ru-RU → ru), as for the Tracestrack labels
+// (tracestrackMap in catalog.ts). The name:<language> fields in the OpenMapTiles schema use the primary subtag
 export function labelLanguage(language: string): string {
     return language.toLowerCase().split('-')[0];
 }
 
 type Section = ExpressionSpecification | string;
 
-// Подпись в две строки (решение владельца 2026-10-12, design «Подписи в две строки»): сверху местное name, под ним —
-// name:<язык браузера>, без перевода — name:latin (латиница схемы OpenMapTiles); вторая строка не показывается, если её
-// нет или она совпадает с первой. extra — строки ниже названия (высота вершины), они есть всегда. case в каждой ветке
-// отдаёт format целиком: format внутри format спецификация стиля не принимает
+// A label in two lines (owner decision 2026-10-12, design «Подписи в две строки»): the local name at the top, under it
+// name:<browser language>, and without a translation name:latin (the Latin script of the OpenMapTiles schema); the
+// second line does not show if it is missing or if it is the same as the first. extra is the lines under the name (the
+// peak elevation), they are always present. case in each branch gives the full format: the style specification does
+// not accept format inside format
 function labelFormat(language: string, extra: Section[] = []): ExpressionSpecification {
     const tail = extra.flatMap((section): (Section | object)[] => [
         '\n',
@@ -61,7 +64,7 @@ function labelFormat(language: string, extra: Section[] = []): ExpressionSpecifi
     ]);
     const one = (text: Section): ExpressionSpecification =>
         ['format', text, {}, ...tail] as unknown as ExpressionSpecification;
-    // ни названия, ни перевода: только строки extra, без пустой первой
+    // no name and no translation: only the extra lines, without an empty first line
     const none = ['format', ...(tail.length ? tail.slice(2) : ['', {}])] as unknown as ExpressionSpecification;
     const two = [
         'format',
@@ -96,14 +99,14 @@ export function labelText(language: string): DataDrivenPropertyValueSpecificatio
     return labelFormat(language);
 }
 
-// Вершины и перевалы: значок текстом (спрайта нет) и высота в метрах строкой под названием. Без названия — только
-// строка высоты
+// Peaks and passes: the mark as text (there is no sprite) and the elevation in meters as a line under the name.
+// Without a name, only the elevation line
 export function peakText(language: string): DataDrivenPropertyValueSpecification<FormattedSpecification> {
     const mark = ['match', ['get', 'class'], 'saddle', ')(', '▲'] as ExpressionSpecification;
     const elevation = [
         'case',
         ['has', 'ele'],
-        // ele бывает дробной (2494.3 у вершины над Верхним Ларсом) — до метра
+        // ele can be fractional (2494.3 at the peak above Upper Lars): round to the meter
         ['concat', mark, ' ', ['to-string', ['round', ['get', 'ele']]], ' m'],
         mark,
     ] as ExpressionSpecification;
@@ -114,8 +117,8 @@ function classIn(...classes: string[]): ExpressionSpecification {
     return ['match', ['get', 'class'], classes, true, false];
 }
 
-// ширина линии по зуму: [зум, px]…, экспоненциально, как ширины дорог в стилях OpenMapTiles; px может зависеть от
-// свойств (river, country), а зум — только снаружи
+// line width by zoom: [zoom, px]…, exponential, as the road widths in the OpenMapTiles styles; px can depend on
+// properties (river, country), but the zoom can be only in the outer expression
 function width(...stops: (number | ExpressionSpecification)[]): ExpressionSpecification {
     return ['interpolate', ['exponential', 1.4], ['zoom'], ...stops] as ExpressionSpecification;
 }
@@ -136,12 +139,12 @@ interface Road {
     name: string;
     classes: string[];
     color: string;
-    // [зум, px]… ширины заливки; обводка шире на 2 px
+    // [zoom, px]… of the fill widths; the casing is 2 px wider
     widths: number[];
     minzoom: number;
 }
 
-// Классы transportation схемы OpenMapTiles, от крупных к мелким; *_construction рисуются как обычные
+// The transportation classes of the OpenMapTiles schema, from large to small; *_construction draw as the usual classes
 const ROADS: Road[] = [
     {
         name: 'motorway',
@@ -173,7 +176,7 @@ const ROADS: Road[] = [
     },
 ];
 
-// снизу вверх: обводки всех дорог, затем заливки, чтобы перекрёстки не резались обводкой
+// from bottom to top: the casings of all roads, then the fills, so the casings do not cut the crossings
 function roadLayers(code: string): LayerSpecification[] {
     const base = (road: Road) => ({
         source: code,
@@ -213,7 +216,8 @@ function labelPaint(color = LABEL) {
 export function outdoorLayers(code: string, language: string): LayerSpecification[] {
     const source = { source: code };
     return [
-        // векторные тайлы сушу не закрашивают: фон суши — свой слой стиля над серым фоном карты (BACKGROUND_LAYER)
+        // vector tiles do not fill the land: the land background is an own style layer above the gray map background
+        // (BACKGROUND_LAYER)
         { id: `${code}-land`, type: 'background', paint: { 'background-color': LAND } },
         {
             id: `${code}-landuse`,
@@ -265,7 +269,8 @@ export function outdoorLayers(code: string, language: string): LayerSpecificatio
             ...source,
             'source-layer': 'park',
             minzoom: 7,
-            // бледно: Казбегский парк в тайлах — множество кусков, и на z13+ яркий пунктир обводил каждый (скриншот 2026-10-12)
+            // pale: the Kazbegi park in the tiles is many pieces, and at z13+ a bright dash line outlined each piece
+            // (screenshot 2026-10-12)
             paint: { 'line-color': PROTECTED, 'line-width': 0.8, 'line-opacity': 0.3, 'line-dasharray': [4, 2] },
         },
         {
@@ -285,7 +290,7 @@ export function outdoorLayers(code: string, language: string): LayerSpecificatio
             layout: { 'line-cap': 'round' },
             paint: {
                 'line-color': WATER,
-                // зум снаружи: спецификация стиля разрешает interpolate по зуму только верхним выражением
+                // the zoom is outside: the style specification allows interpolate by zoom only in the top expression
                 'line-width': width(8, river(0.8, 0), 11, river(1.5, 0.4), 14, river(3, 1), 16, river(6, 2.5)),
             },
         },
@@ -308,7 +313,8 @@ export function outdoorLayers(code: string, language: string): LayerSpecificatio
             paint: { 'line-color': TRACK, 'line-width': width(11, 0.8, 14, 1.6, 18, 3), 'line-dasharray': [3, 1.5] },
         },
         {
-            // тропы, тротуары, конные и велодорожки — subclass в OpenMapTiles; путь ярче улиц на лесе и лугах
+            // trails, footways, bridleways and cycleways are subclass in OpenMapTiles; a path is brighter than streets
+            // on forest and meadows
             id: `${code}-path`,
             type: 'line',
             ...source,
@@ -395,7 +401,7 @@ export function outdoorLayers(code: string, language: string): LayerSpecificatio
                 'text-font': FONT,
                 'text-size': 11,
                 'text-max-width': 8,
-                // rank OpenMapTiles: меньше — важнее
+                // OpenMapTiles rank: smaller is more important
                 'symbol-sort-key': ['get', 'rank'],
             },
             paint: labelPaint('#5b3a1e'),

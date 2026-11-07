@@ -23,9 +23,9 @@ import type { LatLng, Waypoint } from '@/tracks/model';
 import { saveNktk } from '@/tracks/nktk';
 import { PROFILE_SELECTION } from './style';
 
-// Профиль высот в App на настоящей карте MapLibre (спеки tracks и route-editing; design add-web-elevation-profile,
-// «Тесты»): тайлы — фикстура, API высот — заглушка fetch (высота — функция широты), роутер — поддельный. Названия тестов
-// — сценарии спек.
+// The elevation profile in App on a real MapLibre map (specs tracks and route-editing; design
+// add-web-elevation-profile, «Тесты»): the tiles are a fixture, the elevation API is a fetch stub (the elevation is a
+// function of the latitude), the router is fake. The test titles are the scenarios of the specs.
 
 let tiles: FixtureTiles;
 
@@ -39,22 +39,22 @@ afterEach(async () => {
     expect(tiles.external, 'запросы мимо localhost и тайлов').toEqual([]);
 });
 
-// Тбилиси, зум старого клиента 14: километр по меридиану ≈ 330 px
+// Tbilisi, zoom 14 of the old client: a kilometer along the meridian ≈ 330 px
 const VIEW = '#m=14/41.695/44.785';
-// отрезки по меридиану по ≈ 1 км (0.009° широты), второй в ≈ 1.2 км севернее первого
+// segments along the meridian of ≈ 1 km each (0.009° of latitude), the second one ≈ 1.2 km north of the first
 const SOUTH = [P(41.68, 44.78), P(41.689, 44.78)];
 const NORTH = [P(41.7, 44.79), P(41.709, 44.79)];
 
-// высота — (широта − 41.6) × 10 000: 41.68 → 800 м, 41.689 → 890 м; по меридиану подъём ровный
+// the elevation is (latitude − 41.6) × 10 000: 41.68 → 800 m, 41.689 → 890 m; the climb along the meridian is even
 const height = (lat: number) => Math.round((lat - 41.6) * 10000 * 100) / 100;
 
 interface Api {
     fetch: typeof fetch;
-    // тела запросов к API высот
+    // the bodies of the requests to the elevation API
     requests: string[];
 }
 
-// API высот в памяти; respond — свой ответ на тело запроса (ошибка, 429, NULL)
+// An in-memory elevation API; respond gives a custom answer for a request body (error, 429, NULL)
 function elevationApi(respond?: (body: string, attempt: number) => Response | null): Api {
     const requests: string[] = [];
     const api: Api = {
@@ -100,7 +100,7 @@ async function openTrackProfile(name: string) {
     await expect.poll(() => stat('distance')).not.toBe('');
 }
 
-// точка графика на доле ширины: экранные координаты для синтетических событий указателя
+// the graph point at a fraction of the width: screen coordinates for synthetic pointer events
 function graphAt(fraction: number) {
     const rect = page.getByTestId('profile-graph').element().getBoundingClientRect();
     return { clientX: Math.round(rect.left + (rect.width - 1) * fraction), clientY: Math.round(rect.top + 20) };
@@ -125,7 +125,7 @@ function pointer(type: string, fraction: number, init: PointerEventInit = {}) {
 
 const cursorLabel = () => page.getByTestId('profile-cursor-label').element().textContent ?? '';
 
-// центр метки курсора на карте — в координатах карты
+// the center of the cursor marker on the map, in map coordinates
 function markerAt(map: MaplibreMap) {
     const rect = page.getByTestId('profile-marker').element().getBoundingClientRect();
     const container = map.getCanvasContainer().getBoundingClientRect();
@@ -136,7 +136,7 @@ describe('Профиль высот трека и отрезка', () => {
     test('Профиль трека', async () => {
         const { api } = await render(trackLink('Walk', [SOUTH, NORTH]));
         await openTrackProfile('Walk');
-        // расстояние — сумма отрезков без промежутка между ними
+        // the distance is the sum of the segments without the gap between them
         expect(stat('distance')).toBe('2.00 km');
         expect(api.requests).toHaveLength(1);
         const link = profilePanel().getByRole('link', { name: /viewfinderpanoramas/ });
@@ -150,11 +150,11 @@ describe('Профиль высот трека и отрезка', () => {
         await expect.poll(() => stat('distance')).toBe('1.00 km');
         await expect.element(profilePanel().getByText('Walk, segment 2')).toBeVisible();
         expect(api.requests).toHaveLength(1);
-        // ссылка округляет координаты по сетке nktk (≈ 2.4 м)
+        // the link rounds the coordinates to the nktk grid (≈ 2.4 m)
         const [lat, lng] = api.requests[0].split('\n')[0].split(' ').map(Number);
         expect(lat).toBeCloseTo(41.7, 4);
         expect(lng).toBeCloseTo(44.79, 4);
-        // редактирование продолжается, панель редактора — над профилем
+        // the edit continues, and the editor panel is above the profile
         await expect.element(editPanel()).toBeVisible();
         const editBottom = editPanel().element().getBoundingClientRect().bottom;
         expect(editBottom).toBeLessThanOrEqual(profilePanel().element().getBoundingClientRect().top);
@@ -171,7 +171,7 @@ describe('Профиль высот трека и отрезка', () => {
     test('закрыть профиль', async () => {
         await render(trackLink('Walk', [SOUTH]));
         await openTrackProfile('Walk');
-        // закрывает кнопка профиля под картой: своего крестика у панели нет
+        // the profile button under the map closes the panel: the panel has no cross of its own
         await page.getByRole('button', { name: /^Elevation profile/ }).click();
         await expect.poll(() => profilePanel().query()).toBeNull();
     });
@@ -181,7 +181,7 @@ describe('Сводка профиля', () => {
     test('Подъём и спуск: стык отрезков не считается подъёмом', async () => {
         await render(trackLink('Walk', [SOUTH, NORTH]));
         await openTrackProfile('Walk');
-        // 800 → 890 и 1000 → 1090: подъём 180 м, а не 290
+        // 800 → 890 and 1000 → 1090: the ascent is 180 m, not 290
         expect(stat('ascent')).toBe('180 m');
         expect(stat('descent')).toBe('0 m');
         expect(stat('min')).toBe('800 m');
@@ -201,16 +201,16 @@ describe('Сводка профиля', () => {
         await render(trackLink('Walk', [SOUTH]), api);
         await openTrackProfile('Walk');
         await expect.element(page.getByTestId('profile-note')).toHaveTextContent('Some elevation data missing');
-        // график рвётся на точках без данных: два прогона ломаной
+        // the graph breaks at the points without data: two runs of the polyline
         const d = page.getByTestId('profile-line').element().getAttribute('d') ?? '';
         expect(d.match(/M/gu)).toHaveLength(2);
-        // точки без данных не уводят шкалу к нулю
+        // the points without data do not pull the scale to zero
         expect(stat('min')).toBe('800 m');
         expect(stat('ascent')).toBe('~90 m');
     });
 });
 
-// первая половина SOUTH ровно на 800 м, вторая (≈ 500 м) — подъём 100 м: ≈ 20 %
+// the first half of SOUTH is flat at 800 m, the second half (≈ 500 m) climbs 100 m: ≈ 20 %
 const flatThenClimb = (lat: number) => (lat <= 41.6845 ? 800 : 800 + ((lat - 41.6845) / 0.0045) * 100);
 
 function climbApi() {
@@ -247,7 +247,7 @@ describe('Курсор профиля и карта', () => {
         const at = markerAt(map);
         expect(at.lat).toBeCloseTo(41.6845, 3);
         expect(at.lng).toBeCloseTo(44.78, 3);
-        // onPointerLeave React собирает из pointerout с relatedTarget снаружи
+        // React builds onPointerLeave from pointerout with a relatedTarget outside
         pointer('pointerout', 0.5, { relatedTarget: document.body });
         await expect.poll(() => page.getByTestId('profile-marker').query()).toBeNull();
     });
@@ -262,10 +262,10 @@ describe('Курсор профиля и карта', () => {
         const graph = page.getByTestId('profile-graph').element().getBoundingClientRect();
         const cursor = page.getByTestId('profile-cursor').element().getBoundingClientRect();
         expect(graph.right - cursor.left).toBeLessThan(4);
-        // мышь ушла от линии — курсора нет
+        // the mouse moved away from the line, so there is no cursor
         fire(map, 'mousemove', P(41.684, 44.79));
         await expect.poll(() => page.getByTestId('profile-cursor').query()).toBeNull();
-        // линию скрытого трека не видно — наведение на её место курсор не ставит
+        // the line of a hidden track is not visible, so a hover on its place does not set the cursor
         await page.getByRole('checkbox', { name: 'Show Walk' }).click();
         await idle(map);
         fire(map, 'mousemove', SOUTH[1]);
@@ -282,12 +282,12 @@ describe('Курсор профиля и карта', () => {
         pointer('pointerup', 0.5);
         await expect.element(profilePanel().getByText('Selection')).toBeVisible();
         expect(stat('distance')).toBe('0.25 km');
-        // 0.25 км подъёма 90 м на 1 км: 22.5 м, точки выделения — ближайшие точки выборки
+        // 0.25 km of a climb of 90 m per 1 km: 22.5 m; the selection points are the nearest sample points
         expect(stat('ascent')).toMatch(/^2[23] m$/);
         await expect.poll(() => features(map, PROFILE_SELECTION).length).toBe(1);
-        // график вне выделения приглушён: слева и справа от участка
+        // the graph outside the selection is dimmed: on the left and on the right of the section
         expect(page.getByTestId('profile-dim').elements()).toHaveLength(2);
-        // клик без сдвига снимает выделение
+        // a click without a move removes the selection
         pointer('pointerdown', 0.7);
         pointer('pointerup', 0.7);
         await expect.poll(() => stat('distance')).toBe('1.00 km');
@@ -328,7 +328,8 @@ describe('Профиль следует за треком', () => {
         expect(await menuItems()).toContain('Show elevation profile for segment');
         await chooseFromMenu('Show elevation profile for segment');
         await expect.poll(() => api.requests.length).toBe(1);
-        // перетаскивание точки: роутер прокладывает новый отрезок, профиль перестраивается одним запросом после паузы
+        // a drag of a point: the router routes a new segment, and the profile builds again with one request after
+        // the pause
         await drag(map, b, P(41.695, 44.785));
         await expect.poll(() => router.calls.length).toBe(2);
         await expect.poll(() => api.requests.length, { timeout: 3000 }).toBe(2);
@@ -355,7 +356,7 @@ describe('Ошибка сервиса высот в профиле', () => {
         });
         await render(trackLink('Walk', [SOUTH]), api);
         await trackMenu('Walk', 'Show elevation profile');
-        // toHaveTextContent со строкой сравнивает текст целиком, а в плашке ещё кнопка Retry
+        // toHaveTextContent with a string compares the full text, and the banner also contains the Retry button
         await expect.element(profilePanel().getByText('Failed to get elevation data: network error')).toBeVisible();
         await profilePanel().getByRole('button', { name: 'Retry' }).click();
         await expect.poll(() => stat('distance')).toBe('1.00 km');

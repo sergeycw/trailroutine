@@ -1,13 +1,14 @@
-// Тайлы Tracestrack Topo — подложки по умолчанию приложения (слой Tt в web/src/layers/catalog.ts). Ключ API —
-// секрет Worker'а TRACESTRACK_KEY: в бандле и в адресе клиента его нет (design add-outdoor-basemap).
+// Tiles of Tracestrack Topo, the second basemap of the fallback chain Of → Tt → OSM (layer Tt in
+// web/src/layers/catalog.ts). The API key is the Worker secret TRACESTRACK_KEY: it is not in the bundle and not in the
+// client address (design add-outdoor-basemap).
 
 export const TRACESTRACK_HOST = 'tile.tracestrack.com';
 
-// Ключ тратится только на растр, который показывает приложение: topo_<язык> — подписи на языке браузера или английские
-// (tracestrackMap в web/src/layers/catalog.ts, тот же список языков — правка одного списка — правка обоих), topo__ — без
-// перевода, его запрашивают вкладки, открытые до design tracestrack-labels; @2x — тайл повышенной плотности того же
-// кредита. Векторные тайлы и API высот Tracestrack стоят по 6 кредитов, и через прокси с поддельным Origin их звали бы
-// чужие — такие адреса уходят без ключа.
+// The key is used only for the raster that the app shows: topo_<language> has labels in the browser language or in
+// English (tracestrackMap in web/src/layers/catalog.ts has the same language list: a change in one list is a change in
+// both), topo__ has no translation, tabs opened before design tracestrack-labels request it; @2x is a high-density tile
+// for the same credit. Vector tiles and the elevation API of Tracestrack cost 6 credits each, and other people could
+// request them through the proxy with a fake Origin, so such addresses go without the key.
 const LANGUAGES = [
     '_',
     'ar',
@@ -34,12 +35,12 @@ const LANGUAGES = [
 ];
 const TILE_PATH = new RegExp(`^/topo_(${LANGUAGES.join('|')})/\\d+/\\d+/\\d+(@2x)?\\.webp$`, 'u');
 
-// Без Cache-Control у ответа браузер перезапрашивал бы тайлы на каждом заходе, а каждый успешный тайл — кредит
-// бесплатной квоты (100 тыс. в месяц). Свой заголовок Tracestrack, если он есть, не трогаем.
+// Without Cache-Control in the response, the browser would request the tiles again on each visit, and each successful
+// tile is a credit of the free quota (100 thousand per month). Keep the own header of Tracestrack if it exists.
 const DEFAULT_CACHE_CONTROL = 'public, max-age=86400';
 
-// Только https на стандартный порт: /http/… или чужой порт с поддельным Origin увели бы ключ открытым текстом или
-// не туда
+// Only https on the standard port: /http/… or a different port with a fake Origin would send the key as plain text or
+// to a wrong place
 export function isTracestrackTile(target) {
     const url = new URL(target);
     return (
@@ -47,7 +48,8 @@ export function isTracestrackTile(target) {
     );
 }
 
-// Запрос клиента после пути отбрасывается целиком: в нём мог оказаться чужой key, а другие параметры тайлу не нужны
+// The proxy drops all of the client query after the path: it can contain a foreign key, and the tile needs no other
+// parameters
 export function withKey(target, key) {
     const url = new URL(target);
     url.search = '';
@@ -55,8 +57,9 @@ export function withKey(target, key) {
     return url.href;
 }
 
-// Заголовки ответа на тайл — по белому списку: что Tracestrack кладёт в остальные (Link, Content-Location, отладочные),
-// без ключа не проверить, а ключ в них ушёл бы клиенту. Location прокси ставит сам (withoutKey)
+// The headers of a tile response go through an allowlist: without the key it is not possible to check what Tracestrack
+// puts into the other headers (Link, Content-Location, debug headers), and the key in them would go to the client. The
+// proxy sets Location itself (withoutKey)
 const RESPONSE_HEADERS = ['content-type', 'cache-control', 'etag', 'last-modified', 'expires'];
 
 export function responseHeaders(upstream) {
@@ -73,13 +76,13 @@ export function responseHeaders(upstream) {
     return headers;
 }
 
-// Тело ошибки Tracestrack клиенту не уходит: текст вида «key … exceeded quota» мог бы повторить ключ. Клиенту хватает
-// статуса — по нему он откатывается на OSM
+// The error body of Tracestrack does not go to the client: a text like «key … exceeded quota» could repeat the key. The
+// status is sufficient for the client: it falls back to OSM by the status
 export function errorBody(status) {
     return `Tracestrack error ${status}\n`;
 }
 
-// Location ответа на тайл уходит клиенту через прокси — без ключа
+// The Location of a tile response goes to the client through the proxy, without the key
 export function withoutKey(absoluteUrl) {
     const url = new URL(absoluteUrl);
     url.searchParams.delete('key');

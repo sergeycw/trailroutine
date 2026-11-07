@@ -3,12 +3,12 @@ import type { LatLng } from '@/tracks/model';
 import { ARC_UNIT, saveNktk } from '@/tracks/nktk';
 import { legacyRoute, legacySessionTracks } from './legacy-session';
 
-// Точки на сетке nktk, как их хранила строка трека сессии старого клиента
+// Points on the nktk grid, as the track string of an old client session kept them
 const grid = (lat: number, lng: number): LatLng => ({
     lat: Math.round(lat * ARC_UNIT) / ARC_UNIT,
     lng: Math.round(lng * ARC_UNIT) / ARC_UNIT,
 });
-// routeMarkupKey старого клиента
+// routeMarkupKey of the old client
 const key = ({ lat, lng }: LatLng) => `${Math.round(lat * ARC_UNIT)},${Math.round(lng * ARC_UNIT)}`;
 
 const A = grid(41.69, 44.77);

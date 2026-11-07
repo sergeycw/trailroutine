@@ -1,10 +1,10 @@
 import { normalizeColor, parseHex } from './color';
 
-// Недавние свои цвета палитры (design track-color-picker, «Недавние цвета»): удобство одного браузера, не данные трека.
-// Хранилище может быть недоступно (приватное окно, запрет сайта) — тогда в строке палитры только готовые цвета.
+// Recent custom palette colors (design track-color-picker, «Недавние цвета»): local to one browser, not track data.
+// The storage can be unavailable (a private window, a site block): then the palette row has only the preset colors.
 
 const KEY = 'nakarte-web:recent-colors';
-// три: в строке палитры из шести всегда остаются три первых готовых цвета (design palette-one-row)
+// three: the palette row of six always keeps the first three preset colors (design palette-one-row)
 export const RECENT_COLORS_LIMIT = 3;
 
 export function readRecentColors(): string[] {
@@ -22,7 +22,7 @@ export function readRecentColors(): string[] {
     }
 }
 
-// Свежий цвет первым, без повторов; цвета палитры сюда не попадают — они и так в строке палитры
+// The newest color first, without repeats; palette colors do not go here: they are in the palette row already
 export function rememberColor(hex: string): void {
     if (typeof normalizeColor(hex) !== 'string') {
         return;
@@ -31,6 +31,6 @@ export function rememberColor(hex: string): void {
         const colors = [hex, ...readRecentColors().filter((color) => color !== hex)].slice(0, RECENT_COLORS_LIMIT);
         window.localStorage.setItem(KEY, JSON.stringify(colors));
     } catch {
-        // без хранилища недавних нет
+        // without a storage, there are no recent colors
     }
 }

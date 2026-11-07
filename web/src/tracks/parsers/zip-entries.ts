@@ -1,8 +1,8 @@
 import { unzipSync } from 'fflate';
 
-// Записи ZIP с именами в правильной кодировке. fflate раскодирует имя без флага UTF-8 (бит 11) как Latin-1, а архивы
-// Windows с кириллицей пишут имена в CP866 (как decode866 старого клиента). Флаг берётся из центрального каталога:
-// fflate вызывает filter в порядке его записей, флаги читаются тем же проходом.
+// ZIP entries with names in the correct encoding. fflate decodes a name without the UTF-8 flag (bit 11) as Latin-1, but
+// Windows archives with Cyrillic names write them in CP866 (as decode866 of the old client). The flag comes from the
+// central directory: fflate calls filter in the order of its entries, and the same pass reads the flags.
 
 export interface ZipEntry {
     name: string;
@@ -43,7 +43,7 @@ function looksLikeZip(bytes: Uint8Array) {
     return bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 0x03 && bytes[3] === 0x04;
 }
 
-// null — не ZIP или архив не читается (метод сжатия кроме stored/deflate, обрезанный файл)
+// null: not a ZIP, or the archive cannot be read (a compression method other than stored/deflate, a truncated file)
 export function unzip(bytes: Uint8Array): ZipEntry[] | null {
     if (!looksLikeZip(bytes)) {
         return null;
@@ -62,7 +62,7 @@ export function unzip(bytes: Uint8Array): ZipEntry[] | null {
         return null;
     }
     return names.map((raw, i) => ({
-        // ZIP64 и прочие архивы, где каталог не прочитался, — имена как отдал fflate
+        // ZIP64 and other archives where the directory was not read: names as fflate gave them
         name: flags && !flags[i] ? new TextDecoder('ibm866').decode(Uint8Array.from(raw, (c) => c.charCodeAt(0))) : raw,
         data: files[raw],
     }));

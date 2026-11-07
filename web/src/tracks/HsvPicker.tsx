@@ -2,11 +2,12 @@ import { type KeyboardEvent, type PointerEvent, useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { type Hsv, hexToHsv, hsvToHex, parseHex } from './color';
 
-// Пикер своего цвета под палитрой (design track-color-picker, «Пикер: своя вёрстка»): квадрат насыщенности и яркости,
-// полоса оттенка, поле hex. Состояние — HSV, а не hex: на чёрном и сером оттенок иначе терялся бы. Наружу цвет уходит
-// (onCommit) в конце перетаскивания, по отпусканию стрелки и по вводу hex: пока тянут или держат стрелку, меняются только
-// ручка, образец и поле — каждое изменение трека пересобирает GeoJSON всех треков и пишет автосохранение. Показанный, но не
-// применённый цвет (набранный hex без Enter) уходит в onDraft: палитра применяет его при закрытии.
+// Custom color picker under the palette (design track-color-picker, «Пикер: своя вёрстка»): a saturation and value
+// square, a hue bar, a hex field. The state is HSV, not hex: otherwise the hue would be lost on black and gray. The
+// color goes out (onCommit) at the end of a drag, on an arrow key release and on hex input: while the user drags or
+// holds an arrow key, only the handle, the sample and the field change, because each track change builds the GeoJSON
+// of all tracks again and writes autosave. A color that is shown but not applied (a typed hex without Enter) goes to
+// onDraft: the palette applies it on close.
 
 const HUE_GRADIENT = 'linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)';
 
@@ -14,7 +15,7 @@ function clamp(value: number, max: number): number {
     return Math.min(max, Math.max(0, value));
 }
 
-// Доля 0–1 положения указателя в элементе по каждой оси
+// Fraction 0–1 of the pointer position in the element on each axis
 function fraction(event: PointerEvent<HTMLElement>): { x: number; y: number } {
     const rect = event.currentTarget.getBoundingClientRect();
     return {
@@ -23,9 +24,10 @@ function fraction(event: PointerEvent<HTMLElement>): { x: number; y: number } {
     };
 }
 
-// Перетаскивание мышью и пальцем одним кодом: захват указателя держит движение за элементом и за краем поповера.
-// Захват может не взяться (указатель уже не активен) или потеряться: тогда конец — по lostpointercapture или по первому
-// движению без нажатой кнопки, иначе цвет ездил бы за мышью без нажатия.
+// Drag with a mouse and a finger with one code: pointer capture keeps the movement when the pointer goes outside the
+// element and past the popover edge. The capture can fail (the pointer is no longer active) or get lost: then the end
+// comes on lostpointercapture or on the first movement without a pressed button, otherwise the color would follow the
+// mouse without a press.
 function useDrag(move: (event: PointerEvent<HTMLElement>) => void, end: () => void) {
     const dragging = useRef(false);
     const finish = () => {
@@ -44,7 +46,7 @@ function useDrag(move: (event: PointerEvent<HTMLElement>) => void, end: () => vo
             try {
                 event.currentTarget.setPointerCapture(event.pointerId);
             } catch {
-                // указатель не активен: без захвата
+                // the pointer is not active: no capture
             }
             move(event);
         },
@@ -64,7 +66,7 @@ function useDrag(move: (event: PointerEvent<HTMLElement>) => void, end: () => vo
     };
 }
 
-// Шаг стрелки — 1, с Shift — 10; null — клавиша не стрелка
+// Arrow step is 1, with Shift 10; null means the key is not an arrow
 function arrowStep(event: KeyboardEvent): { x: number; y: number } | null {
     const step = event.shiftKey ? 10 : 1;
     const steps: Record<string, { x: number; y: number }> = {
@@ -83,15 +85,15 @@ export function HsvPicker({
 }: {
     color: string;
     onCommit: (hex: string) => void;
-    // цвет, который пикер показывает, но ещё не применил; null — применять нечего
+    // the color that the picker shows but did not apply yet; null means there is nothing to apply
     onDraft: (hex: string | null) => void;
 }) {
     const [hsv, setHsv] = useState<Hsv>(() => hexToHsv(color));
     const [text, setText] = useState(color);
     const [source, setSource] = useState(color);
     const latest = useRef(hsv);
-    // цвет трека сменился снаружи (готовый цвет, другой трек): пикер встаёт на него; свой же применённый цвет HSV не
-    // трогает — иначе оттенок чёрного или серого сбросился бы
+    // the track color changed from outside (a preset color, another track): the picker moves to it; the picker's own
+    // applied color does not change HSV, otherwise the hue of black or gray would reset
     if (source !== color) {
         setSource(color);
         setText(color);
@@ -134,14 +136,14 @@ export function HsvPicker({
         event.preventDefault();
         show({ ...latest.current, h: clamp(latest.current.h + step.x + step.y, 360) });
     };
-    // стрелку применяет отпускание: удержание с автоповтором не пишет трек на каждый шаг
+    // the key release applies the arrow step: holding with auto-repeat does not write the track on each step
     const onArrowUp = (event: KeyboardEvent) => {
         if (arrowStep(event)) {
             commit();
         }
     };
 
-    // Неверный hex при Enter или уходе из поля возвращает цвет трека
+    // An invalid hex on Enter or on leaving the field brings back the track color
     const commitText = () => {
         const hex = parseHex(text);
         if (!hex) {
@@ -184,7 +186,7 @@ export function HsvPicker({
                     style={{ left: `${hsv.s}%`, top: `${100 - hsv.v}%`, backgroundColor: current }}
                 />
             </div>
-            {/* полоса 14 px, а зона нажатия — 24 px по высоте: по тонкой полосе трудно попасть пальцем */}
+            {/* the bar is 14 px, but the press area is 24 px high: a thin bar is hard to hit with a finger */}
             <div
                 role="slider"
                 tabIndex={0}

@@ -158,7 +158,7 @@ describe('CORS', () => {
         expect(response.headers.get('Access-Control-Allow-Credentials')).toBe('true');
     });
 
-    // свой домен после переезда (change move-to-trailroutine-domain): с него приложение читает перенесённые данные
+    // the own domain after the move (change move-to-trailroutine-domain): the app reads the moved data from it
     it('reflects the own domain trailroutine.com', async () => {
         const body = 'ownDomainTrack';
         await postTrack(clientKey(body), body);
@@ -189,7 +189,8 @@ describe('CORS', () => {
         expect(await env.TRACKS.head(`tracks/${key}`)).toBeNull();
     });
 
-    // dev-сервер приложения web/ и vite preview разрешены, порты старого клиента — нет (change retire-old-client-services)
+    // the dev server of the web/ app and vite preview are allowed, the ports of the old client are not
+    // (change retire-old-client-services)
     it.each(['http://localhost:8769', 'http://localhost:4173'])('reflects the local app origin %s', async (origin) => {
         const response = await request(`/track/${clientKey('local')}`, {origin});
         expect(response.status).toBe(404);
@@ -220,7 +221,7 @@ describe('client compatibility', () => {
 });
 
 describe('rate limit', () => {
-    // в vitest.config.js лимит понижен до 3 запросов за 60 с
+    // vitest.config.js lowers the limit to 3 requests per 60 s
     const KEY = 'AAAAAAAAAAAAAAAAAAAAAA';
     function fromIp(ip, options = {}) {
         return request(`/track/${KEY}`, {...options, headers: {'CF-Connecting-IP': ip, ...options.headers}});
@@ -240,7 +241,7 @@ describe('rate limit', () => {
     });
 
     it('answers 429 to writes over their own limit while the common limit is not spent', async () => {
-        // в vitest.config.js лимит записей — 2 за 60 с, общий — 3: третий POST укладывается в общий
+        // vitest.config.js: the write limit is 2 per 60 s, the common limit is 3; the third POST fits the common limit
         const body = 'writeLimitTrack';
         const headers = {'CF-Connecting-IP': '192.0.2.4'};
         expect((await postTrack(clientKey(body), body, {headers})).status).toBe(200);

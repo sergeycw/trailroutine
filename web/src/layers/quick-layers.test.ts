@@ -9,7 +9,8 @@ import {
     rememberQuickLayer,
 } from './quick-layers';
 
-// Группы столбца справа и память кругов (design quick-layer-menus). Названия describe — требования спеки map-layers.
+// The groups of the right column and the circle memory (design quick-layer-menus). The describe titles are
+// requirements of the spec map-layers.
 
 const catalog = buildCatalog({ pixelRatio: 1, language: 'en', corsProxyUrl: 'https://proxy.test/' });
 const byCode = new Map(catalog.map((layer) => [layer.code, layer]));
@@ -20,7 +21,7 @@ describe('Меню слоёв столбца', () => {
         const codes = QUICK_BASE_GROUPS.flatMap((group) => group.codes);
         expect(new Set(codes).size).toBe(codes.length);
         expect(codes.filter((code) => byCode.get(code)?.isOverlay !== false)).toEqual([]);
-        // новая подложка каталога без группы валит тест: решение «в какой круг» не теряется
+        // a new catalog basemap without a group fails the test: the decision "which circle" does not get lost
         const bases = catalog.filter((layer) => !layer.isOverlay && !layer.dated).map((layer) => layer.code);
         expect([...bases].sort()).toEqual([...codes].sort());
     });
@@ -51,9 +52,9 @@ describe('Круг помнит выбор типа', () => {
         const menu = satellite.codes;
         expect(quickTarget(satellite, {}, undefined, menu)).toBe('E');
         expect(quickTarget(satellite, { E: 'I' }, undefined, menu)).toBe('I');
-        // отмеченный круг остаётся на текущем слое, даже если запомнен другой
+        // the marked circle stays on the current layer, even if another layer is remembered
         expect(quickTarget(satellite, { E: 'I' }, 'L', menu)).toBe('L');
-        // запомненного нет в меню (снят в Configure layers) — первый слой группы
+        // the remembered layer is not in the menu (unchecked in Configure layers): the first layer of the group
         expect(quickTarget(satellite, { E: 'I' }, undefined, ['E', 'L', 'S2'])).toBe('E');
         expect(quickTarget(topo, { E: 'I' }, undefined, topo.codes)).toBe('Of');
         expect(quickTarget(maps, { G: 'P' }, undefined, maps.codes)).toBe('P');

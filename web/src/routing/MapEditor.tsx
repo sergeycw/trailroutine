@@ -18,38 +18,40 @@ import type { End } from './editor';
 import { legPath } from './line';
 import { type LinePlace, placePoint, shortcutRemoved, toolOrigin } from './line-tools';
 
-// События карты для редактора (design add-web-route-editor, «События карты»). Компонент внутри <Map>: обработчики
-// MapLibre и document вешаются один раз, текущее состояние читается из стора в момент события.
+// Map events for the editor (design add-web-route-editor, «События карты»). The component is inside <Map>: the MapLibre
+// and document handlers are attached one time, and the current state is read from the store at the time of the event.
 //
-// - клик: опорная точка (крайняя начинает рисование от своего конца, последняя поставленная заканчивает его), при
-//   рисовании — новая точка (Alt — прямой отрезок), без рисования — по линии трека начать редактирование, мимо линии
-//   закончить;
-// - нажатие на опорную точку — перетаскивание, на линию (не при рисовании) — вставка точки и её перетаскивание;
-//   preventDefault у mousedown/touchstart MapLibre выключает панораму карты на этот жест (ui/handler/map_event.ts);
-// - двойной клик по опорной точке — удаление, preventDefault гасит зум;
-// - клавиши на keydown: на macOS, пока зажат Cmd, keyup других клавиш не приходит (docs/architecture/route-editor.md, «История»);
-// - превью перетаскивания и резинка — setData источника превью мимо стиля (edit-style.ts);
-// - инструменты линии и точки трека (design add-web-line-tools): правый клик и долгое нажатие открывают меню, клик по
-//   точке трека — меню точки, выбор Join и Shortcut и режимы точек забирают клики по карте себе.
+// - click: on a waypoint (an end waypoint starts drawing from its end, the last placed waypoint ends drawing); while
+//   drawing, a new point (Alt: a straight leg); without drawing, a click on a track line starts editing, a click past
+//   the line ends editing;
+// - a press on a waypoint starts a drag; a press on the line (not while drawing) inserts a point and drags it;
+//   preventDefault on mousedown/touchstart turns off MapLibre map panning for this gesture (ui/handler/map_event.ts);
+// - a double click on a waypoint removes it, preventDefault stops the zoom;
+// - keys on keydown: on macOS, while Cmd is down, other keys send no keyup (docs/architecture/route-editor.md,
+//   «History»);
+// - the drag preview and the rubber band: setData of the preview source past the style (edit-style.ts);
+// - line tools and track points (design add-web-line-tools): a right click and a long press open the menu, a click on
+//   a track point opens the point menu, the Join and Shortcut choice and the point modes take the map clicks.
 
-// допуск попадания по точке и линии, px: кружок опорной точки — радиус 6 + обводка 2; по линии для вставки — 7 px в
-// обе стороны от тонкой линии редактора
+// hit tolerance for a point and a line, px: the waypoint circle is radius 6 + outline 2; on the line for an insertion,
+// 7 px to both sides of the thin editor line
 const HIT_RADIUS = 9;
 const LINE_HIT = 7;
-// после касания браузер присылает совместимые mousedown/mouseup/click: mousedown в это время — эхо тапа, а не жест
+// after a touch, the browser sends compatibility mousedown/mouseup/click: a mousedown at this time is an echo of the
+// tap, not a gesture
 const TOUCH_ECHO_MS = 800;
-// клик сразу после перетаскивания или вставки — конец того же жеста
+// a click immediately after a drag or an insertion is the end of the same gesture
 const CLICK_AFTER_GESTURE_MS = 400;
-// долгое нажатие пальцем — меню; сдвиг больше DRAG_THRESHOLD px до него — перетаскивание (design add-web-line-tools,
-// «Меню на карте»: contextmenu на телефоне ненадёжен, iOS Safari его не шлёт)
+// a long finger press opens the menu; a move of more than DRAG_THRESHOLD px before it starts a drag (design
+// add-web-line-tools, «Меню на карте»: contextmenu on a phone is not reliable, iOS Safari does not send it)
 const LONG_PRESS_MS = 500;
 const DRAG_THRESHOLD = 3;
 const MAC = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform);
 
 export type EditorKey = 'undo' | 'redo' | 'backspace' | 'escape' | 'enter';
 
-// Хоткеи редактора по event.code — от раскладки не зависят. В полях ввода, меню и окнах редактор клавиши не трогает;
-// Enter — только на карте или без фокуса: на кнопке в фокусе Enter — нажатие этой кнопки.
+// Editor hotkeys by event.code: they do not depend on the keyboard layout. In input fields, menus and dialogs the
+// editor does not touch keys; Enter works only on the map or without focus: on a focused button, Enter presses it.
 export function editorKey(event: KeyboardEvent, map?: HTMLElement): EditorKey | null {
     if (event.defaultPrevented) {
         return null;
@@ -95,9 +97,9 @@ function sqDistToSegment(p: ScreenPoint, a: ScreenPoint, b: ScreenPoint): number
     return (p.x - a.x - dx * t) ** 2 + (p.y - a.y - dy * t) ** 2;
 }
 
-// Попадание по опорной точке и отрезку для кликов и нажатий считается по линии из стора, а не по отрисованному кадру:
-// данные источника доходят до кадра через воркер MapLibre, и быстрый второй клик по только что поставленной точке
-// queryRenderedFeatures ещё не видит.
+// A hit on a waypoint and a leg for clicks and presses is calculated from the line in the store, not from the drawn
+// frame: the source data gets to the frame through the MapLibre worker, and on a fast second click
+// queryRenderedFeatures does not see a new point yet.
 function waypointAt(map: MaplibreMap, edit: RouteEditState, point: ScreenPoint): number | null {
     let best: number | null = null;
     let bestDistance = HIT_RADIUS ** 2;
@@ -131,7 +133,7 @@ function legAt(map: MaplibreMap, edit: RouteEditState, point: ScreenPoint): numb
     return best;
 }
 
-// Курсор при наведении — по отрисованному кадру: дёшево (пространственный индекс), а отставание на кадр незаметно
+// The hover cursor uses the drawn frame: it is cheap (a spatial index), and a lag of one frame is not visible
 function waypointUnderCursor(map: MaplibreMap, point: ScreenPoint): boolean {
     const box: [PointLike, PointLike] = [
         [point.x - HIT_RADIUS, point.y - HIT_RADIUS],
@@ -149,7 +151,8 @@ function hitTrack(map: MaplibreMap, point: ScreenPoint): { trackId: string; segm
     return feature ? { trackId: feature.properties.id as string, segment: feature.properties.segment as number } : null;
 }
 
-// Точка трека под курсором — по отрисованному кадру, как линии треков: номер точки — свойство фичи (tracks/style.ts)
+// Track point under the cursor: by the drawn frame, as track lines; the point index is a feature property
+// (tracks/style.ts)
 function trackPointAt(
     map: MaplibreMap,
     store: AppStore,
@@ -167,15 +170,15 @@ function trackPointAt(
     const found = store.getState().tracks.find((track) => track.id === trackId)?.points[
         feature.properties.index as number
     ];
-    // кадр мог отстать от стора (точку только что удалили, номера сдвинулись): под номером должна быть та же точка
+    // the frame can be behind the store (a point was just removed, indexes shifted): the index must have the same point
     const [lng, lat] = (feature.geometry as Point).coordinates;
     const same =
         found && found.name === feature.properties.name && Math.abs(found.lat - lat) + Math.abs(found.lng - lng) < 1e-5;
     return same ? { trackId, point: found } : null;
 }
 
-// Точка в той копии мира, что ближе к опорной (wrapLatLngToTarget старого клиента): MapLibre рисует копии мира, и
-// клик по соседней копии иначе дал бы скачок линии через весь мир
+// The point in the world copy that is nearer to the reference point (wrapLatLngToTarget of the old client): MapLibre
+// draws world copies, and otherwise a click on a neighbor copy would make the line jump across the whole world
 export function nearTo(latlng: LatLng, reference: LatLng | undefined): LatLng {
     if (!reference) {
         return latlng;
@@ -192,7 +195,7 @@ function editColor(store: AppStore): string {
     return trackColor(tracks.find((track) => track.id === routeEdit?.trackId)?.color);
 }
 
-// радиус поиска панорамы по клику — 24 px экрана в метрах (onMapClick контрола панорам старого клиента)
+// panorama search radius on a click: 24 screen px in meters (onMapClick of the panorama control of the old client)
 const PANORAMA_SEARCH_PX = 24;
 
 function bind(
@@ -207,11 +210,11 @@ function bind(
     let lastTouch = Number.NEGATIVE_INFINITY;
     let touching = false;
     let dragging = false;
-    // на это касание редактор взвёл своё долгое нажатие (палец на опорной точке или на отрезке): contextmenu MapLibre
-    // на тот же жест не нужен — оба таймера по 500 мс. Сбрасывается с концом касания.
+    // the editor set its own long press for this touch (a finger on a waypoint or on a leg): the MapLibre contextmenu
+    // for the same gesture is not necessary, both timers are 500 ms. It resets at the end of the touch.
     let ownLongPress = false;
 
-    // место на редактируемой линии под точкой экрана: опорная точка или отрезок
+    // the place on the edited line under the screen point: a waypoint or a leg
     function placeAt(edit: RouteEditState, point: ScreenPoint, latlng: LatLng): LinePlace | null {
         const index = waypointAt(map, edit, point);
         if (index !== null) {
@@ -221,8 +224,8 @@ function bind(
         return leg === null ? null : { leg, latlng: nearTo(latlng, edit.line.waypoints[leg]) };
     }
 
-    // Что под меню: опорная точка или отрезок редактируемой линии, точка трека, линия трека (её редактирование
-    // начинается). null — меню нет.
+    // What is under the menu: a waypoint or a leg of the edited line, a track point, a track line (its editing starts).
+    // null: no menu.
     function menuTarget(point: ScreenPoint, latlng: LatLng): MenuTarget | null {
         let edit = state().routeEdit;
         const place = edit && placeAt(edit, point, latlng);
@@ -290,7 +293,8 @@ function bind(
             return;
         }
         dragging = true;
-        // линия в начале жеста: finish сверяет с ней (объявление функции поднимается, и сужение edit туда не доходит)
+        // the line at the start of the gesture: finish compares with it (the function declaration is hoisted, and the
+        // narrowing of edit does not reach it)
         const { trackId, segment, revision } = edit;
         const { waypoints } = edit.line;
         const role = waypointRole(index, waypoints.length);
@@ -299,7 +303,7 @@ function bind(
         let latlng = origin;
         let moved = false;
         const canvas = map.getCanvasContainer();
-        // палец на опорной точке без сдвига — меню точки, а не перетаскивание
+        // a finger on a waypoint without a move opens the point menu, not a drag
         if (touch && !inserted) {
             ownLongPress = true;
         }
@@ -321,7 +325,7 @@ function bind(
                 return;
             }
             if (!moved) {
-                // точка и её отрезки уходят из источников линии — их рисует превью
+                // the point and its legs leave the line sources: the preview draws them
                 state().setRouteDrag(index);
             }
             moved = true;
@@ -355,9 +359,9 @@ function bind(
             dragging = false;
             setPreview(null);
             state().setRouteDrag(null);
-            // за время жеста линию не правили: undo с клавиатуры клавиши редактора во время перетаскивания не пускают —
-            // проверка на всякий случай. Сверка по номеру правки, а не по точке: ответ роутера может сдвинуть эту же
-            // точку в поворот (ус у поворота, spur.ts), и перетаскивание тогда пропало бы
+            // the line was not edited during the gesture: the editor keys do not let a keyboard undo through during a
+            // drag, so this is a check just in case. The check uses the edit number, not the point: a router response
+            // can move this same point to a turn (a spur at a turn, spur.ts), and then the drag would be lost
             const now = state().routeEdit;
             if (moved && now?.trackId === trackId && now.segment === segment && now.revision === revision) {
                 editing.moveWaypoint(index, latlng);
@@ -376,13 +380,14 @@ function bind(
         }
     }
 
-    // Меню после долгого нажатия. Отпускание пальца — конец того же жеста: preventDefault у touchend гасит совместимые
-    // mousedown/click, которые браузер иначе пришлёт после касания, — mousedown меню Base UI считает нажатием снаружи
-    // и закрывается (useDismiss, outsidePressEvent 'sloppy'), а click карты поставил бы точку.
+    // The menu after a long press. A finger lift is the end of the same gesture: preventDefault on touchend stops the
+    // compatibility mousedown/click that the browser otherwise sends after a touch. The Base UI menu takes that
+    // mousedown as a press outside and closes (useDismiss, outsidePressEvent 'sloppy'), and the map click would place a
+    // point.
     function menuAfterLongPress(open: () => void) {
         setPreview(null);
         open();
-        // жест может кончиться touchcancel: тогда слушатель touchend снимается, иначе он погасил бы следующий тап
+        // the gesture can end with touchcancel: then the touchend listener is removed, else it would stop the next tap
         const onEnd = (event: TouchEvent) => {
             window.removeEventListener('touchend', onEnd);
             window.removeEventListener('touchcancel', onEnd);
@@ -395,8 +400,9 @@ function bind(
         window.addEventListener('touchcancel', onEnd);
     }
 
-    // Касание отрезка: точка вставляется не сразу, а при сдвиге пальца (вставка и перетаскивание) или при отпускании до
-    // LONG_PRESS_MS (тап — вставка, как мышью); долгое нажатие без сдвига — меню линии (design add-web-line-tools)
+    // A touch on a leg: the point is not inserted immediately, but when the finger moves (insertion and drag) or lifts
+    // before LONG_PRESS_MS (a tap is an insertion, as with a mouse); a long press without a move opens the line menu
+    // (design add-web-line-tools)
     function touchOnLeg(leg: number, latlng: LatLng, clientStart: ScreenPoint) {
         let done = false;
         ownLongPress = true;
@@ -444,7 +450,7 @@ function bind(
 
     function onDown(event: MapMouseEvent | MapTouchEvent, client: ScreenPoint, touch: boolean) {
         const edit = state().routeEdit;
-        // выбор на карте и режимы точек забирают клики себе, нажатие только двигает карту
+        // the map choice and the point modes take the clicks, a press only moves the map
         if (!edit || dragging || state().lineTool || state().pointTool || state().mapMenu) {
             return;
         }
@@ -454,7 +460,7 @@ function bind(
             startDrag(index, false, client, touch);
             return;
         }
-        // точка трека на линии: нажатие на неё точку линии не вставляет, иначе до меню точки не добраться
+        // a track point on the line: a press on it does not insert a line point, else the point menu is not reachable
         if (edit.drawing || trackPointAt(map, store, event.point)) {
             return;
         }
@@ -475,8 +481,8 @@ function bind(
     }
 
     const onMouseDown = (event: MapMouseEvent) => {
-        // Ctrl+клик на macOS — правый клик: mousedown приходит с button 0, и без этой проверки он вставил бы точку и
-        // начал перетаскивание, а contextmenu отбросился бы
+        // Ctrl+click on macOS is a right click: mousedown comes with button 0, and without this check it would insert a
+        // point and start a drag, and contextmenu would be dropped
         const macContextClick = event.originalEvent.ctrlKey && MAC;
         if (event.originalEvent.button !== 0 || macContextClick || performance.now() - lastTouch < TOUCH_ECHO_MS) {
             return;
@@ -499,14 +505,14 @@ function bind(
         ownLongPress = false;
     };
 
-    // Правый клик (contextmenu MapLibre): меню опорной точки, линии или точки трека; preventDefault у события браузера
-    // гасит его собственное меню. Во время касания contextmenu карты — долгое нажатие самого MapLibre (родное событие
-    // браузера при касании MapLibre гасит, ui/handler/map_event.ts); сразу после касания — эхо.
+    // Right click (MapLibre contextmenu): the menu of a waypoint, a line or a track point; preventDefault on the
+    // browser event stops its own menu. During a touch, the map contextmenu is the long press of MapLibre itself
+    // (MapLibre stops the native browser event on a touch, ui/handler/map_event.ts); right after a touch, an echo.
     const onContextMenu = (event: MapMouseEvent) => {
         const client = { x: event.originalEvent.clientX, y: event.originalEvent.clientY };
         if (touching) {
-            // долгое нажатие, которое посчитал сам MapLibre (палец на линии вне редактирования, на отрезке во время
-            // рисования): своего таймера у редактора на этот жест нет
+            // a long press that MapLibre counted itself (a finger on a line out of editing, on a leg during drawing):
+            // the editor has no own timer for this gesture
             event.originalEvent.preventDefault();
             if (!ownLongPress && !dragging && !state().pointTool && !state().lineTool) {
                 menuAfterLongPress(() => openMenu(event.point, lngLat(event), client));
@@ -525,7 +531,7 @@ function bind(
         }
     };
 
-    // Клик в режиме точек трека: поставить точку или перенести (createNewPoint, movePoint старого клиента)
+    // A click in the track point mode: place a point or move it (createNewPoint, movePoint of the old client)
     function pointToolClick(latlng: LatLng): boolean {
         const tool = state().pointTool;
         if (!tool) {
@@ -539,7 +545,7 @@ function bind(
         return true;
     }
 
-    // Join: ближний к клику конец отрезка по расстоянию (isPointCloserToStart старого клиента)
+    // Join: the segment end nearer to the click by distance (isPointCloserToStart of the old client)
     function nearerEnd(trackId: string, segment: number, latlng: LatLng): { end: End; point: LatLng } | null {
         const points = state().tracks.find((track) => track.id === trackId)?.segments[segment];
         const first = points?.[0];
@@ -552,7 +558,8 @@ function bind(
             : { end: 'end', point: last };
     }
 
-    // Клик при выборе Join или Shortcut; клик мимо — отмена (map.on('click', hideLineCursor) старого клиента)
+    // A click in the Join or Shortcut choice; a click past the line cancels (map.on('click', hideLineCursor) of the old
+    // client)
     function lineToolClick(edit: RouteEditState, point: ScreenPoint, latlng: LatLng): boolean {
         const tool = state().lineTool;
         if (!tool) {
@@ -568,7 +575,7 @@ function bind(
             }
         } else {
             const place = placeAt(edit, point, latlng);
-            // место, после которого удалять нечего, — ничего, выбор продолжается
+            // a place after which there is nothing to remove: nothing happens, the choice continues
             if (!place) {
                 editing.cancelTool();
             } else {
@@ -583,16 +590,17 @@ function bind(
         if (performance.now() < suppressClickUntil || state().mapMenu) {
             return;
         }
-        // клик рисования, постановки точек и выбора Join/Shortcut занят редактором (design add-web-search-panoramas)
+        // drawing, point placing and Join/Shortcut choice clicks belong to the editor (design add-web-search-panoramas)
         const busy = Boolean(state().routeEdit?.drawing || state().pointTool || state().lineTool);
-        // клик по карте мимо метки поиска её снимает (onMapClick метки старого), но не занятый клик: к метке ведут
-        // линию (design add-web-search-panoramas, «Метка»); клик по самой метке сюда не доходит
+        // a map click past the search placemark removes it (onMapClick of the old placemark), but not a busy click: the
+        // user draws a line to the placemark (design add-web-search-panoramas, «Метка»); a click on the placemark
+        // itself does not come here
         if (state().placemark && !busy) {
             state().setPlacemark(null);
         }
-        // режим Street View: свободный клик ищет панораму, а редактор дальше работает как обычно — как два независимых
-        // обработчика клика старого клиента («Street View: режим, клик, окно»)
-        // клик по точке трека (меню) или опорной точке занят ими
+        // Street View mode: a free click searches for a panorama, and the editor works as usual, as the two independent
+        // click handlers of the old client do («Street View: режим, клик, окно»)
+        // a click on a track point (menu) or on a waypoint belongs to them
         const onPoint =
             trackPointAt(map, store, event.point) !== null ||
             (state().routeEdit !== null && waypointAt(map, state().routeEdit as RouteEditState, event.point) !== null);
@@ -614,7 +622,7 @@ function bind(
             const last = edit.line.waypoints.length - 1;
             if (index !== null) {
                 if (edit.drawing) {
-                    // клик по последней поставленной точке заканчивает рисование
+                    // a click on the last placed point ends drawing
                     if ((edit.drawing === 'end' && index === last) || (edit.drawing === 'start' && index === 0)) {
                         editing.stopDrawing();
                         setPreview(null);
@@ -631,7 +639,7 @@ function bind(
             if (edit.drawing) {
                 const anchor = edit.drawing === 'end' ? edit.line.waypoints.at(-1) : edit.line.waypoints[0];
                 editing.click(nearTo(lngLat(event), anchor), event.originalEvent.altKey);
-                // резинка теперь идёт от новой точки, а не от прежней
+                // the rubber band now goes from the new point, not from the previous one
                 rubberBand(lngLat(event));
                 return;
             }
@@ -653,7 +661,7 @@ function bind(
         }
     };
 
-    // меню точки трека — по клику (onMarkerClick старого клиента: и левый, и правый)
+    // the track point menu opens on a click (onMarkerClick of the old client: both left and right)
     function openPointMenu(target: { trackId: string; point: Waypoint }, event: MapMouseEvent) {
         editing.openMenu(event.originalEvent.clientX, event.originalEvent.clientY, { kind: 'point', ...target });
     }
@@ -671,7 +679,7 @@ function bind(
     };
 
     const onMouseMove = (event: MapMouseEvent) => {
-        // во время перетаскивания курсор и превью ведёт сам жест
+        // during a drag, the gesture itself controls the cursor and the preview
         if (dragging) {
             return;
         }
@@ -684,8 +692,8 @@ function bind(
         rubberBand(lngLat(event));
     };
 
-    // Превью выбора Join и Shortcut: линия от начала к курсору (над допустимым местом — зелёная и прилипает к нему),
-    // у Shortcut — ещё удаляемый участок
+    // Preview of the Join and Shortcut choice: a line from the start to the cursor (over a valid place it is green and
+    // snaps to the place), for Shortcut also the part to remove
     function toolPreview(edit: RouteEditState, point: ScreenPoint, cursor: LatLng) {
         const tool = state().lineTool;
         if (!tool) {
@@ -713,7 +721,7 @@ function bind(
     const onMouseOut = () => rubberBand(null);
 
     const onKeyDown = (event: KeyboardEvent) => {
-        // открытое меню карты клавиши забирает себе (Escape закрывает его, а не редактирование)
+        // an open map menu takes the keys (Escape closes it, not editing)
         if (state().mapMenu) {
             return;
         }
@@ -722,7 +730,7 @@ function bind(
             return;
         }
         const edit = state().routeEdit;
-        // во время перетаскивания линия не меняется с клавиатуры: номер перетаскиваемой точки должен остаться верным
+        // during a drag the keyboard does not change the line: the index of the dragged point must stay correct
         const key = edit && !dragging ? editorKey(event, map.getContainer()) : null;
         if (!key) {
             return;
@@ -745,8 +753,8 @@ function bind(
         event.preventDefault();
     };
 
-    // Escape (и Enter у выбора на карте) выходит из режима точек и выбора Join/Shortcut; остальные клавиши редактора
-    // во время выбора не действуют: правка линии сдвинула бы номер точки, от которой он идёт
+    // Escape (and Enter during the map choice) leaves the point mode and the Join/Shortcut choice; the other editor
+    // keys do not work during the choice: a line edit would shift the index of the point that the choice starts from
     function toolKey(event: KeyboardEvent): boolean {
         const { lineTool, pointTool, routeEdit } = state();
         if (!lineTool && !pointTool) {
@@ -767,8 +775,8 @@ function bind(
         return false;
     }
 
-    // курсор следует за состоянием: рисование, инструменты. Ожидание маршрутов курсор не меняет — его показывает бейдж
-    // у указателя (RoutingBadgeOnMap, design route-thread-loader)
+    // the cursor follows the state: drawing, tools. Route waits do not change the cursor: the badge at the pointer
+    // shows them (RoutingBadgeOnMap, design route-thread-loader)
     const unsubscribe = store.subscribe((next, prev) => {
         if (next.lineTool !== prev.lineTool && !next.lineTool) {
             setPreview(null);

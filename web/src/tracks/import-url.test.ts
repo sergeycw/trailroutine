@@ -5,8 +5,8 @@ import type { GeoData } from './model';
 import { saveNktk } from './nktk';
 import { type FakeResponse, fakeSources, viaTestProxy } from './test-sources';
 
-// Ссылки и ожидания — testcases старого клиента (fixtures/services/expected/), ответы сервисов записаны 2026-10-08
-// (fixtures/README.md). Старый тест ходил в живые сервисы; здесь сеть подставная.
+// Links and expectations are testcases of the old client (fixtures/services/expected/), service responses were
+// recorded on 2026-10-08 (fixtures/README.md). The old test went to live services; here the network is fake.
 
 const EXPECTED = import.meta.glob<{ query: string[]; geodata: ExpectedGeoData[] }>(
     './fixtures/services/expected/*.json',
@@ -47,7 +47,7 @@ function serviceResponses(): Record<string, FakeResponse> {
         ['5f2d4cb86643bb7d5bdc599c', '5f2d4cb86643bb7d5bdc599c', 200, 200],
         ['5f2d7abe8fec9d7f9ce27b62', '5f2d7abe8fec9d7f9ce27b62', 200, 200],
         ['5f2d7bf6eefb8e23194d9d80', '5f2d7bf6eefb8e23194d9d80', 403, 403],
-        // несуществующие тренировки: записан ответ для первой, остальным — тот же
+        // workouts that do not exist: the response is recorded for the first one, the others get the same one
         ['5f2d4cb86643bb7d5bdc599', '5f2d4cb86643bb7d5bdc599', 200, 404],
         ['5f2d4cb86643bb7d5bdc5991', '5f2d4cb86643bb7d5bdc599', 200, 404],
         ['5f2d4cb86643bb7d5bdc59912', '5f2d4cb86643bb7d5bdc599', 200, 404],
@@ -75,7 +75,7 @@ function serviceResponses(): Record<string, FakeResponse> {
     return responses;
 }
 
-// Как reduceSegmentsPointsPrecision старого теста: координаты до 7 знаков
+// As reduceSegmentsPointsPrecision of the old test: coordinates to 7 decimal places
 function rounded(data: { name?: string; error?: string; segments: GeoData['segments']; points: GeoData['points'] }) {
     const round = ({ lat, lng }: { lat: number; lng: number }) => ({ lat: lat.toFixed(7), lng: lng.toFixed(7) });
     return {
@@ -178,7 +178,7 @@ describe('сценарии', () => {
 });
 
 describe('ссылка узнаётся без сети', () => {
-    // строка поиска зовёт matchTrackLink на каждую букву (design search-track-links): сеть — только в load
+    // the search box calls matchTrackLink on each letter (design search-track-links): the network is only in load
     test.each([
         ['https://yandex.ru/maps/?ll=44.8,41.7&rl=44.8%2C41.7~0.01%2C0.02', 'Yandex ruler', false],
         ['track://abc', 'Tracks from link', false],

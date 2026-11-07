@@ -11,8 +11,8 @@ function activity(id: string): Activity {
     return found;
 }
 
-// Сценарии спеки browser-routing-engine («Выбор движка флагом конфигурации») и routing («Недоступный роутер») на
-// подставных fetch и движке: в сеть тесты не ходят.
+// Scenarios of the spec browser-routing-engine («Выбор движка флагом конфигурации») and routing («Недоступный роутер»)
+// on a fake fetch and a fake engine: the tests do not go to the network.
 
 const FROM = { lat: 41.69, lng: 44.78 };
 const TO = { lat: 41.7, lng: 44.79 };
@@ -210,7 +210,7 @@ describe('Отмена', () => {
     });
 });
 
-// Спека routing, «Доступность и подсказка по движку»
+// Spec routing, «Доступность и подсказка по движку»
 describe('Доступность и подсказка по движку', () => {
     test('Серверный BRouter не запущен', () => {
         expect(routerDownHint('server')).toBe('BRouter is not running, start it with docker compose up -d');

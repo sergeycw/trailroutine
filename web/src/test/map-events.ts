@@ -5,8 +5,8 @@ import { page } from 'vitest/browser';
 import { EDIT_LEGS, EDIT_WAYPOINTS } from '@/routing/edit-style';
 import type { LatLng } from '@/tracks/model';
 
-// Мышь и клавиатура на настоящей карте MapLibre для browser-тестов редактора: синтетические события на холсте по
-// map.project — так их получает и MapLibre, и обработчики перетаскивания на window (design add-web-route-editor).
+// Mouse and keyboard on a real MapLibre map for the browser tests of the editor: synthetic events on the canvas at
+// map.project. So both MapLibre and the drag handlers on window get them (design add-web-route-editor).
 
 export const P = (lat: number, lng: number) => ({ lat, lng });
 
@@ -22,7 +22,7 @@ export const waypoints = (map: MaplibreMap) =>
     features<Point>(map, EDIT_WAYPOINTS).map((f) => P(f.geometry.coordinates[1], f.geometry.coordinates[0]));
 export const legs = (map: MaplibreMap) => features<LineString>(map, EDIT_LEGS);
 
-// карта дорисовала последние данные источников: без этого queryRenderedFeatures ещё не видит новые точки
+// the map has drawn the last data of the sources: before that, queryRenderedFeatures does not see the new points
 export function idle(map: MaplibreMap) {
     return new Promise<void>((resolve) => {
         map.once('idle', () => resolve());
@@ -30,9 +30,9 @@ export function idle(map: MaplibreMap) {
     });
 }
 
-// mousemove идёт вслед за pointermove мыши, как у настоящей мыши: по нему бейдж ожидания прокладки встаёт у указателя
-// (RoutingBadgeOnMap). pointerdown не шлётся: он на холсте закрывает список треков (TopBar), а тесты после кликов по
-// карте работают с открытым списком
+// mousemove comes after a mouse pointermove, as with a real mouse: on pointermove, the routing wait badge moves to the
+// pointer (RoutingBadgeOnMap). The function does not send pointerdown: on the canvas it closes the track list
+// (TopBar), and the tests use the open list after clicks on the map
 export function fire(map: MaplibreMap, type: string, at: LatLng, init: MouseEventInit = {}) {
     const rect = map.getCanvasContainer().getBoundingClientRect();
     const point = map.project([at.lng, at.lat]);
@@ -89,7 +89,7 @@ export function key(init: KeyboardEventInit, target: EventTarget = document.body
 
 export const pressEscape = () => key({ key: 'Escape', code: 'Escape' });
 
-// координаты синтетических событий мыши — целые пиксели: на этом зуме пиксель ≈ 0.00004°
+// the coordinates of synthetic mouse events are whole pixels: at this zoom, a pixel is ≈ 0.00004°
 export const near = (a: LatLng, b: LatLng) => Math.abs(a.lat - b.lat) < 1e-4 && Math.abs(a.lng - b.lng) < 1e-4;
 
 export async function newTrack(map: MaplibreMap, points: LatLng[]) {
@@ -103,8 +103,8 @@ export function editPanel() {
     return page.getByTestId('edit-panel');
 }
 
-// Правый клик: MapLibre шлёт событие карты contextmenu только после mousedown (BlockableMapEventHandler в
-// ui/handler/map_event.ts: без него contextmenu игнорируется, а на Mac откладывается до mouseup)
+// Right click: MapLibre sends the map event contextmenu only after mousedown (BlockableMapEventHandler in
+// ui/handler/map_event.ts: without mousedown it ignores contextmenu, and on Mac it delays contextmenu until mouseup)
 export async function rightClick(map: MaplibreMap, at: LatLng) {
     await idle(map);
     fire(map, 'mousemove', at);
@@ -114,7 +114,7 @@ export async function rightClick(map: MaplibreMap, at: LatLng) {
     await idle(map);
 }
 
-// Касание пальцем: синтетический TouchEvent на холсте по map.project, как мышь выше
+// Finger touch: a synthetic TouchEvent on the canvas at map.project, as the mouse above
 export function touch(map: MaplibreMap, type: 'touchstart' | 'touchmove' | 'touchend', at: LatLng) {
     const rect = map.getCanvasContainer().getBoundingClientRect();
     const point = map.project([at.lng, at.lat]);
@@ -136,7 +136,7 @@ export function touch(map: MaplibreMap, type: 'touchstart' | 'touchmove' | 'touc
     );
 }
 
-// долгое нажатие без сдвига: дольше LONG_PRESS_MS редактора (500 мс)
+// a long press without a move: longer than LONG_PRESS_MS of the editor (500 ms)
 export async function longPress(map: MaplibreMap, at: LatLng) {
     await idle(map);
     touch(map, 'touchstart', at);
@@ -156,7 +156,7 @@ export function mapMenu() {
     return page.getByTestId('map-menu');
 }
 
-// пункты открытого меню карты по порядку
+// the items of the open map menu in their order
 export async function menuItems(): Promise<string[]> {
     await expect.element(mapMenu()).toBeVisible();
     return mapMenu()

@@ -42,12 +42,13 @@ export function localStorageOrNull(): Storage | null {
     try {
         return window.localStorage;
     } catch {
-        // доступ к хранилищу запрещён (настройки сайта): приложение работает на умолчаниях
+        // the access to the storage is blocked (site settings): the app works with the defaults
         return null;
     }
 }
 
-// Заход без вида и без треков в адресе — на последнем положении пользователя (moveMapToCurrentLocation старого клиента)
+// A visit without a view and without tracks in the address starts at the last position of the user
+// (moveMapToCurrentLocation of the old client)
 function startsAtPosition(hash: string): boolean {
     const params = parseHash(hash);
     return !parseView(params.get('m')) && ![...params.keys()].some(isTrackParam);
@@ -72,24 +73,28 @@ function startStore(): AppStore {
 interface AppProps {
     transformRequest?: RequestTransformFunction;
     mapRef?: Ref<MapRef>;
-    // сеть треков (хранилище, прокси) и буфер обмена: browser-тесты подставляют свои, в сеть они не ходят
+    // the track network (storage, proxy) and the clipboard: the browser tests put in their own, and they do not use
+    // the network
     fetch?: typeof fetch;
     writeClipboard?: TrackActionsDeps['writeClipboard'];
-    // роутер прокладки: browser-тесты подставляют поддельный, по умолчанию — движок или сервер из config
+    // the router: the browser tests put in a fake one; by default, the engine or the server from config
     router?: Router;
-    // хранилище автосохранения треков: по умолчанию IndexedDB nakarte-web с подхватом последней сессии старого клиента
-    // (база sessions), null — без сохранения; browser-тесты подставляют своё, чтобы рендеры App в одной странице не видели
-    // чужих треков
+    // the autosave storage of the tracks: by default, IndexedDB nakarte-web that takes the last session of the old
+    // client (database sessions); null means no saves; the browser tests put in their own, so that renders of App on
+    // one page do not see the tracks of each other
     autosave?: AutosaveStorage | null;
-    // Street View: по умолчанию Maps JavaScript API Google; browser-тесты подставляют поддельное окно без сети
+    // Street View: by default, the Google Maps JavaScript API; the browser tests put in a fake window without the
+    // network
     streetView?: StreetViewApi;
     // error toast after the start: main.tsx passes the failed import of moved data (move/move-in.ts). The toast
     // manager has no listener before Toaster mounts, so the toast waits for an effect of App
     notice?: string | null;
 }
 
-// Высота нижних панелей — CSS-переменные на <html>: над профилем высот встаёт панорама (--profile-inset), над обеими —
-// панели редактора, атрибуция карты и тосты (--bottom-inset), а тосты Base UI рендерятся в портал вне <main>
+// The height of the bottom panels is in CSS variables on <html>: the panorama goes above the elevation profile
+// (--profile-inset); the profile button, the map attribution and the toasts go above both (--bottom-inset), and the
+// top bar with the editor panels (TopBar.tsx) limits its height by it. The variables are on <html>, because Base UI
+// renders the toasts into a portal outside <main>
 function BottomInset() {
     const profile = useAppStore((state) => state.profile !== null);
     const panorama = useAppStore((state) => state.streetView.enabled && state.streetView.pano !== null);
@@ -139,7 +144,8 @@ export function App({
     }, [notice]);
     const [store] = useState(startStore);
     const [atPosition] = useState(() => startsAtPosition(window.location.hash));
-    // откатывать ли подложку по ошибке её источника (layers/basemap-fallback.ts): помнит, какие подложки уже показали тайлы
+    // whether to fall back from a basemap on an error of its source (layers/basemap-fallback.ts): it remembers which
+    // basemaps already showed tiles
     const [fallbackGate] = useState(() => createFallbackGate());
     useEffect(() => {
         if (atPosition) {
@@ -167,9 +173,9 @@ export function App({
             restored: restored.promise,
         }),
     );
-    // Автосохранение — в эффекте, а не в инициализаторе: Strict Mode вызывает эффект дважды, и первый экземпляр
-    // останавливается до конца чтения, не добавив треков. restored отпускает треки из адреса только после чтения
-    // живого экземпляра (design add-web-autosave, «Восстановление и треки из адреса»).
+    // Autosave is in an effect, not in an initializer: Strict Mode calls the effect two times, and the first instance
+    // stops before the read ends, without adding tracks. restored lets in the tracks from the address only after the
+    // read of the live instance (design add-web-autosave, «Восстановление и треки из адреса»).
     useEffect(() => {
         if (!autosaveStorage) {
             restored.resolve();
@@ -192,7 +198,8 @@ export function App({
         document.addEventListener('visibilitychange', onHidden);
         return () => {
             active = false;
-            // размонтирование — как уход со страницы: несохранённое пишется (browser-тесты так «перезагружают» App)
+            // an unmount is like leaving the page: the code writes the unsaved changes (this is how the browser tests
+            // "reload" App)
             saving.flush();
             saving.stop();
             window.removeEventListener('pagehide', flush);
@@ -226,15 +233,16 @@ export function App({
         () => bindAppStore(store, window, localStorageOrNull(), trackActions.openTrackParams),
         [store, trackActions],
     );
-    // активность уже выбрана — движок прогревается при загрузке страницы (спека browser-routing-engine); движок —
-    // синглтон, повторный вызов в Strict Mode его не создаёт второй раз
+    // if an activity is already selected, the engine warms up at the page load (spec browser-routing-engine); the
+    // engine is a singleton, so a second call in Strict Mode does not create it again
     useEffect(() => routeEditing.warmUp(), [routeEditing]);
 
     function showTileError(code: string, status: number | undefined, tile: boolean) {
-        // подложка с откатом (OpenFreeMap Outdoor без SLA, Tracestrack Topo без ключа или квоты) при сбое оставила бы
-        // серый фон — вместо тоста ошибки откат на следующую в цепочке Of → Tt → O (спека map-layers, «Откат подложки при
-        // ошибке тайлов»). Когда откатывать, решает fallbackGate: разовый сбой сети уже показанной подложки её не
-        // откатывает. Ошибки её тайлов, пришедшие уже после смены подложки, молча отбрасываются
+        // a basemap with a fallback (OpenFreeMap Outdoor without an SLA, Tracestrack Topo without a key or quota) would
+        // leave a gray background on a failure, so instead of an error toast the code falls back to the next one in
+        // the chain Of → Tt → O (spec map-layers, «Откат подложки при ошибке тайлов»). fallbackGate decides when to
+        // fall back: a single network failure of a basemap that already showed tiles does not make it fall back. The
+        // code silently discards the errors of its tiles that come after the basemap change
         const next = BASEMAP_FALLBACKS[code];
         if (next) {
             if (fallbackGate.shouldFallBack(code, { status, tile }) && store.getState().fallBackBase(code)) {
@@ -248,16 +256,18 @@ export function App({
             }
             return;
         }
-        // 404 — «тайла нет» у региональных и разреженных слоёв (Slazav внутри района), это не ошибка
+        // 404 means "no tile" for regional and sparse layers (Slazav inside its area), and it is not an error
         if (status === 404) {
             return;
         }
-        // GIBS на пустой тайл даты (над тайлом в этот день не снимали) то отвечает прозрачным PNG, то 500 — вперемешку,
-        // проверено curl 2026-10-12 (design add-dated-imagery): тост на каждый такой тайл был бы ложным. Пустой слой виден и так
+        // for an empty tile of a date (no imagery of the tile on that day), GIBS answers sometimes with a transparent
+        // PNG and sometimes with 500, mixed (checked with curl on 2026-10-12, design add-dated-imagery): a toast for
+        // each such tile would be false. An empty layer is visible without a toast
         if (store.getState().layers.get(code)?.dated) {
             return;
         }
-        // постоянный id на слой: Base UI обновляет тост с тем же id на месте, серия ошибок даёт один тост
+        // a constant id per layer: Base UI updates a toast with the same id in place, so a series of errors gives one
+        // toast
         toast.add({
             id: `tile-error:${code}`,
             title: 'Map tiles failed to load',
@@ -276,7 +286,7 @@ export function App({
                             <Toaster>
                                 <main
                                     className="fixed inset-0 overflow-hidden"
-                                    // файлы треков можно бросить на карту (onFileDragDrop старого клиента)
+                                    // the user can drop track files on the map (onFileDragDrop of the old client)
                                     onDragOver={(event) => event.preventDefault()}
                                     onDrop={(event) => {
                                         event.preventDefault();
@@ -291,7 +301,8 @@ export function App({
                                         transformRequest={transformRequest}
                                         ref={mapRef}
                                     >
-                                        {/* до MapButtons: контролы справа встают в порядке монтирования (control-portal.tsx) */}
+                                        {/* before MapButtons: the controls on the right go in the mount order
+                                            (control-portal.tsx) */}
                                         <LayerSwitcher />
                                         <MapButtons notify={notify} storage={localStorageOrNull()} />
                                     </BaseMap>

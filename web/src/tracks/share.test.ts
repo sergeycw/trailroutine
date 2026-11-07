@@ -4,7 +4,7 @@ import { parseNktk } from './nktk';
 import { ShareError, shareBody, shareLink, storeTracks, trackKey } from './share';
 import { fakeSources, TEST_STORAGE } from './test-sources';
 
-// Пара «тело POST — ключ nktl», снятая со старого клиента (workers/tracks/test/fixtures/client-track.json)
+// The pair "POST body, nktl key" taken from the old client (workers/tracks/test/fixtures/client-track.json)
 const CLIENT_BODY = 'RAoCEAESIAoJTmV3IHRyYWNrEhMKB4Ka7QGxAXYSCIjW_gGQA5AD';
 const CLIENT_KEY = 'eULz6eCr_il5HksAhitPnA';
 
@@ -34,7 +34,7 @@ describe('тело и ключ', () => {
 });
 
 describe('разметка маршрута в ссылке', () => {
-    // опорные точки на одной прямой и лишняя точка маршрута на прямой: упрощение ссылки убирает только её
+    // waypoints on one straight line and an extra route point on the line: link simplification removes only that point
     const W0 = { lat: 0, lng: 0 };
     const W1 = { lat: 0, lng: 0.01 };
     const W2 = { lat: 0, lng: 0.02 };

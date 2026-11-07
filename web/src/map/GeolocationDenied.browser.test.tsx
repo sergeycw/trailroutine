@@ -5,15 +5,15 @@ import '@/index.css';
 import { renderApp } from '@/test/render-app';
 import { type FixtureTiles, fixtureTiles } from '@/test/tiles';
 
-// Спека web-client, «Геолокация недоступна». Отдельный файл: MapLibre проверяет поддержку геолокации один раз на модуль
-// (checkGeolocationSupport кеширует ответ), а у каждого файла browser-тестов свой iframe и свои модули.
+// Spec web-client, «Геолокация недоступна». A separate file: MapLibre checks geolocation support one time per module
+// (checkGeolocationSupport caches the answer), and each browser test file has its own iframe and its own modules.
 
 let tiles: FixtureTiles;
 
 beforeEach(() => {
     localStorage.clear();
     tiles = fixtureTiles();
-    // доступ для сайта запрещён раньше: Permissions API отвечает denied
+    // the access for the site was denied before: the Permissions API answers denied
     Object.defineProperty(navigator, 'permissions', {
         configurable: true,
         value: { query: async () => ({ state: 'denied' }) },

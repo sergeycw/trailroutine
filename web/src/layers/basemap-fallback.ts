@@ -1,31 +1,33 @@
-// Откатывать ли подложку с откатом (BASEMAP_FALLBACKS в selection.ts) по ошибке её источника (спека map-layers, «Откат
-// подложки при ошибке тайлов»; design openfreemap-default-basemap). Первая версия откатывала по первой же ошибке тайла,
-// и ревью диффа нашло: телефон сменил Wi-Fi на LTE — запросы в полёте падают со статусом 0 (AJAXError MapLibre), и
-// цепочка Of → Tt → O проходила до конца, тратя квоту Tracestrack и трафик OSM без всякого сбоя сервиса. Поэтому сразу —
-// только то, что значит «сервиса нет»; разовый сбой уже показанной подложки — только если повторяется.
+// Whether to fall back from a basemap with a fallback (BASEMAP_FALLBACKS in selection.ts) on an error of its source
+// (spec map-layers, «Откат подложки при ошибке тайлов»; design openfreemap-default-basemap). The first version fell
+// back on the first tile error, and the diff review found this: a phone changed from Wi-Fi to LTE, the requests in
+// flight failed with status 0 (AJAXError of MapLibre), and the chain Of → Tt → O went to the end. This spent the
+// Tracestrack quota and the OSM traffic without any failure of the service. So a fallback at once happens only for what
+// means "no service"; a single failure of a basemap that is already shown causes a fallback only if it repeats.
 
 export interface SourceError {
-    // ответ сервера; undefined или 0 — ответа нет (сеть, CORS, обрыв)
+    // the server answer; undefined or 0 — no answer (network, CORS, broken connection)
     status: number | undefined;
-    // ошибка тайла; false — ошибка самого источника (описание тайлов TileJSON у Of)
+    // a tile error; false — an error of the source itself (the TileJSON tile description of Of)
     tile: boolean;
 }
 
-// отказ в доступе: нет ключа, квота, лимит, сервис выключен — повтор не поможет
+// access refused: no key, quota, limit, the service is off — a retry does not help
 const REFUSED = new Set([401, 403, 429, 503]);
-// разовый сбой становится откатом, если за WINDOW_MS повторился COUNT раз и длится не меньше SPREAD_MS: обрыв сети или
-// смена сети роняет запросы в полёте одной пачкой, а лежащий сервис отвечает ошибкой и на следующие тайлы
+// a single failure becomes a fallback if it repeats COUNT times within WINDOW_MS and lasts at least SPREAD_MS: a
+// network break or a network change drops the requests in flight in one batch, and a service that is down answers with
+// an error for the next tiles too
 const COUNT = 3;
 const SPREAD_MS = 5_000;
 const WINDOW_MS = 60_000;
 
 export interface FallbackGate {
-    // тайл подложки загрузился: дальше её разовые сбои не откатывают
+    // a basemap tile loaded: after that, its single failures do not cause a fallback
     tileLoaded(code: string): void;
     shouldFallBack(code: string, error: SourceError): boolean;
 }
 
-// now и online — параметры ради unit-тестов (Node без navigator)
+// now and online are parameters for the unit tests (Node has no navigator)
 export function createFallbackGate(
     now: () => number = Date.now,
     online: () => boolean = () => navigator.onLine,
@@ -37,11 +39,12 @@ export function createFallbackGate(
             loaded.add(code);
         },
         shouldFallBack: (code, { status, tile }) => {
-            // описание тайлов не загрузилось — источника нет, в том числе на 404 (закрытый или переименованный адрес)
+            // the tile description did not load: there is no source, also on 404 (a closed or renamed address)
             if (!tile) {
                 return true;
             }
-            // 404 тайла — «тайла нет» в покрытии (растр Tracestrack); векторный 404 MapLibre считает пустым тайлом сам
+            // a tile 404 means "no tile" in the coverage (the Tracestrack raster); MapLibre itself treats a vector 404
+            // as an empty tile
             if (status === 404) {
                 return false;
             }
@@ -51,7 +54,7 @@ export function createFallbackGate(
             if (!online()) {
                 return false;
             }
-            // ни одного тайла подложки ещё не было — карта пустая, ждать повторов незачем
+            // no basemap tile has loaded yet: the map is empty, so there is no reason to wait for retries
             if (!loaded.has(code)) {
                 return true;
             }

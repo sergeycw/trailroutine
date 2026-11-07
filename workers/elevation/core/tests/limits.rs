@@ -1,5 +1,6 @@
-// Частота запросов: тратит ли запрос счётчик и ответ `429` с CORS как у обычного ответа API.
-// Сам счётчик — привязка Cloudflare в адаптере `worker`, её проверяет тест в workerd.
+// Request rate: if a request uses the counter, and the `429` answer with CORS as in a usual API
+// answer. The counter itself is a Cloudflare binding in the `worker` adapter, a test in workerd
+// checks it.
 
 use elevation_core::http::{Request, Unlimited, counts_toward_limit, handle, too_many_requests};
 use elevation_core::{Error, Source};
@@ -35,7 +36,7 @@ fn api_requests_that_get_403_do_not_spend_the_counter() {
         &request("POST", "/", Some("https://example.com")),
         &allowed
     ));
-    // бывший маршрут тайлов высот без `Origin` своего счётчика больше не тратит
+    // the old elevation tile route without `Origin` does not use its own counter any more
     assert!(!counts_toward_limit(
         &request("GET", "/tiles/11/1277/754", None),
         &allowed
@@ -52,7 +53,7 @@ fn too_many_requests_keeps_the_cors_of_the_api() {
     assert_eq!(api.header("Access-Control-Allow-Credentials"), Some("true"));
 }
 
-// Маршрута тайлов высот нет (change retire-old-client-services): `/tiles/…` — обычный запрос API.
+// No elevation tile route (change retire-old-client-services): `/tiles/…` is a usual API request.
 struct NoData;
 
 impl Source for NoData {
@@ -80,8 +81,8 @@ fn former_tiles_route_is_an_api_request() {
     assert_eq!(with_origin.status, 405);
 }
 
-// Цена запроса API — чтения хранилища: потолок `MAX_READS` на запрос и бюджет клиента
-// (`ReadBudget`, в `worker` — привязка по IP).
+// The cost of an API request is storage reads: the limit `MAX_READS` per request and the client
+// budget (`ReadBudget`, in `worker` it is a binding by IP).
 
 mod reads {
     use std::cell::{Cell, RefCell};
@@ -110,7 +111,7 @@ mod reads {
         }
     }
 
-    // Запоминает, сколько единиц просили, и отвечает заданным решением.
+    // Records how many units the handler asked for, and answers with the given decision.
     struct FixedBudget {
         allow: bool,
         spent: RefCell<Vec<usize>>,
@@ -154,14 +155,14 @@ mod reads {
         block_on(handle(&request, &[CLONE], source, budget))
     }
 
-    // 600 точек в 600 разных градусах: 600 заголовков + 600 кусков.
+    // 600 points in 600 different degrees: 600 headers + 600 chunks.
     fn scattered() -> Vec<(f64, f64)> {
         (0..600)
             .map(|i| ((i % 100) as f64 - 49.5, (i / 100) as f64 * 10.0 + 0.5))
             .collect()
     }
 
-    // 9 999 точек по меридиану 42.5° от 30° до 48° с. ш. (≈ 2 000 км): 18 градусов, 72 куска.
+    // 9 999 points along the meridian 42.5° from 30° to 48° N (≈ 2 000 km): 18 degrees, 72 chunks.
     fn long_track() -> Vec<(f64, f64)> {
         (0..9_999)
             .map(|i| (30.0 + 18.0 * i as f64 / 9_999.0, 42.5))
@@ -172,9 +173,9 @@ mod reads {
     fn read_count_is_degrees_plus_chunks() {
         assert_eq!(read_count(&[]), 0);
         assert_eq!(read_count(&[(95.0, 0.0)]), 0);
-        // один кусок: заголовок + кусок, сколько бы точек в нём ни было
+        // one chunk: header + chunk, for any number of points in it
         assert_eq!(read_count(&[(43.1, 42.1), (43.2, 42.2)]), 2);
-        // два куска одного градуса: заголовок + 2 куска
+        // two chunks of one degree: header + 2 chunks
         assert_eq!(read_count(&[(43.1, 42.1), (43.9, 42.9)]), 3);
         assert_eq!(read_count(&scattered()), 1_200);
         assert_eq!(read_count(&long_track()), 18 + 72);
@@ -199,7 +200,7 @@ mod reads {
         let spender = budget(true);
         let response = post(&source, &body(&long_track()), &spender);
         assert_eq!(response.status, 200);
-        // 90 чтений → 2 единицы по 64
+        // 90 reads → 2 units of 64
         assert_eq!(*spender.spent.borrow(), vec![2]);
     }
 

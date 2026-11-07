@@ -5,8 +5,8 @@ import { createAppStore } from '@/state/store';
 import { geoData, type LatLng } from '@/tracks/model';
 import { createElevationProfile } from './controller';
 
-// Профиль следует за треком (спека tracks, «Профиль следует за треком», «Ошибка сервиса высот в профиле») на сторе без
-// карты: API высот — подставной fetch, время — поддельные таймеры
+// The profile follows the track (spec tracks, «Профиль следует за треком», «Ошибка сервиса высот в профиле») on a
+// store without the map: the elevation API is a stub fetch, the time is fake timers
 
 const line = (lat: number): LatLng[] => [
     { lat, lng: 44.78 },
@@ -39,7 +39,7 @@ function setup(respond: (body: string) => Response | Promise<Response> = heights
     return { store, state, profile, stop, track, bodies, messages };
 }
 
-// высота — широта × 100
+// the elevation is the latitude × 100
 function heights(body: string) {
     return new Response(
         body
@@ -98,10 +98,10 @@ describe('Профиль следует за треком', () => {
         state().updateTrack(track.id, { segments: [line(41.5), line(41.75)] });
         await vi.advanceTimersByTimeAsync(900);
         expect(bodies).toHaveLength(1);
-        // прежний график с индикатором, пока идёт пауза
+        // the previous graph with an indicator while the pause continues
         expect(state().profileData?.values).toBe(before?.values);
         expect(state().profileData?.updating).toBe(true);
-        // синхронно: асинхронный шаг дождался бы и ответа API
+        // synchronous: an asynchronous step would also wait for the API answer
         vi.advanceTimersByTime(100);
         expect(state().profileData?.updating).toBe(true);
         expect(state().profileData?.values).toBe(before?.values);
@@ -132,7 +132,8 @@ describe('Профиль следует за треком', () => {
         const { state, profile, track, bodies } = setup();
         profile.open(track.id, 0);
         await vi.runAllTimersAsync();
-        // так пишет редактор: новый массив отрезков, нетронутый отрезок — та же ссылка
+        // this is how the editor writes: a new array of segments, and a segment that did not change keeps the same
+        // reference
         const [first] = state().tracks[0].segments;
         state().updateTrack(track.id, { segments: [first, line(41.8)] });
         await vi.runAllTimersAsync();

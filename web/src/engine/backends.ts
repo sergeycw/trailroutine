@@ -1,7 +1,7 @@
 import { type EnginePaths, loadRouter, type RouteFn } from './cheerpj-router';
 
-// Где живёт CheerpJ. engine.ts видит только этот интерфейс, поэтому очередь, отмену и запасной путь
-// unit-тесты проверяют с поддельным бэкендом, без рантайма с CDN.
+// Where CheerpJ lives. engine.ts sees only this interface, so the unit tests check the queue, the cancellation and the
+// fallback with a fake backend, without the runtime from the CDN.
 export interface EngineBackend {
     readonly name: 'worker' | 'main-thread';
     start(): Promise<void>;
@@ -13,13 +13,13 @@ function errorText(event: Event): string {
     return event instanceof ErrorEvent && event.message ? event.message : 'engine worker failed to load';
 }
 
-// new URL(...) прямо внутри new Worker(...): только так Vite находит и собирает воркер (vite.dev,
-// Features → Web Workers). Без type: 'module' — классический воркер ради importScripts.
+// new URL(...) directly inside new Worker(...): only in this form Vite finds and builds the worker (vite.dev,
+// Features → Web Workers). No type: 'module': a classic worker for importScripts.
 function createEngineWorker(): Worker {
     return new Worker(new URL('./engine.worker.ts', import.meta.url), { name: 'brouter' });
 }
 
-// createWorker — параметр ради browser-теста протокола с поддельным воркером.
+// createWorker is a parameter for the browser test of the protocol with a fake worker.
 export function workerBackend(paths: EnginePaths, createWorker: () => Worker = createEngineWorker): EngineBackend {
     let worker: Worker | null = null;
     let nextId = 0;
@@ -93,8 +93,8 @@ function loadScript(src: string): Promise<void> {
     });
 }
 
-// Запасной путь: CheerpJ на главном потоке, как в старом клиенте. Страница подвисает на время маршрута,
-// но прокладка работает там, где воркер не поднялся.
+// Fallback: CheerpJ on the main thread, as in the old client. The page freezes while a route is calculated,
+// but routing works where the worker did not start.
 export function mainThreadBackend(paths: EnginePaths): EngineBackend {
     let router: RouteFn | null = null;
     return {
@@ -108,7 +108,7 @@ export function mainThreadBackend(paths: EnginePaths): EngineBackend {
             }
             return router(query);
         },
-        // рантайм со страницы не выгрузить; повторный запуск берёт уже прошедший cheerpjInit (loadRouter)
+        // the runtime cannot leave the page; a second start uses the cheerpjInit that already ran (loadRouter)
         dispose() {},
     };
 }

@@ -3,15 +3,16 @@ use crate::{Source, elevations, read_count, response};
 
 const ALLOWED_METHODS: &str = "POST, OPTIONS";
 const TEXT: &str = "text/plain; charset=utf-8";
-// Длина окна `[[ratelimits]]` в wrangler.toml.
+// The window length of `[[ratelimits]]` in wrangler.toml.
 const RETRY_AFTER_SECONDS: &str = "60";
-/// Единица бюджета чтений: привязка rate limiting считает вызовы `limit()` без веса, поэтому запрос
-/// тратит `ceil(чтения / 64)` вызовов; бюджет в единицах — `API_READS_RATE_LIMITER` в wrangler.toml.
+/// The unit of the read budget: the rate limiting binding counts `limit()` calls without weight,
+/// thus a request uses `ceil(reads / 64)` calls; the budget in units is `API_READS_RATE_LIMITER` in
+/// wrangler.toml.
 pub const READS_PER_UNIT: usize = 64;
 
-/// Бюджет чтений хранилища на клиента. `spend` получает число единиц (`READS_PER_UNIT`) и отвечает,
-/// уложился ли запрос; `false` — `429`. Адаптер `worker` тратит привязку `[[ratelimits]]` по IP,
-/// `server` и тесты — `Unlimited`.
+/// The storage read budget per client. `spend` gets the number of units (`READS_PER_UNIT`) and
+/// tells if the request is within the budget; `false` gives `429`. The `worker` adapter uses the
+/// `[[ratelimits]]` binding by IP, `server` and the tests use `Unlimited`.
 #[allow(async_fn_in_trait)]
 pub trait ReadBudget {
     async fn spend(&self, units: usize) -> bool;
@@ -81,22 +82,24 @@ pub fn parse_origins(list: &str) -> Vec<&str> {
         .collect()
 }
 
-/// Тратит ли запрос счётчик частоты с одного IP (`API_RATE_LIMITER` в wrangler.toml). Запрос с
-/// неразрешённым `Origin` или без него и так получит `403`, счётчик на него не тратится. Тайлов высот
-/// со своим счётчиком больше нет (change retire-old-client-services).
+/// Tells if the request uses the rate counter for one IP (`API_RATE_LIMITER` in wrangler.toml). A
+/// request with an `Origin` that is not allowed, or without `Origin`, gets `403` anyway and does
+/// not use the counter. The elevation tiles with their own counter do not exist any more (change
+/// retire-old-client-services).
 pub fn counts_toward_limit(request: &Request<'_>, allowed_origins: &[&str]) -> bool {
     request
         .origin
         .is_some_and(|origin| allowed_origins.contains(&origin))
 }
 
-/// Ответ сверх лимита — с теми же CORS-заголовками, что обычный ответ API, чтобы клиент увидел `429`,
-/// а не сбой CORS. Счётчик тратят только запросы с разрешённым `Origin` (`counts_toward_limit`).
+/// The answer above the limit has the same CORS headers as a usual API answer, so the client sees
+/// `429` and not a CORS failure. Only requests with an allowed `Origin` use the counter
+/// (`counts_toward_limit`).
 pub fn too_many_requests(origin: &str) -> Response {
     rate_limited().with_cors(origin)
 }
 
-// `429` без CORS: заголовки добавляет тот, кто отвечает на путь.
+// `429` without CORS: the handler of the path adds the headers.
 fn rate_limited() -> Response {
     let mut response = Response::new(429, "Too many requests\n").text();
     response
@@ -105,10 +108,11 @@ fn rate_limited() -> Response {
     response
 }
 
-// HTTP без привязки к рантайму: адаптер собирает `Request` и переводит `Response` обратно.
-// API высот: CORS как у `workers/tracks` — только origin из `ALLOWED_ORIGINS`, иначе (и без
-// `Origin`) — 403; коды и тексты ошибок — как у Go-сервера автора (`http.Error` дописывает `\n`).
-// Бывший маршрут тайлов `/tiles/` отдельной ветки не имеет: такой запрос — обычный запрос API.
+// HTTP without a link to the runtime: the adapter makes the `Request` and converts the `Response`
+// back. The elevation API: CORS as in `workers/tracks`, only an origin from `ALLOWED_ORIGINS`,
+// otherwise (and without `Origin`) 403; the error codes and texts are as in the Go server of the
+// author (`http.Error` adds `\n`). The old tile route `/tiles/` has no separate branch: such a
+// request is a usual API request.
 pub async fn handle<S: Source, B: ReadBudget>(
     request: &Request<'_>,
     allowed_origins: &[&str],
@@ -162,7 +166,8 @@ async fn respond<S: Source, B: ReadBudget>(
         Err(ParseError::TooBig) => return Response::new(413, "Request too big\n").text(),
         Err(ParseError::Invalid) => return Response::new(400, "Invalid request\n").text(),
     };
-    // Цена запроса — чтения R2: сначала потолок на запрос, потом бюджет клиента, и только потом чтение.
+    // The cost of a request is R2 reads: first the limit per request, then the client budget, and
+    // only then the read.
     let reads = read_count(&points);
     if reads > MAX_READS {
         return Response::new(413, "Request too big\n").text();

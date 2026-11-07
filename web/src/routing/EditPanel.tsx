@@ -9,12 +9,12 @@ import { useRouteEditing } from './editing-context';
 import { RoutingButton } from './RoutingButton';
 import { TrackNameInput } from './TrackNameInput';
 
-// Редактор линии в верхней строке вместо поиска (макет 4a, design polish-web-ui; раньше — плашка снизу по центру,
-// решение владельца 2026-10-09): палитра цвета, название полем и длина трека, активность прокладки, Undo, Redo,
-// «Share track», галочка «Finish editing» (имя, цвет и экспорт без выхода из правки — design editor-name-share и
-// editor-row-cleanup; уже 640 px Cancel и активность — только иконкой). Галочка нужна телефону, где нет Escape.
-// Подсказка выбора Join и Shortcut — не здесь, а у точки на карте, как в макете (ToolHintOnMap, design
-// editor-hint-at-point).
+// The line editor in the top row instead of the search (mock-up 4a, design polish-web-ui; before: a bar at the bottom
+// center, decision of the owner 2026-10-09): color palette, name field and track length, routing activity, Undo, Redo,
+// «Share track», the check mark «Finish editing» (name, color and export without an exit from editing: design
+// editor-name-share and editor-row-cleanup; below 640 px Cancel and the activity are icons only). A phone needs the
+// check mark: it has no Escape. The hint for the Join and Shortcut choice is not here but at the point on the map, as
+// in the mock-up (ToolHintOnMap, design editor-hint-at-point).
 export function EditPanel() {
     const editing = useRouteEditing();
     const edit = useAppStore((state) => state.routeEdit);
@@ -25,12 +25,12 @@ export function EditPanel() {
         return null;
     }
     return (
-        // data-drawing — режим рисования для тестов: раньше его видели по тексту подсказки
+        // data-drawing is the drawing mode for tests: before, tests detected it by the hint text
         <div className="w-full" data-testid="edit-panel" data-drawing={edit.drawing || undefined}>
             <div className="glass pointer-events-auto flex h-11 w-full items-center gap-1 rounded-xl px-2">
                 <ColorPicker track={track} />
                 <TrackNameInput key={track.id} track={track} />
-                {/* длина трека, пока рисуешь: кнопки списка треков в верхней строке в это время нет */}
+                {/* the track length while you draw: the track list button is not in the top row at that time */}
                 <span className="shrink-0 text-muted-foreground text-xs tabular-nums" data-testid="edit-length">
                     {formatLength(tracksLength(track.segments))}
                 </span>
@@ -40,8 +40,8 @@ export function EditPanel() {
                     size="icon-sm"
                     aria-label="Undo"
                     title="Undo (Cmd/Ctrl+Z)"
-                    // выбор Join и Shortcut на карте (design add-web-line-tools): правка линии сдвинула бы номер точки,
-                    // от которой он идёт
+                    // the Join and Shortcut choice on the map (design add-web-line-tools): a line edit would shift the
+                    // index of the point that the choice starts from
                     disabled={!edit.canUndo || tool !== null}
                     onClick={editing.undo}
                 >
@@ -69,8 +69,8 @@ export function EditPanel() {
                             />
                         }
                     >
-                        {/* «Save as GPX» ждёт API высот, а кнопки Tracks со спиннером в редакторе нет (design
-                            trim-track-menus) */}
+                        {/* «Save as GPX» waits for the elevation API, and in the editor there is no Tracks button
+                            with a spinner (design trim-track-menus) */}
                         {loading ? <LoaderCircleIcon className="animate-spin" /> : <Share2Icon />}
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-auto">
@@ -83,7 +83,7 @@ export function EditPanel() {
                         <span className="max-sm:hidden">Cancel</span>
                     </Button>
                 ) : (
-                    // заливка --primary, а не стекло круглых кнопок над картой: стекло на стеклянной строке не читается
+                    // a --primary fill, not the glass of the round map buttons: glass on a glass row is hard to see
                     <Button
                         size="icon-sm"
                         className="rounded-full"

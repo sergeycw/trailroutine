@@ -3,11 +3,12 @@ import { hasActivity, type Leg, type RouteLine, STRAIGHT } from './line';
 import { type LinePlace, reverseLine, shortcutLine, splitLeg } from './line-tools';
 import { trimSpur } from './spur';
 
-// Редактор одной линии без карты (design add-web-route-editor, «Редактор — модель с очередью и историей»; спека
-// route-editing). Правки ставят опорные точки сразу, а отрезки с активностью уходят в роутер асинхронно: отрезок ждёт
-// со своим номером запроса, ответ применяется, только если этот номер ещё лежит в линии, — иначе отрезок перетащили,
-// удалили или отменили, и ответ молча отбрасывается («Устаревшие ответы отбрасываются»). Очередь самих расчётов — в
-// движке (engine.ts), здесь только отмена: запрос, чей отрезок ушёл из линии, отменяется AbortController'ом.
+// The editor of one line without a map (design add-web-route-editor, «Редактор — модель с очередью и историей»; spec
+// route-editing). Edits place waypoints immediately, and legs with an activity go to the router asynchronously: a leg
+// waits with its request number, and a response applies only if this number is still in the line; otherwise the leg was
+// dragged, removed or undone, and the response is dropped without a message («Устаревшие ответы отбрасываются»). The
+// queue of the calculations is in the engine (engine.ts), here there is only cancellation: an AbortController cancels a
+// request whose leg left the line.
 
 export type End = 'start' | 'end';
 
@@ -15,43 +16,44 @@ export type RouteFn = (from: LatLng, to: LatLng, activity: string, signal: Abort
 
 export interface RouteEditorOptions {
     route: RouteFn;
-    // линия изменилась: правка, ответ роутера, undo/redo
+    // the line changed: an edit, a router response, undo/redo
     onChange?: (line: RouteLine) => void;
-    // отрезок не проложен: ошибка роутера (отмена сюда не попадает)
+    // a leg is not routed: a router error (a cancellation does not come here)
     onRouteError?: (error: unknown) => void;
-    // отрезок проложен: роутер жив
+    // a leg is routed: the router is alive
     onRouted?: () => void;
 }
 
 export interface RouteEditor {
     line(): RouteLine;
-    // новая опорная точка с конца; activity null — прямой отрезок («Off» или Alt-клик)
+    // a new waypoint at the end; activity null gives a straight leg («Off» or Alt-click)
     addWaypoint(end: End, latlng: LatLng, activity: string | null): void;
-    // Backspace при рисовании: крайняя опорная точка уходит вместе со своим отрезком
+    // Backspace while drawing: the end waypoint goes away together with its leg
     removeEndWaypoint(end: End): void;
     moveWaypoint(index: number, latlng: LatLng): void;
-    // двойной клик по опорной точке
+    // a double click on a waypoint
     removeWaypoint(index: number): void;
-    // нажатие на отрезок legIndex: возвращает номер новой опорной точки; перетаскивание сразу после — тот же шаг истории
+    // a press on the leg legIndex returns the new waypoint index; a drag right after it is the same history step
     insertWaypoint(legIndex: number, latlng: LatLng): number;
-    // Shortcut (design add-web-line-tools): участок между местами — прямой отрезок; false — удалять нечего
+    // Shortcut (design add-web-line-tools): the part between places becomes a straight leg; false: nothing to remove
     shortcut(from: LinePlace, to: LinePlace): boolean;
-    // Reverse отрезка из меню: линия задом наперёд вместе с разметкой
+    // Reverse of the segment from the menu: the line back to front together with the markup
     reverse(): void;
     undo(): void;
     redo(): void;
     canUndo(): boolean;
     canRedo(): boolean;
-    // сколько отрезков ждут маршрута (курсор «ожидание»)
+    // how many legs wait for a route; only editor.test.ts reads it (the wait indicator reads tracksRouting in line.ts)
     pending(): number;
-    // номер правки: растёт на каждой правке, undo и redo, но не на ответе роутера. Ответ тоже двигает опорную точку
-    // (ус у поворота, spur.ts), поэтому жест MapEditor сверяет по номеру, а не по точке, не поменялась ли линия под ним
+    // the edit number: it grows on each edit, undo and redo, but not on a router response. A response also moves a
+    // waypoint (a spur at a turn, spur.ts), so the MapEditor gesture checks by the number, not by the point, whether
+    // the line under it changed
     revision(): number;
-    // отменить все запросы: редактор больше не нужен
+    // cancel all requests: the editor is not necessary any more
     dispose(): void;
 }
 
-// История — до 100 шагов, как у старого редактора (_historyLimit)
+// History has up to 100 steps, as in the old editor (_historyLimit)
 export const HISTORY_LIMIT = 100;
 
 let lastRequest = 0;
@@ -61,13 +63,14 @@ function pendingLeg(activity: string): Leg {
     return { state: 'pending', activity, request: lastRequest };
 }
 
-// Отрезок после того, как сдвинулся его конец: с активностью — заново со своей активностью, прямой — прямой
+// A leg after its end moved: with an activity, it is routed again with its activity; a straight leg stays straight
 function rerouted(leg: Leg | undefined): Leg {
     return leg && hasActivity(leg) ? pendingLeg(leg.activity) : STRAIGHT;
 }
 
-// Ожидающие отрезки, у которых после правки другие концы (вставка точки, срез, разворот), — новые запросы: ответ на
-// прежний запрос считался между другими точками. Отрезок, чей запрос и концы те же, ждёт свой ответ дальше.
+// Pending legs that have other ends after an edit (point insertion, Shortcut, reverse) get new requests: the response
+// to the old request was calculated between other points. A leg with the same request and the same ends keeps waiting
+// for its response.
 function renewPending(prev: RouteLine, next: RouteLine): RouteLine {
     const ends = new Map<number, [LatLng, LatLng]>();
     prev.legs.forEach((leg, i) => {
@@ -96,7 +99,7 @@ export function createRouteEditor(initial: RouteLine, options: RouteEditorOption
     let line: RouteLine = initial;
     let undoStack: RouteLine[] = [];
     let redoStack: RouteLine[] = [];
-    // номер точки, только что вставленной на отрезок: её перетаскивание — тот же шаг истории (_justInsertedNode)
+    // the index of the point that was just inserted on a leg: its drag is the same history step (_justInsertedNode)
     let justInserted: number | null = null;
     let revision = 0;
     const requests = new Map<number, AbortController>();
@@ -111,7 +114,7 @@ export function createRouteEditor(initial: RouteLine, options: RouteEditorOption
         return ids;
     }
 
-    // Новая линия: запросы, чьих отрезков в ней больше нет, отменяются; новые ожидающие отрезки уходят в роутер
+    // A new line: requests whose legs are no longer in it are cancelled; new pending legs go to the router
     function setLine(next: RouteLine) {
         line = next;
         const live = pendingRequests(next);
@@ -152,9 +155,9 @@ export function createRouteEditor(initial: RouteLine, options: RouteEditorOption
         );
     }
 
-    // Ответ меняет только свой отрезок и в историю не пишется: undo отменяет правку, а не приход маршрута. Проложенный
-    // отрезок может дать ус у своих концов с соседним проложенным: опорная точка переезжает в поворот (spur.ts) —
-    // тоже без шага истории, это часть ответа
+    // A response changes only its own leg and does not go to the history: undo cancels an edit, not the arrival of a
+    // route. A routed leg can give a spur at its ends with a neighbor routed leg: the waypoint moves to the turn
+    // (spur.ts), also without a history step, because this is part of the response
     function applyResponse(id: number, leg: Leg) {
         const index = line.legs.findIndex((item) => item.state === 'pending' && item.request === id);
         if (index < 0) {
@@ -171,7 +174,7 @@ export function createRouteEditor(initial: RouteLine, options: RouteEditorOption
         options.onChange?.(line);
     }
 
-    // Правка: прежняя линия — в историю, redo очищается
+    // An edit: the previous line goes to the history, redo is cleared
     function edit(next: RouteLine) {
         justInserted = null;
         revision += 1;
@@ -183,7 +186,7 @@ export function createRouteEditor(initial: RouteLine, options: RouteEditorOption
         setLine(next);
     }
 
-    // Снимок из истории: ожидающие в нём отрезки запрашиваются заново («Отмена при ожидающем запросе»)
+    // A snapshot from the history: its pending legs are requested again («Отмена при ожидающем запросе»)
     function restore(snapshot: RouteLine) {
         justInserted = null;
         revision += 1;
@@ -233,7 +236,7 @@ export function createRouteEditor(initial: RouteLine, options: RouteEditorOption
                 legs: legs.map((leg, i) => (i === index - 1 || i === index ? rerouted(leg) : leg)),
             };
             if (justInserted === index) {
-                // вставка и перетаскивание — один шаг: снимок до вставки уже в истории
+                // insertion and drag are one step: the snapshot before the insertion is already in the history
                 justInserted = null;
                 setLine(next);
                 return;
@@ -249,14 +252,14 @@ export function createRouteEditor(initial: RouteLine, options: RouteEditorOption
             const before = legs[index - 1];
             const after = legs[index];
             if (!before || !after) {
-                // крайняя точка уходит вместе со своим отрезком
+                // the end point goes away together with its leg
                 edit({
                     waypoints: waypoints.filter((_, i) => i !== index),
                     legs: index === 0 ? legs.slice(1) : legs.slice(0, -1),
                 });
                 return;
             }
-            // один отрезок между соседями с активностью соседнего отрезка, без неё — прямая
+            // one leg between the neighbors with the activity of a neighbor leg; without an activity, a straight leg
             const source = hasActivity(before) ? before : after;
             const merged = hasActivity(source) ? pendingLeg(source.activity) : STRAIGHT;
             edit({
@@ -266,9 +269,9 @@ export function createRouteEditor(initial: RouteLine, options: RouteEditorOption
         },
 
         insertWaypoint(legIndex, latlng) {
-            // Новая точка встаёт на ближайшее к нажатию звено, а не туда, где нажали: попадание по линии засчитывается в
-            // нескольких пикселях от неё, и без проекции на линии появился бы излом. Геометрия не меняется, пока точку
-            // не сдвинули.
+            // The new point goes to the link nearest to the press, not to the press point: a hit on the line counts
+            // within a few pixels of it, and without the projection the line would get a bend. The geometry does not
+            // change until the point is moved.
             const split = splitLeg(line, legIndex, latlng);
             if (!split) {
                 return -1;

@@ -2,7 +2,7 @@ import {env} from 'cloudflare:test';
 import {exports as workerExports} from 'cloudflare:workers';
 import {beforeAll, describe, expect, it} from 'vitest';
 
-// Тело тайла — номера байт по модулю 256: по ответу видно, какой диапазон вернулся.
+// The tile body is the byte numbers modulo 256: the response shows which range came back.
 const TILE = Uint8Array.from({length: 1000}, (_, i) => i % 256);
 
 function request(path, {method = 'GET', headers = {}} = {}) {

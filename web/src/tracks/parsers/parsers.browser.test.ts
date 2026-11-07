@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
 import { parserCases } from './cases';
 
-// те же сценарии, что parsers.test.ts, но с DOMParser браузера
+// the same scenarios as parsers.test.ts, but with the browser DOMParser
 describe('парсеры в Chromium', parserCases);

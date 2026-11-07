@@ -1,5 +1,5 @@
-// Отвечает функциям Pages, укладывается ли IP клиента в лимит: 204 — да, 429 — нет. IP приходит
-// в X-Client-IP от middleware (src/client.js); без него лимит не применяется.
+// Tells the Pages functions if the client IP is within the limit: 204 is yes, 429 is no. The IP comes
+// in X-Client-IP from the middleware (src/client.js); without it, the limit does not apply.
 const worker = {
     async fetch(request, env) {
         const ip = request.headers.get('X-Client-IP');

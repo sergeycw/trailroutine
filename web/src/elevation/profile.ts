@@ -1,13 +1,13 @@
 import { distance } from '@/tracks/geometry';
 import type { LatLng } from '@/tracks/model';
 
-// Профиль высот без карты и React (design add-web-elevation-profile, «Выборка», «Сводка и шкала»). Справочник —
-// src/lib/leaflet.control.elevation-profile/index.js старого клиента; отличия от него — исправления, перечисленные в
-// Context design.
+// The elevation profile without the map and React (design add-web-elevation-profile, «Выборка», «Сводка и шкала»).
+// The reference is src/lib/leaflet.control.elevation-profile/index.js of the old client; the differences from it are
+// the fixes that the Context of the design lists.
 
-// calcSamplingInterval старого клиента без изменений: 2 000 точек на обычный трек, шаг 10–50 м, но не больше 9 999
-// точек — один запрос к API высот (лимит 10 000 точек, спека elevation-api). Начала и концы отрезков добавляют точки
-// сверх шага — их учитывает sampleSegments.
+// calcSamplingInterval of the old client without changes: 2 000 points for a usual track, a step of 10–50 m, but not
+// more than 9 999 points, which is one request to the elevation API (the limit is 10 000 points, spec elevation-api).
+// The starts and ends of segments add points over the step, and sampleSegments counts them.
 export function samplingInterval(length: number): number {
     const targetPoints = 2000;
     const maxPoints = 9999;
@@ -20,16 +20,19 @@ export function samplingInterval(length: number): number {
 
 export interface ProfileSamples {
     points: LatLng[];
-    // расстояние каждой точки от начала профиля, м: по длине линии, стык отрезков расстояния не добавляет
+    // the distance of each point from the profile start, m: along the line length; a joint of segments does not
+    // add distance
     distances: Float64Array;
-    // номера точек, с которых начинается каждый отрезок (starts[0] = 0): звено через стык — не звено линии
+    // the indexes of the points where each segment starts (starts[0] = 0): a link across a joint is not a link of
+    // the line
     starts: number[];
     length: number;
 }
 
-// Точки через равный шаг от начала каждого отрезка, конец отрезка — всегда (у pathRegularSamples старого хвост короче
-// шага терялся). Отрезки нулевой длины пропускаются. Точки между узлами — линейно по широте и долготе, как у старого:
-// шаг 10–100 м, искажение проекции на нём ничтожно.
+// Points at an equal step from the start of each segment, and always the segment end (in pathRegularSamples of the
+// old client, a tail shorter than the step was lost). The code skips segments of zero length. Points between the
+// vertices are linear in latitude and longitude, as in the old client: the step is 10–50 m (more only on a track longer
+// than ~500 km, samplingInterval), and the projection distortion on it is very small.
 export function sampleSegments(segments: readonly (readonly LatLng[])[], step?: number): ProfileSamples {
     const lengths = segments.map(segmentLength);
     const total = lengths.reduce((sum, value) => sum + value, 0);
@@ -60,7 +63,8 @@ export function sampleSegments(segments: readonly (readonly LatLng[])[], step?: 
             }
             walked = next;
         }
-        // конец отрезка, если последняя точка выборки не легла в него (допуск — сантиметр: накопленная ошибка сумм)
+        // the segment end, if the last sample point is not on it (the tolerance is a centimeter: the accumulated
+        // error of the sums)
         if (walked - lastSample > 0.01) {
             const end = line[line.length - 1];
             points.push({ lat: end.lat, lng: end.lng });
@@ -71,8 +75,9 @@ export function sampleSegments(segments: readonly (readonly LatLng[])[], step?: 
     return { points, distances: Float64Array.from(distances), starts, length: offset };
 }
 
-// Шаг, при котором выборка влезает в один запрос: у отрезка не больше длина / шаг + 2 точек (начало и конец сверх
-// шага), так что при многих отрезках шаг растёт. Отрезков больше 4 999 — в запрос не влезть, его делит api.ts.
+// The step at which the samples fit in one request: a segment has not more than length / step + 2 points (the start
+// and the end over the step), so with many segments the step grows. With more than 4 999 segments the samples do
+// not fit in one request, and api.ts splits it.
 const MAX_SAMPLES = 10000;
 
 function fittingInterval(total: number, segments: number): number {
@@ -92,14 +97,14 @@ function segmentLength(line: readonly LatLng[]): number {
 export type Elevation = number | null;
 
 export interface Inclination {
-    // градусы, округлены как gradientToAngle старого
+    // degrees, rounded as gradientToAngle of the old client
     avg: number;
     max: number;
 }
 
 export interface ProfileStats {
     distance: number;
-    // ни одной точки с данными
+    // no point with data
     noData: boolean;
     min: number;
     max: number;
@@ -109,21 +114,24 @@ export interface ProfileStats {
     descent: number;
     ascentAngle: Inclination | null;
     descentAngle: Inclination | null;
-    // больше 2 % точек без данных: в начале, в конце, всего (пометка «~» и «Some elevation data missing»)
+    // more than 2 % of the points have no data: at the start, at the end, in total (the mark «~» and
+    // «Some elevation data missing»)
     approxStart: boolean;
     approxEnd: boolean;
     missing: boolean;
 }
 
 const APPROX_SHARE = 0.02;
-// допуск упрощения высот перед подсчётом набора и сброса (filterTolerance старого клиента)
+// the tolerance of the elevation simplification before the count of ascent and descent (filterTolerance of the old
+// client)
 export const ASCENT_TOLERANCE = 5;
 
 const toAngle = (gradient: number) => Math.round((Math.atan(gradient) * 180) / Math.PI);
 
-// Сводка профиля на точках from..to (включительно) — calcProfileStats старого клиента с исправлениями: точки без
-// данных выбрасываются до упрощения (у старого null оставался и считался нулём), последняя точка с данными входит в
-// набор, упрощение и уклоны — по расстоянию, стык отрезков — не шаг.
+// The profile summary on the points from..to (inclusive): calcProfileStats of the old client with fixes. The code
+// discards points without data before the simplification (in the old client null stayed and counted as zero), the
+// last point with data is in the ascent, the simplification and the grades use the distance, and a joint of
+// segments is not a step.
 export function profileStats(
     profile: Pick<ProfileSamples, 'distances' | 'starts'>,
     values: readonly Elevation[],
@@ -178,7 +186,7 @@ export function profileStats(
     stats.approxEnd = (to - last) / count > APPROX_SHARE;
     stats.missing = 1 - known / count > APPROX_SHARE;
 
-    // по отрезкам: точки с данными, их упрощение и уклоны шагов
+    // by segments: the points with data, their simplification and the grades of the steps
     let ascentRise = 0;
     let ascentRun = 0;
     let ascentMax = Number.NEGATIVE_INFINITY;
@@ -232,8 +240,9 @@ export function profileStats(
     return stats;
 }
 
-// filterElevations старого клиента — Дуглас — Пекер по вертикальной ошибке от прямой между опорными точками, но по
-// расстоянию, а не по номеру точки. Возвращает номера оставленных точек по возрастанию. Стеком, а не рекурсией.
+// filterElevations of the old client: Douglas–Peucker by the vertical error from the straight line between the key
+// points, but by distance, not by point index. Returns the indexes of the kept points in ascending order. Uses a
+// stack, not recursion.
 export function simplifyProfile(xs: readonly number[], ys: readonly number[], tolerance: number): number[] {
     const n = xs.length;
     if (n < 3) {
@@ -270,7 +279,7 @@ export function simplifyProfile(xs: readonly number[], ys: readonly number[], to
     return kept;
 }
 
-// calcGridValues старого клиента: 3–5 линий шкалы с круглым шагом, накрывающие min..max
+// calcGridValues of the old client: 3–5 scale lines with a round step that cover min..max
 export function gridValues(min: number, max: number): number[] {
     const counts = [3, 4, 5];
     const steps = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
@@ -292,7 +301,8 @@ export function gridValues(min: number, max: number): number[] {
     return Array.from({ length: count }, (_, i) => (first + i) * step);
 }
 
-// Точка на линии профиля по дробному номеру: между соседними точками выборки — линейно (setCursorPosition старого)
+// The point on the profile line at a fractional index: linear between the adjacent sample points
+// (setCursorPosition of the old client)
 export function pointAt(points: readonly LatLng[], index: number): LatLng {
     if (index <= 0) {
         return points[0];
@@ -318,8 +328,9 @@ export function distanceAt(distances: Float64Array, index: number): number {
     return distances[i] + (distances[i + 1] - distances[i]) * (index - i);
 }
 
-// Дробный номер точки по расстоянию от начала (курсор графика стоит по расстоянию, а точки выборки — неравномерно на
-// концах отрезков). На стыке отрезков расстояние двух точек одно — берётся вторая, начало следующего отрезка.
+// The fractional point index by the distance from the start (the graph cursor is at a distance, and the sample
+// points are not equally spaced at the segment ends). At a joint of segments two points have the same distance: the
+// code takes the second one, the start of the next segment.
 export function indexAtDistance(distances: Float64Array, at: number): number {
     const n = distances.length;
     if (n === 0 || at <= distances[0]) {
@@ -342,7 +353,8 @@ export function indexAtDistance(distances: Float64Array, at: number): number {
     return span > 0 ? lo + (at - distances[lo]) / span : lo;
 }
 
-// Высота у курсора: в точке выборки, иначе соседняя с данными (как у старого — ближайшая, затем floor, затем ceil)
+// The elevation at the cursor: at the sample point, otherwise an adjacent one with data (as in the old client: the
+// nearest, then floor, then ceil)
 export function elevationAt(values: readonly Elevation[], index: number): Elevation {
     const near = values[Math.round(index)];
     if (near !== null && near !== undefined) {
@@ -351,15 +363,15 @@ export function elevationAt(values: readonly Elevation[], index: number): Elevat
     return values[Math.floor(index)] ?? values[Math.ceil(index)] ?? null;
 }
 
-// Раскраска профиля по крутизне (design slope-profile, «Уклон по участкам», «Ступени в процентах по модулю»). Шаг
-// выборки (10–50 м) мельче ячейки данных высот 3″ (≈ 90 м): уклон соседних точек — шум интерполяции, поэтому уклон
-// считается по участкам не короче sectionLength.
+// The profile colors by slope (design slope-profile, «Уклон по участкам», «Ступени в процентах по модулю»). The
+// sample step (10–50 m) is smaller than the cell of the 3″ elevation data (≈ 90 m): the grade between adjacent points
+// is interpolation noise, so the code calculates the grade on sections not shorter than sectionLength.
 
-// пороги ступеней, % по модулю: < 3, 3–6, 6–10, 10–15, 15–25, ≥ 25
+// the step thresholds, absolute %: < 3, 3–6, 6–10, 10–15, 15–25, ≥ 25
 export const SLOPE_STEPS = [3, 6, 10, 15, 25];
 
-// цвета ступеней: последовательная шкала, светлота OKLCH строго убывает (94.5 → 39.6 %), порядок читается и без
-// различения оттенков. Классы целиком строками — их находит сканер Tailwind.
+// the step colors: a sequential scale, the OKLCH lightness strictly decreases (94.5 → 39.6 %), so the order is
+// readable also without hue perception. The classes are full strings, so the Tailwind scanner finds them.
 export const SLOPE_CLASSES = [
     { fill: 'fill-yellow-200', swatch: 'bg-yellow-200' },
     { fill: 'fill-amber-300', swatch: 'bg-amber-300' },
@@ -369,8 +381,9 @@ export const SLOPE_CLASSES = [
     { fill: 'fill-red-900', swatch: 'bg-red-900' },
 ];
 
-// участок не короче ячейки данных и не мельче 1/200 профиля: на графике телефона (≈ 350 px) это ≥ 1.7 px. От данных,
-// а не от ширины графика — цвет одинаков на графике, у метки на карте и при любом зуме.
+// a section is not shorter than a data cell and not smaller than 1/200 of the profile: on a phone graph (≈ 350 px)
+// this is ≥ 1.7 px. It depends on the data, not on the graph width, so the color is the same on the graph, at the
+// marker on the map and at all zooms.
 const MIN_SECTION = 100;
 const MAX_SECTIONS = 200;
 
@@ -379,15 +392,16 @@ export function sectionLength(length: number): number {
 }
 
 export interface SlopeSection {
-    // номера крайних точек выборки; соседние участки прогона делят точку на границе
+    // the indexes of the end sample points; adjacent sections of a run share the point on the border
     from: number;
     to: number;
-    // уклон, % со знаком: разность высот концов на длину
+    // the grade, signed %: the elevation difference of the ends divided by the length
     grade: number;
 }
 
-// Участки по прогонам точек с данными внутри отрезков (рвутся там же, где ломаная графика): от начала прогона копим
-// точки, пока длина не дойдёт до length; хвост короче length / 2 входит в предыдущий участок прогона.
+// Sections along the runs of points with data inside the segments (they break at the same places as the graph
+// polyline): from the run start, the code collects points until the length reaches length; a tail shorter than
+// length / 2 goes into the previous section of the run.
 export function slopeSections(
     profile: Pick<ProfileSamples, 'distances' | 'starts'>,
     values: readonly Elevation[],
@@ -434,15 +448,15 @@ export function slopeSections(
     return sections;
 }
 
-// номер ступени по модулю уклона, округлённого до целого — того же числа, что у курсора
+// the step index by the absolute grade rounded to an integer, the same number as at the cursor
 export function slopeClass(grade: number): number {
     const percent = Math.round(Math.abs(grade));
     const step = SLOPE_STEPS.findIndex((threshold) => percent < threshold);
     return step < 0 ? SLOPE_STEPS.length : step;
 }
 
-// Участок под дробным номером точки; на общей точке двух участков — следующий, на конце прогона — последний его
-// участок; вне участков (точки без данных, стык) — null
+// The section at a fractional point index; at the shared point of two sections, the next one; at the end of a run,
+// its last section; outside the sections (points without data, a joint), null
 export function sectionAt(sections: readonly SlopeSection[], index: number): SlopeSection | null {
     let lo = 0;
     let hi = sections.length - 1;
@@ -457,7 +471,7 @@ export function sectionAt(sections: readonly SlopeSection[], index: number): Slo
             return section;
         }
     }
-    // index точно на конце участка, за которым нет участка с этого же места
+    // index is exactly at the end of a section, and no section starts at the same place after it
     const last = sections[hi];
     return last && index === last.to ? last : null;
 }
@@ -467,9 +481,10 @@ export interface ScreenPoint {
     y: number;
 }
 
-// Ближайшее место на линии профиля к экранной точке cursor: дробный номер точки выборки или null, если дальше
-// maxDistance px. Звенья через стык отрезков не считаются. Вместо queryRenderedFeatures по невидимой широкой линии
-// старого клиента — проекция: не зависит от отрисованного кадра карты (design, «Курсор на карте»).
+// The nearest place on the profile line to the screen point cursor: a fractional sample point index, or null if it
+// is farther than maxDistance px. Links across a joint of segments do not count. A projection instead of
+// queryRenderedFeatures on an invisible wide line of the old client: it does not depend on the drawn map frame
+// (design, «Курсор на карте»).
 export function nearestIndex(
     screen: readonly ScreenPoint[],
     starts: readonly number[],

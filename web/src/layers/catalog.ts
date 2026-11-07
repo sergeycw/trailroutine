@@ -1,67 +1,70 @@
 import type { RasterDEMSourceSpecification, RasterSourceSpecification, VectorSourceSpecification } from 'maplibre-gl';
 
-// Каталог растровых слоёв нового приложения — данные старого src/layers.js, переведённые в источники MapLibre
-// (design add-web-map-layers, «Каталог»). Без Яндекса (Y, S: EPSG:3395), Wikimapia (W) и сетки Ng — решения
-// владельца (record-new-ui-decisions). Модуль без импортов приложения: его же импортирует e2e (Node), чтобы
-// знать, какие тайлы подменять фикстурой.
+// The catalog of raster and vector layers of the new app: the data of the old src/layers.js, converted to MapLibre
+// sources (design add-web-map-layers, «Каталог»), and the new layers (for example Of and Ct). No Yandex (Y, S:
+// EPSG:3395), Wikimapia (W) and the Ng grid: owner decisions (record-new-ui-decisions). The module has no app imports:
+// e2e (Node) imports it too, to know which tiles to replace with the fixture.
 //
-// Перевод опций Leaflet: зум карты MapLibre на 1 меньше Leaflet, нумерация тайлов та же. Поэтому maxNativeZoom
-// переходит в maxzoom источника как есть (без него — 18: старая карта выше maxZoom 18 не поднималась), а minZoom
-// слоя — в minZoom - 1. cutline отброшен, остаётся прямоугольник bounds.
+// Conversion of the Leaflet options: the MapLibre map zoom is 1 less than the Leaflet zoom, the tile numbers are the
+// same. So maxNativeZoom goes to the source maxzoom as is (without it, 18: the old map did not go above maxZoom 18),
+// and the layer minZoom goes to minZoom - 1. cutline is dropped, the bounds rectangle stays.
 
 export type LayerSource = RasterSourceSpecification | RasterDEMSourceSpecification | VectorSourceSpecification;
 
-// AWS Terrain Tiles (Terrarium): реплика elevation-tiles-prod-eu публично отвечает 403, тайлы есть до z15. Один адрес у
-// отмывки (MapLibre) и горизонталей (maplibre-contour грузит тайлы сам, src/layers/contours.ts)
+// AWS Terrain Tiles (Terrarium): the replica elevation-tiles-prod-eu answers 403 to the public, the tiles go up to z15.
+// One address for the hillshade (MapLibre) and for the contour lines (maplibre-contour loads the tiles itself,
+// src/layers/contours.ts)
 export const TERRARIUM_TILES = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 export const TERRARIUM_MAX_ZOOM = 15;
 
-// Векторные тайлы горизонталей отдаёт свой протокол MapLibre (src/layers/contours.ts, регистрация — src/map/maplibre.ts):
-// здесь только адрес, чтобы каталог оставался данными без импорта библиотеки (design add-contour-lines)
+// An own MapLibre protocol serves the vector tiles of the contour lines (src/layers/contours.ts, registration in
+// src/map/maplibre.ts): here is only the address, so the catalog stays data without a library import (design
+// add-contour-lines)
 export const CONTOUR_PROTOCOL = 'trailroutine-contours';
 export const CONTOUR_MIN_ZOOM = 10;
 
-// Снимки по датам (design add-dated-imagery): токены в шаблонах тайлов и подписи слоя с dated, подставляет withDate
-// (src/layers/dated.ts). MapLibre таких токенов не знает — слой без подстановки в стиль не попадает (BaseMap)
+// Dated imagery (design add-dated-imagery): the token in the tile templates and in the attribution of a layer with
+// dated; withDate (src/layers/dated.ts) substitutes it. MapLibre does not know such tokens: a layer without the
+// substitution does not go into the style (BaseMap)
 export const DATE_TOKEN = '{date}';
 export const YEAR_TOKEN = '{year}';
 
 export interface LayerDef {
-    // код в l= и в leafletLayersSettings — тот же, что у старого клиента
+    // the code in l= and in leafletLayersSettings is the same as in the old client
     code: string;
     title: string;
     group: string;
-    // порядок наложения снизу вверх (titlesByOrder старого клиента)
+    // the stacking order from bottom to top (titlesByOrder of the old client)
     order: number;
     isOverlay: boolean;
-    // показывать в переключателе без настроек пользователя (isDefault старого клиента)
+    // show in the switcher without user settings (isDefault of the old client)
     isDefault: boolean;
     source: LayerSource;
-    // зум карты MapLibre, с которого слой виден
+    // the MapLibre map zoom from which the layer is visible
     minZoom?: number;
     opacity?: number;
-    // векторная подложка (OpenFreeMap Outdoor): язык подписей — navigator.language, стиль строит outdoorLayers
-    // (src/layers/outdoor.ts) в style.ts, у которого окружения каталога нет
+    // the vector basemap (OpenFreeMap Outdoor): the label language is navigator.language; outdoorLayers
+    // (src/layers/outdoor.ts) builds the style in style.ts, which does not have the catalog environment
     labelLanguage?: string;
-    // снимки по датам: в source.tiles — по шаблону с DATE_TOKEN на слой GIBS снизу вверх, style.ts рисует каждый своим
-    // источником, а не чередует по тайлам, как поддомены
+    // dated imagery: source.tiles has one template with DATE_TOKEN for each GIBS layer from bottom to top; style.ts
+    // draws each one as its own source and does not alternate them by tile, as subdomains
     dated?: boolean;
 }
 
 export interface CatalogEnv {
-    // > 1 — retina-варианты тайлов, как L.Browser.retina у RetinaTileLayer
+    // > 1 — retina variants of the tiles, as L.Browser.retina for RetinaTileLayer
     pixelRatio: number;
-    // язык подписей Google (hl=), как navigator.language у leaflet.layer.google
+    // the Google label language (hl=), as navigator.language for leaflet.layer.google
     language: string;
     corsProxyUrl: string;
 }
 
-// Формат адреса прокси — urlViaCorsProxy старого клиента: <прокси>https/host/path
+// The proxy address format is urlViaCorsProxy of the old client: <proxy>https/host/path
 export function viaCorsProxy(corsProxyUrl: string, url: string): string {
     return corsProxyUrl + url.replace(/^(https?):\/\//u, '$1/');
 }
 
-// {s} Leaflet → массив адресов: MapLibre сам выбирает адрес по (x + y) % длина
+// {s} of Leaflet → an array of addresses: MapLibre itself selects the address by (x + y) % length
 function subdomains(template: string, letters = 'abc'): string[] {
     return [...letters].map((s) => template.replace('{s}', s));
 }
@@ -77,11 +80,11 @@ export const GROUPS = [
     'Norway',
 ] as const;
 
-// titlesByOrder старого клиента; места своих слоёв — CUSTOM_BOTTOM и CUSTOM_TOP. Отмывка рельефа — над непрозрачными
-// картами-оверлеями и под линейными, чтобы тени ложились на любую подложку и не закрывали тропы.
-// Порядок подложек виден только в Configure layers: в полном списке их нет, круги и меню идут по группам quick-layers.ts
-// (design custom-bases-in-list). Tt, Of, O, E первыми — с решения владельца 2026-10-12 (design
-// add-vector-outdoor-style)
+// titlesByOrder of the old client; the places of custom layers are CUSTOM_BOTTOM and CUSTOM_TOP. The hillshade is above
+// the opaque map overlays and under the line overlays, so the shadows fall on any basemap and do not cover the trails.
+// Only Configure layers shows the basemap order: the full list does not have them, the circles and the menus follow
+// the groups of quick-layers.ts (design custom-bases-in-list). Tt, Of, O, E are first since the owner decision of
+// 2026-10-12 (design add-vector-outdoor-style)
 const ORDER = [
     'Tt',
     'Of',
@@ -127,12 +130,14 @@ export const CUSTOM_BOTTOM_ORDER = ORDER.indexOf('#custom-bottom') + 1;
 export const CUSTOM_TOP_ORDER = ORDER.indexOf('#custom-top') + 1;
 
 const OSM_ATTRIBUTION = '<a href="https://www.openstreetmap.org/copyright">&copy; OpenStreetMap contributors</a>';
-// Подпись Topo — дословно из условий Tracestrack, раздел 5 (https://www.tracestrack.com/terms-of-service/, сверено
-// 2026-10-10, design map-chrome): тайлы под CC BY 4.0, атрибуция обязательна
+// The Topo attribution is word for word from the Tracestrack terms, section 5
+// (https://www.tracestrack.com/terms-of-service/, checked 2026-10-10, design map-chrome): the tiles are under CC BY
+// 4.0, the attribution is mandatory
 const TRACESTRACK_ATTRIBUTION = `Data: ${OSM_ATTRIBUTION}, SRTM, GEBCO, SONNY's LiDAR DTM, NASADEM, ESA WorldCover; <a href="https://www.tracestrack.com/">Maps &copy; Tracestrack</a>`;
-// OpenFreeMap (design add-vector-outdoor-style): TileJSON, а не шаблон тайлов — в адресе тайлов версия сборки планеты,
-// она меняется, а путь без версии отдаёт пустой тайл (проверено 2026-10-12). Подпись — из TileJSON без target, в
-// источнике: явные опции источника MapLibre ставит выше полей TileJSON
+// OpenFreeMap (design add-vector-outdoor-style): TileJSON, not a tile template. The tile address has the build version
+// of the planet, which changes, and a path without the version gives an empty tile (checked 2026-10-12). The
+// attribution is from TileJSON without target, in the source: MapLibre puts the explicit source options above the
+// TileJSON fields
 export const OPENFREEMAP_TILEJSON = 'https://tiles.openfreemap.org/planet';
 const OPENFREEMAP_ATTRIBUTION =
     '<a href="https://openfreemap.org">OpenFreeMap</a> <a href="https://www.openmaptiles.org/">&copy; OpenMapTiles</a> ' +
@@ -142,39 +147,43 @@ const KARTVERKET_ATTRIBUTION = '<a href="https://kartverket.no/til-lands/kart/tu
 const GOOGLE_ATTRIBUTION = '<a href="https://www.google.com/maps">Google</a>';
 const GOOGLE_SAT_ATTRIBUTION =
     '<a href="https://www.google.com/maps/@43.0668619,60.5738071,13622628m/data=!3m1!1e3">Google</a>';
-// Год мозаики EOX Sentinel-2 cloudless (design add-sentinel-imagery): из него — и слой WMTS, и год в подписи. Новый
-// год появляется в https://tiles.maps.eox.at/wmts/1.0.0/WMTSCapabilities.xml слоем s2cloudless-<год>_3857 (backlog,
-// «Сопровождение»); s2cloudless_3857 без года — мозаика 2016, а не последняя
+// The year of the EOX Sentinel-2 cloudless mosaic (design add-sentinel-imagery): both the WMTS layer and the year in
+// the attribution come from it. A new year appears in https://tiles.maps.eox.at/wmts/1.0.0/WMTSCapabilities.xml as the
+// layer s2cloudless-<year>_3857 (backlog, «Сопровождение»); s2cloudless_3857 without a year is the 2016 mosaic, not
+// the latest one
 const SENTINEL_YEAR = 2025;
-// Подпись — дословно из условий EOX (https://cloudless.eox.at/documentation/license, сверено 2026-10-11): адрес
-// виден текстом и он же ссылка (license-non-commercial: «include the links and show the text»); лицензия 2018+ —
-// CC BY-NC-SA 4.0, только некоммерческое использование
+// The attribution is word for word from the EOX terms (https://cloudless.eox.at/documentation/license, checked
+// 2026-10-11): the address shows as text and is also the link (license-non-commercial: «include the links and show the
+// text»); the license for 2018+ is CC BY-NC-SA 4.0, non-commercial use only
 const SENTINEL_ATTRIBUTION =
     'EOxCloudless <a href="https://cloudless.eox.at">https://cloudless.eox.at</a> by EOX IT Services GmbH ' +
     `(Contains modified Copernicus Sentinel data ${SENTINEL_YEAR}), ` +
     '<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>';
-// HLS из NASA GIBS (design add-dated-imagery, «Подпись с годом даты»), сверено 2026-10-12: благодарность GIBS — дословно из
-// Data Use Guidance (https://nasa-gibs.github.io/gibs-api-docs/), Copernicus — «Contains modified Copernicus Sentinel data
-// [год]» (https://ads.atmosphere.copernicus.eu/licences/ec-sentinel), USGS — форма «… courtesy of the U.S. Geological
-// Survey» (https://www.usgs.gov/centers/eros/data-citation). Год — год даты снимка
+// HLS from NASA GIBS (design add-dated-imagery, «Подпись с годом даты»), checked 2026-10-12: the GIBS acknowledgment
+// is word for word from Data Use Guidance (https://nasa-gibs.github.io/gibs-api-docs/), Copernicus is «Contains
+// modified Copernicus Sentinel data [year]» (https://ads.atmosphere.copernicus.eu/licences/ec-sentinel), USGS is the
+// form «… courtesy of the U.S. Geological Survey» (https://www.usgs.gov/centers/eros/data-citation). The year is the
+// year of the image date
 const HLS_ATTRIBUTION =
     'We acknowledge the use of imagery provided by services from ' +
     '<a href="https://nasa-gibs.github.io/gibs-api-docs/">NASA\'s Global Imagery Browse Services (GIBS)</a>, ' +
     "part of NASA's Earth Science Data and Information System (ESDIS); " +
     '<a href="https://www.earthdata.nasa.gov/data/projects/hls">HLS</a>: ' +
     `contains modified Copernicus Sentinel data ${YEAR_TOKEN}, Landsat image courtesy of the U.S. Geological Survey`;
-// Слои GIBS снизу вверх: Landsat 8/9 (L30) и Sentinel-2 (S30), оба 30 м. Матрица GoogleMapsCompatible_Level12 — тайлы
-// 256 px до z12, z13 GIBS отвечает 400; порядок {y}/{x} — TileRow/TileCol шаблона из WMTSCapabilities
+// GIBS layers from bottom to top: Landsat 8/9 (L30) and Sentinel-2 (S30), both 30 m. The matrix
+// GoogleMapsCompatible_Level12 has 256 px tiles up to z12, and GIBS answers 400 for z13; the order {y}/{x} is
+// TileRow/TileCol of the template from WMTSCapabilities
 // (https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/1.0.0/WMTSCapabilities.xml)
 const HLS_LAYERS = ['HLS_L30_Nadir_BRDF_Adjusted_Reflectance', 'HLS_S30_Nadir_BRDF_Adjusted_Reflectance'];
 const HLS_MAX_ZOOM = 12;
 const SLAZAV_ATTRIBUTION = '<a href="http://slazav.xyz/maps">Vladislav Zavjalov</a>';
-// Полный список источников DEM (11 пунктов) — по ссылке: joerd/docs/attribution.md требует атрибуцию «в разумном
-// для носителя месте», правила OSMF, на которые он ссылается, допускают ссылку на страницу с полной атрибуцией.
+// The full list of DEM sources (11 items) is behind the link: joerd/docs/attribution.md requires the attribution "in a
+// place that is reasonable for the medium", and the OSMF rules that it refers to allow a link to a page with the full
+// attribution.
 const TERRAIN_ATTRIBUTION =
     '<a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">Terrain: Mapzen, sources</a>';
 
-// [west, south, east, north]; значения — bounds старого каталога ([[south, west], [north, east]])
+// [west, south, east, north]; the values are the bounds of the old catalog ([[south, west], [north, east]])
 const NORWAY_BOUNDS: [number, number, number, number] = [4.19674, 57.81324, 31.56094, 71.27961];
 
 type Def = Omit<LayerDef, 'order'>;
@@ -187,9 +196,10 @@ function raster(
     return { type: 'raster', tiles, tileSize: 256, maxzoom: DEFAULT_MAX_ZOOM, attribution, ...options };
 }
 
-// Языки подписей растра Tracestrack — имена карт из документации (https://tracestrack.com/docs/, сверено 2026-10-12),
-// с префиксом topo_ — топостиль. Тот же список — в TILE_PATH прокси (workers/cors-proxy/src/tracestrack.js): ключ
-// тратится только на эти адреса. Правка одного — правка обоих
+// The label languages of the Tracestrack raster are the map names from the documentation
+// (https://tracestrack.com/docs/, checked 2026-10-12), with the prefix topo_ for the topo style. The same list is in
+// TILE_PATH of the proxy (workers/cors-proxy/src/tracestrack.js): the key is spent only on these addresses. Edit both
+// lists together
 export const TRACESTRACK_LANGUAGES = [
     'ar',
     'de',
@@ -214,22 +224,23 @@ export const TRACESTRACK_LANGUAGES = [
     'zh-hant',
 ];
 
-// Подписи на языке браузера, а без него — английские (решение владельца 2026-10-12, design tracestrack-labels): в Грузии
-// местные названия грузинским письмом. Язык — в адресе, а не auto-en Tracestrack по Accept-Language: кеш браузера и
-// прокси хранит тайл по адресу, и язык одного пользователя достался бы другому
+// Labels in the browser language, or in English without it (owner decision 2026-10-12, design tracestrack-labels): in
+// Georgia, the local names are in the Georgian script. The language is in the address, not auto-en of Tracestrack by
+// Accept-Language: the browser cache and the proxy cache keep a tile by its address, and the language of one user
+// would go to another user
 export function tracestrackMap(language: string): string {
     const [primary, ...rest] = language.toLowerCase().split('-');
     let code = primary;
     if (primary === 'zh') {
-        // китайский: традиционное письмо — Тайвань, Гонконг, Макао или явный Hant, иначе упрощённое
+        // Chinese: traditional script for Taiwan, Hong Kong, Macao or an explicit Hant, otherwise simplified script
         code = rest.some((part) => ['hant', 'tw', 'hk', 'mo'].includes(part)) ? 'zh-hant' : 'zh-hans';
     }
     return `topo_${TRACESTRACK_LANGUAGES.includes(code) ? code : 'en'}`;
 }
 
 function googleTiles(lyrs: string, language: string) {
-    // Google с z={z} отдаёт те же тайлы, что старый zoom={17 - z} (проверено побайтно 2026-10-08), поэтому
-    // хватает токенов MapLibre без transformRequest
+    // Google with z={z} gives the same tiles as the old zoom={17 - z} (checked byte by byte 2026-10-08), so the
+    // MapLibre tokens are enough without transformRequest
     return subdomains(
         `https://mt{s}.google.com/vt/lyrs=${lyrs}&hl=${encodeURIComponent(language)}&x={x}&y={y}&z={z}`,
         '0123',
@@ -237,7 +248,7 @@ function googleTiles(lyrs: string, language: string) {
 }
 
 function stravaLayer(code: string, kind: string, title: string, env: CatalogEnv): Def {
-    // retina — тайл 512 px в 256 CSS px и на зум меньше, как retinaOptionsOverrides старого слоя
+    // retina: a 512 px tile in 256 CSS px and one zoom less, as retinaOptionsOverrides of the old layer
     const hiRes = env.pixelRatio > 1;
     const url = `https://content-a.strava.com/identified/globalheat/${kind}/hot/{z}/{x}/{y}.png?px=${hiRes ? 512 : 256}`;
     return {
@@ -245,9 +256,10 @@ function stravaLayer(code: string, kind: string, title: string, env: CatalogEnv)
         title,
         group: 'Routes and traces',
         isOverlay: true,
-        // хитмэпы — только кнопка столбца с меню (design custom-bases-in-list), галочки в списке у них по умолчанию и так
-        // стоят (listedByDefault). isDefault у «all» держит группу Routes and traces в секции Overlays списка
-        // (overlaySections в LayerSwitcher.tsx); у старого клиента — isDefault: false у всех четырёх
+        // heatmaps are only a column button with a menu (design custom-bases-in-list), and their check boxes in the
+        // list are on by default anyway (listedByDefault). isDefault of "all" keeps the group Routes and traces in the
+        // Overlays section of the list (overlaySections in LayerSwitcher.tsx); the old client has isDefault: false for
+        // all four
         isDefault: code === 'Sa',
         opacity: 0.75,
         source: raster([viaCorsProxy(env.corsProxyUrl, url)], STRAVA_ATTRIBUTION, { maxzoom: hiRes ? 15 : 16 }),
@@ -262,9 +274,11 @@ function definitions(env: CatalogEnv): Def[] {
             group: 'Default layers',
             isOverlay: false,
             isDefault: true,
-            // подложка по умолчанию (design add-outdoor-basemap). Только через прокси: ключ API — секрет Worker'а прокси,
-            // в адресе клиента его нет (workers/cors-proxy/src/tracestrack.js). Адрес и maxZoom 19 — как у слоя
-            // openstreetmap.org; язык подписей — tracestrackMap; {ratio} — @2x на экранах от 2x, тот же кредит квоты
+            // the second basemap of the fallback chain Of → Tt → O (BASEMAP_FALLBACKS in selection.ts, design
+            // openfreemap-default-basemap). Only through the proxy: the API key is a secret of the proxy Worker, the
+            // client address does not have it (workers/cors-proxy/src/tracestrack.js, design add-outdoor-basemap). The
+            // address and maxZoom 19 are as in the openstreetmap.org layer; the label language is tracestrackMap;
+            // {ratio} is @2x on screens from 2x, with the same quota credit
             source: raster(
                 [
                     viaCorsProxy(
@@ -282,8 +296,9 @@ function definitions(env: CatalogEnv): Def[] {
             group: 'Default layers',
             isOverlay: false,
             isDefault: true,
-            // свой векторный стиль на тайлах OpenFreeMap (схема OpenMapTiles, до z14), без ключа: подписи — местное
-            // название и под ним язык браузера или латиница на любом зуме (Tracestrack переводит только до z12)
+            // an own vector style on the OpenFreeMap tiles (the OpenMapTiles schema, up to z14), without a key: the
+            // labels are the local name and under it the browser language or Latin script at any zoom (Tracestrack
+            // translates only up to z12)
             labelLanguage: env.language,
             source: { type: 'vector', url: OPENFREEMAP_TILEJSON, attribution: OPENFREEMAP_ATTRIBUTION },
         },
@@ -324,9 +339,9 @@ function definitions(env: CatalogEnv): Def[] {
             group: 'Default layers',
             isOverlay: false,
             isDefault: true,
-            // напрямую: EOX отражает Origin в CORS, ключа нет. Матрица g — GoogleMapsCompatible, порядок {y}/{x}.
-            // maxzoom 14 — пирамида EOX для EPSG:3857 (10 м на пиксель); тайлы z15+ сервер растягивает из тех же
-            // данных, MapLibre сделает это сам без запросов
+            // directly: EOX reflects Origin in CORS, there is no key. The matrix g is GoogleMapsCompatible, the order
+            // is {y}/{x}. maxzoom 14 is the EOX pyramid for EPSG:3857 (10 m per pixel); the server stretches z15+
+            // tiles from the same data, and MapLibre does this itself without requests
             source: raster(
                 [`https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-${SENTINEL_YEAR}_3857/default/g/{z}/{y}/{x}.jpg`],
                 SENTINEL_ATTRIBUTION,
@@ -340,8 +355,9 @@ function definitions(env: CatalogEnv): Def[] {
             isOverlay: false,
             isDefault: true,
             dated: true,
-            // напрямую: GIBS отвечает Access-Control-Allow-Origin: *, ключа нет. Дата без съёмки над тайлом — 200 с прозрачным
-            // PNG, поэтому оба спутника вместе дают снимок там, где снимал хоть один
+            // directly: GIBS answers Access-Control-Allow-Origin: *, there is no key. A date without imagery over a
+            // tile gives 200 with a transparent PNG, so the two satellites together give an image where at least one
+            // of them captured it
             source: raster(
                 HLS_LAYERS.map(
                     (layer) =>
@@ -396,8 +412,8 @@ function definitions(env: CatalogEnv): Def[] {
             group: 'Default layers',
             isOverlay: false,
             isDefault: true,
-            // адрес из bing.com/maps/style?styleid=aerial; без g= тайл отвечает 400, с любым g — тот же тайл,
-            // поэтому адрес статичный, без запроса стиля, как делал старый BingSatLayer
+            // the address is from bing.com/maps/style?styleid=aerial; without g= the tile answers 400, with any g it
+            // is the same tile, so the address is static, without a style request, as the old BingSatLayer did
             source: raster(
                 ['https://t.ssl.ak.tiles.virtualearth.net/tiles/a{quadkey}.jpeg?g=15625&n=z&prx=1'],
                 '<a href="https://www.bing.com/maps?style=h">Microsoft</a>',
@@ -409,8 +425,8 @@ function definitions(env: CatalogEnv): Def[] {
             group: 'Default layers',
             isOverlay: true,
             isDefault: true,
-            // slazav.xyz/tiles/hr/{x}-{y}-{z}.png отвечает 302 сюда без CORS-заголовка, а WebGL нужен CORS на
-            // каждом ответе цепочки — поэтому сразу конечный адрес
+            // slazav.xyz/tiles/hr/{x}-{y}-{z}.png answers 302 to here without a CORS header, and WebGL needs CORS on
+            // each answer of the chain, so this is the final address at once
             source: raster(['https://tiles.slazav.xyz/hr/{z}/{x}/{y}.png'], SLAZAV_ATTRIBUTION, { maxzoom: 13 }),
         },
         {
@@ -462,7 +478,7 @@ function definitions(env: CatalogEnv): Def[] {
             isOverlay: true,
             isDefault: true,
             minZoom: 1,
-            // хост не отдаёт CORS — только через прокси, как в старом клиенте
+            // the host does not give CORS: only through the proxy, as in the old client
             source: raster(
                 [viaCorsProxy(env.corsProxyUrl, 'https://maptiles.website.yandexcloud.net/{z}/{x}/{y}.png')],
                 '<a href="http://pereval.g-utka.ru/">Aleksey Tsvetkov</a>',
@@ -514,7 +530,7 @@ function definitions(env: CatalogEnv): Def[] {
             group: 'Norway',
             isOverlay: true,
             isDefault: false,
-            // отсутствующие тайлы отдаёт 500, а не 404 — у границы покрытия возможен тост ошибки слоя
+            // the host answers 500 for missing tiles, not 404: at the coverage border a layer error toast is possible
             source: raster(
                 ['https://maptiles1.finncdn.no/tileService/1.0.3/normap/{z}/{x}/{y}.png'],
                 '<a href="https://kart.finn.no/">finn.no</a>',
@@ -527,7 +543,7 @@ function definitions(env: CatalogEnv): Def[] {
             group: 'Topo maps',
             isOverlay: true,
             isDefault: false,
-            // у старого слоя опечатка `bound`, прямоугольник не применялся; здесь применяется
+            // the old layer has a typo `bound`, so the rectangle did not apply; here it applies
             source: raster(
                 [
                     'https://proxy.laji.fi/mml_wmts/maasto/wmts/1.0.0/maastokartta/default/WGS84_Pseudo-Mercator/' +
@@ -544,8 +560,9 @@ function definitions(env: CatalogEnv): Def[] {
             isOverlay: true,
             isDefault: false,
             minZoom: 11,
-            // адрес из bing.com/maps/style?styleid=ordnancesurvey без key=: тайл с CORS и тем же содержимым отдаётся
-            // и без ключа сессии (проверено 2026-10-08), поэтому страница bing.com/maps через прокси не нужна
+            // the address is from bing.com/maps/style?styleid=ordnancesurvey without key=: the tile with CORS and the
+            // same content comes without the session key too (checked 2026-10-08), so the page bing.com/maps through
+            // the proxy is not necessary
             source: raster(
                 [
                     'https://t.ssl.ak.dynamic.tiles.virtualearth.net/comp/ch/{quadkey}' +
@@ -585,7 +602,8 @@ function definitions(env: CatalogEnv): Def[] {
             isOverlay: true,
             isDefault: false,
             minZoom: 9,
-            // static.mapy.hiking.sk/topo/… отвечает 307 сюда без CORS-заголовка — сразу конечный адрес
+            // static.mapy.hiking.sk/topo/… answers 307 to here without a CORS header, so this is the final address
+            // at once
             source: raster(
                 ['https://tile.mapy.hiking.sk/otm/{z}/{x}/{y}.png'],
                 '<a href="https://mapy.hiking.sk/">mapy.hiking.sk</a>',
@@ -614,9 +632,10 @@ function definitions(env: CatalogEnv): Def[] {
             group: 'Topo maps',
             isOverlay: true,
             isDefault: false,
-            // старый слой: тайл 256 px в 128 CSS px со сдвигом зума на 1 (tileSize 128, zoomOffset 1). В MapLibre
-            // зум тайлов = зум карты + log2(512 / tileSize), так что tileSize 128 даёт тот же сдвиг. Напрямую, без
-            // прокси: хост отдаёт CORS (проверено 2026-10-08), прокси тратил бы свой лимит.
+            // the old layer: a 256 px tile in 128 CSS px with a zoom offset of 1 (tileSize 128, zoomOffset 1). In
+            // MapLibre, the tile zoom = the map zoom + log2(512 / tileSize), so tileSize 128 gives the same offset.
+            // Directly, without the proxy: the host gives CORS (checked 2026-10-08), and the proxy would spend its
+            // limit.
             source: raster(
                 [
                     'https://wmts10.geo.admin.ch/1.0.0/ch.swisstopo.pixelkarte-farbe/default/current/3857/{z}/{x}/{y}.jpeg',
@@ -663,8 +682,9 @@ function definitions(env: CatalogEnv): Def[] {
             group: 'Miscellaneous',
             isOverlay: true,
             isDefault: true,
-            // ниже z10 горизонталей нет, и рельеф ради них не грузится (шаг по зуму — contours.ts); тайлы 512 px по
-            // умолчанию: тайл горизонталей zN строится из тайла рельефа zN и восьми соседей
+            // below z10 there are no contour lines, and the relief does not load for them (the zoom step is in
+            // contours.ts); 512 px tiles by default: a contour tile zN is built from the relief tile zN and eight
+            // neighbors
             minZoom: CONTOUR_MIN_ZOOM,
             source: {
                 type: 'vector',

@@ -1,11 +1,11 @@
 import { CORS_PROXY_URL, CUSTOM_TILE_HOST, expect, test } from './fixtures.ts';
 
-// Названия тестов — сценарии спеки map-layers (openspec/specs/map-layers/spec.md). Тайлы всех слоёв — фикстура
-// (e2e/fixtures.ts).
+// The test titles are the scenarios of the spec map-layers (openspec/specs/map-layers/spec.md). The tiles of all layers
+// are a fixture (e2e/fixtures.ts).
 
 const canvas = '.maplibregl-canvas';
 
-// код своего слоя в формате старого клиента: -cs + URL-safe base64 от JSON полей формы
+// code of a custom layer in the old client format: -cs + URL-safe base64 of the JSON of the form fields
 function customLayerCode(fields: Record<string, unknown>) {
     return `-cs${btoa(JSON.stringify(fields)).replace(/\+/g, '-').replace(/\//g, '_')}`;
 }
@@ -35,7 +35,7 @@ test('Первый заход без настроек', async ({ page, network }
     await page.goto('./');
     await expect.poll(() => hashOf(page)).toBe('#m=13/42.37889/45.63000&l=Of');
     await expect.poll(() => network.tilesOf('Of').some((url) => url.endsWith('.pbf'))).toBe(true);
-    // только OpenFreeMap: квоту Tracestrack первый заход не тратит
+    // only OpenFreeMap: the first visit does not use the Tracestrack quota
     expect(network.tiles.every((tile) => tile.code === 'Of')).toBe(true);
 });
 
@@ -62,7 +62,7 @@ test('Нет ключа или квоты', async ({ page, network }) => {
     await expect(page.getByText('Tracestrack Topo is unavailable')).toBeVisible();
     await expect(page.getByText('Switched to OpenStreetMap')).toBeVisible();
     await expect.poll(() => network.tilesOf('O').length).toBeGreaterThan(0);
-    // в адресе — выбор пользователя, OSM только показывается до перезагрузки
+    // the address has the user selection, OSM only shows until a reload
     expect(hashOf(page)).toBe('#m=8/49.73868/33.45886&l=Tt/Hs');
     await expect(page.getByText('Map tiles failed to load')).toHaveCount(0);
 });
@@ -73,7 +73,7 @@ test('OpenFreeMap недоступен', async ({ page, network }) => {
     await expect(page.getByText('OpenFreeMap Outdoor is unavailable')).toBeVisible();
     await expect(page.getByText('Switched to Tracestrack Topo')).toBeVisible();
     await expect.poll(() => network.tilesOf('Tt').length).toBeGreaterThan(0);
-    // в адресе — подложка, с которой начался откат
+    // the address has the basemap from which the fallback started
     expect(hashOf(page)).toBe('#m=8/49.73868/33.45886&l=Of/Hs');
     await expect(page.getByText('Map tiles failed to load')).toHaveCount(0);
 });
@@ -87,7 +87,7 @@ test('Следующий заход после отката', async ({ page, net
     await page.goto('about:blank');
     const before = network.tiles.length;
     await page.goto('./');
-    // сохранённый выбор — по-прежнему OpenFreeMap: и перезагрузка, и новый заход снова запрашивают её
+    // the saved selection is still OpenFreeMap: both a reload and a new visit request it again
     await expect.poll(() => network.tiles.slice(before).some((tile) => tile.code === 'Of')).toBe(true);
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('nakarte-web:layers') ?? '{}'));
     expect(saved.selection.base).toBe('Of');
@@ -98,7 +98,7 @@ test('Список слоёв', async ({ page }) => {
     const switcher = await openSwitcher(page);
     await switcher.getByText('Configure layers').click();
     const dialog = page.getByRole('dialog');
-    // 36 слоёв каталога без пяти кнопок столбца (design custom-bases-in-list)
+    // the 36 catalog layers without the five buttons of the column (design custom-bases-in-list)
     await expect(dialog.getByRole('checkbox')).toHaveCount(31);
     await expect(dialog.getByRole('checkbox').first()).toHaveAccessibleName('Tracestrack Topo');
     for (const title of ['Yandex map', 'Yandex Satellite', 'Wikimapia', 'Soviet topo maps grid']) {
@@ -117,7 +117,7 @@ test('Ссылка со слоями', async ({ page, network }) => {
 test('Ссылка с Sentinel-2', async ({ page, network }) => {
     await page.goto('./#m=11/42.66000/44.64000&l=S2');
     await expect.poll(() => network.tilesOf('S2').length).toBeGreaterThan(0);
-    // напрямую с EOX: ни один тайл не идёт через прокси клона
+    // directly from EOX: no tile goes through the clone proxy
     expect(network.tiles.some((tile) => tile.url.startsWith(CORS_PROXY_URL))).toBe(false);
     expect(network.tilesOf('Tt')).toEqual([]);
     expect(hashOf(page)).toContain('l=S2');
@@ -150,7 +150,7 @@ test('Ссылка со своим слоем', async ({ page, network }) => {
 
 test('Перезагрузка без l=', async ({ page, network }) => {
     await page.goto('./');
-    // подложки каталога — в кругах столбца (design custom-bases-in-list)
+    // the catalog basemaps are in the circles of the column (design custom-bases-in-list)
     await page.getByRole('button', { name: 'ESRI Satellite', exact: true }).click();
     const switcher = await openSwitcher(page);
     await switcher.getByText('Relief shading').click();
@@ -181,7 +181,7 @@ test('Сохранённые настройки со старыми кодами
     await page.goto('./');
     const switcher = await openSwitcher(page);
     await expect(switcher.getByText('Custom overlay')).toBeVisible();
-    // скрытая подложка Co — не в меню своего круга (design custom-bases-in-list)
+    // the hidden basemap Co is not in the menu of its circle (design custom-bases-in-list)
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: 'Topo layers', exact: true }).click();
     const menu = page.getByRole('menu', { name: 'Topo layers' });
@@ -199,8 +199,9 @@ test('Слой Strava', async ({ page, network }) => {
 });
 
 test('Горизонтали из рельефа', async ({ page, network }) => {
-    // боевой путь: рельеф грузит Blob-воркер maplibre-contour, его запросы перехватывает та же фикстура. Шаблон
-    // Terrarium общий с отмывкой, поэтому тайлы записаны за Hs; m=14 — тайлы горизонталей и рельефа z13
+    // the production path: the maplibre-contour Blob worker loads the terrain, the same fixture intercepts its
+    // requests. The Terrarium template is shared with the relief shading, so the tiles are recorded under Hs; m=14
+    // gives contour and terrain tiles of z13
     await page.goto('./#m=14/42.66000/44.64000&l=O/Ct');
     await expect.poll(() => network.tilesOf('Hs').length).toBeGreaterThan(0);
     expect(network.tilesOf('Hs').every((url) => url.includes('/terrarium/13/'))).toBe(true);

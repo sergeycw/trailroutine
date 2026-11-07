@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { isLinkQuery, searchLink } from './links';
 
-// Случаи karma-теста старого клиента test/test_search_links.js; зум в ожиданиях — старого клиента (в результате он на 1
-// меньше, MapLibre). Старый тест разворачивал короткие ссылки через живой прокси; здесь прокси — поддельный fetch:
-// конечные адреса mapy.com сняты curl через прокси клона 2026-10-09 (favepemeko), остальные собраны по тем же
-// координатам, одна ссылка Google уходит на капчу google.com/sorry/ с адресом в continue.
+// The cases of the karma test of the old client test/test_search_links.js; the zoom in the expectations is the zoom
+// of the old client (in the result it is 1 less, MapLibre). The old test expanded short links through the live proxy;
+// here the proxy is a fake fetch: the final mapy.com addresses were captured with curl through the proxy of the clone
+// on 2026-10-09 (favepemeko), the others are built from the same coordinates, one Google link goes to the captcha
+// google.com/sorry/ with the address in continue.
 
 const PROXY = 'https://proxy.test/';
 const proxied = (url: string) => PROXY + url.replace(/^(https?):\/\//u, '$1/');
@@ -22,8 +23,8 @@ const REDIRECTS: Record<string, string> = {
     'https://goo.gl/maps/iMv4esLL1nwF9yns7': DOLNI_MORAVA,
 };
 
-// HEAD через прокси: браузер идёт по редиректам прокси и отдаёт итоговый адрес в response.url; неизвестная короткая
-// ссылка — 404 прокси без редиректа
+// HEAD through the proxy: the browser follows the proxy redirects and gives the final address in response.url; an
+// unknown short link gives a proxy 404 without a redirect
 const requests: string[] = [];
 const fakeFetch: typeof fetch = async (input, init) => {
     const url = String(input);
@@ -236,7 +237,7 @@ const INVALID: [string, string][] = [
     ['https://nakarte.me/', 'Invalid coordinates in Nakarte link'],
     ['https://nakarte.me/#l=O', 'Invalid coordinates in Nakarte link'],
     ['https://example.com/#l=O&m=11/49.44893/', 'Unsupported link'],
-    // OSM без map= — не вид, а, например, прямая ссылка на GPX трека (design search-track-links)
+    // OSM without map= is not a view but, for example, a direct link to the GPX of a track (design search-track-links)
     ['https://www.openstreetmap.org/trace/3376100/data', 'Unsupported link'],
     ['https://www.openstreetmap.org/#map=14/abc', 'Invalid coordinates in OpenStreetMap link'],
     ['https://example.com/#l=O&m=99/49.44893/52.5547', 'Unsupported link'],

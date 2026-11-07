@@ -4,7 +4,7 @@ import { parseRedirects, resolveRedirect } from './redirects.ts';
 
 const rules = parseRedirects(readFileSync(new URL('../public/_redirects', import.meta.url), 'utf8'));
 
-// Спека web-client, «Старый адрес /next/»
+// Spec web-client, «Старый адрес /next/»
 describe('public/_redirects', () => {
     test.each([
         ['/next', '/'],

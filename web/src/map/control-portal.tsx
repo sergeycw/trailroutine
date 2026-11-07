@@ -2,12 +2,12 @@ import { useControl } from '@vis.gl/react-maplibre';
 import { type ReactNode, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-// Свой контрол MapLibre справа сверху: контейнер контрола с порталом React. Так кнопки приложения встают в один
-// столбец с кнопками MapLibre — в порядке монтирования (MapLibre добавляет контролы top-right вниз). Быстрые слои
-// (LayerSwitcher) — first: встают над Street View, зумом и геолокацией и после перемонтажа (HMR, key), а не только
-// потому, что рендерятся до MapButtons (design layer-thumbnails)
+// A custom MapLibre control at the top right: the control container with a React portal. So the app buttons go into
+// one column with the MapLibre buttons, in the mount order (MapLibre adds the top-right controls downward). The quick
+// layers (LayerSwitcher) are first: they go above Street View, zoom and geolocation also after a remount (HMR, key),
+// and not only because they render before MapButtons (design layer-thumbnails)
 
-// Контейнер контрола MapLibre для портала React
+// The MapLibre control container for a React portal
 function useControlContainer(className: string, first: boolean): HTMLElement {
     const [container] = useState(() => {
         const element = document.createElement('div');
@@ -21,7 +21,7 @@ function useControlContainer(className: string, first: boolean): HTMLElement {
         }),
         { position: 'top-right' },
     );
-    // эффект useControl с addControl уже прошёл: контейнер в столбце, переносим его наверх
+    // the useControl effect with addControl has already run: the container is in the column, so move it to the top
     useEffect(() => {
         if (first) {
             container.parentElement?.prepend(container);

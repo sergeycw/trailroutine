@@ -2,9 +2,10 @@ import { readdirSync, readFileSync } from 'node:fs';
 import type { Page } from '@playwright/test';
 import { ELEVATION_SERVER, expect, openTracks, test } from './fixtures.ts';
 
-// Трекер ошибок на сборке клона (спека clone-monitoring, design add-error-tracking): приём Sentry подменён заглушкой
-// фикстуры network, конверты лежат в network.sentryEnvelopes. Сценарии идут, только если в сборке есть DSN: в CI —
-// поддельный из check-web.yml или настоящий секрет деплоя; локальная `npm run build` без DSN их пропускает.
+// Error tracker on the clone build (spec clone-monitoring, design add-error-tracking): a stub of the fixture network
+// replaces the Sentry intake, the envelopes are in network.sentryEnvelopes. The scenarios run only if the build has a
+// DSN: in CI the fake one from check-web.yml or the real deploy secret; a local `npm run build` without a DSN skips
+// them.
 
 const ASSETS = new URL('../../build/assets/', import.meta.url);
 const DSN_IN_BUNDLE = /https:\/\/\w+@o\d+\.ingest\.(?:[a-z]+\.)?sentry\.io\/\d+/;
@@ -12,11 +13,11 @@ const buildHasDsn = readdirSync(ASSETS)
     .filter((file) => file.endsWith('.js'))
     .some((file) => DSN_IN_BUNDLE.test(readFileSync(new URL(file, ASSETS), 'utf8')));
 
-// saveNktk({name: 'Mtatsminda', …}) — тот же трек, что в elevation-profile.spec.ts
+// saveNktk({name: 'Mtatsminda', …}): the same track as in elevation-profile.spec.ts
 const TBILISI = 'RAoCEAESNgoKTXRhdHNtaW5kYRIQCgbele0B0gMSBorn_gHzAhoWCICZ7QEQluT-ARoKGghUViB0b3dlcg==';
 const LINK = `./#m=15/41.692/44.788&nktk=${TBILISI}`;
 
-// событие из конверта: строка заголовка конверта, строка заголовка элемента, тело; берётся элемент type: event
+// event from an envelope: the envelope header line, the item header line, the body; takes the item with type: event
 function eventOf(envelope: string) {
     const lines = envelope.split('\n');
     const index = lines.findIndex((line) => line.includes('"type":"event"'));
@@ -37,7 +38,7 @@ test.describe('Ошибки в браузере пользователей', () 
         await page.goto(LINK);
         await openProfile(page);
         expect(network.elevationRequests).toHaveLength(1);
-        // встроенный скрипт: его кадр стека несёт адрес страницы целиком, вместе с #m=… и треком
+        // inline script: its stack frame has the full page address, with #m=… and the track
         await page.addScriptTag({
             content: "setTimeout(() => { throw new Error('e2e crash at ' + location.href); }, 0);",
         });
@@ -47,7 +48,7 @@ test.describe('Ошибки в браузере пользователей', () 
         expect(event.request.url).toBe(`${origin}/`);
         expect(event.exception.values[0].value).toBe(`e2e crash at ${origin}`);
         const text = JSON.stringify(event);
-        // Mtatsminda — название трека: кнопка «Actions for Mtatsminda» попадает в крошку клика
+        // Mtatsminda is the track name: the button «Actions for Mtatsminda» gets into the click breadcrumb
         const leaks = [
             '41.692',
             '44.788',
@@ -66,9 +67,9 @@ test.describe('Ошибки в браузере пользователей', () 
         expect(event.user?.ip_address).toBeUndefined();
     });
 
-    // остальные e2e проверяют то же в конце каждого теста (фикстура network); здесь — со скрытием вкладки: при нём SDK
-    // отправил бы отчёт клиента и сессию, если бы они были включены. Ошибку ResizeObserver SDK отбрасывает по умолчанию
-    // (DEFAULT_IGNORE_ERRORS), но включённый отчёт клиента сообщил бы о ней при скрытии
+    // the other e2e check the same at the end of each test (fixture network); here with a hidden tab: then the SDK
+    // would send the client report and the session if they were on. The SDK drops the ResizeObserver error by default
+    // (DEFAULT_IGNORE_ERRORS), but a client report that is on would report it when the tab becomes hidden
     test('Заход без ошибок', async ({ page, network }) => {
         await page.goto(LINK);
         await openProfile(page);

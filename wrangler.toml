@@ -6,8 +6,8 @@ compatibility_date = "2025-09-01"
 binding = "TILES"
 bucket_name = "nakarte-tiles"
 
-# Счётчик частоты для функций /tiles/ и /brouter-wasm/ (их _middleware.js): Worker nakarte-guard из
-# workers/guard. Вызов по service binding не тарифицируется как запрос; без привязки функции не лимитируются.
+# Rate counter for the functions /tiles/ and /brouter-wasm/ (their _middleware.js): Worker nakarte-guard from
+# workers/guard. A call by service binding is not billed as a request; without the binding the functions have no limit.
 [[services]]
 binding = "GUARD"
 service = "nakarte-guard"

@@ -7,12 +7,13 @@ import type { StreetViewViewer } from './api';
 import { useStreetView } from './context';
 import { UNAVAILABLE_MESSAGE } from './controller';
 
-// Панель панорамы (design add-web-search-panoramas, «Панель панорамы»): снизу на всю ширину, над профилем высот
-// (--profile-inset); панели редактора и точек, атрибуция и тосты — над ней по --bottom-inset (App). Окно создаётся при
-// первом открытии и живёт, пока включён режим: закрытие прячет панель, выключение режима снимает её вместе с окном.
+// The panorama panel (design add-web-search-panoramas, «Панель панорамы»): at the bottom, full width, above the
+// elevation profile (--profile-inset). The profile button, the attribution and the toasts are above it by
+// --bottom-inset (App). The panel creates the window at the first open, and the window lives while the mode is on:
+// close hides the panel, and turn-off of the mode removes the panel together with the window.
 
-// с профилем высот панорама ниже: обе панели на телефоне 390×844 в полный рост оставили бы карте ≈ 100 px (скриншоты
-// 2026-10-09)
+// with the elevation profile, the panorama height is smaller: both panels at full height on a 390×844 phone would
+// leave ≈ 100 px to the map (screenshots of 2026-10-09)
 export function panoramaHeight(withProfile: boolean): string {
     return withProfile ? 'min(30dvh, 20rem)' : 'min(45dvh, 28rem)';
 }
@@ -25,7 +26,7 @@ function Viewer({ open }: { open: boolean }) {
     const [viewer, setViewer] = useState<StreetViewViewer | null>(null);
     const [started, setStarted] = useState(false);
 
-    // окно — при первом открытии: API грузится только тогда
+    // create the window at the first open: the API loads only then
     useEffect(() => {
         if (open) {
             setStarted(true);
@@ -41,7 +42,7 @@ function Viewer({ open }: { open: boolean }) {
         let created: StreetViewViewer | null = null;
         streetView.api
             .createViewer(element, {
-                // закрытая панель не открывается снова от событий окна
+                // the events of the window do not open a closed panel again
                 onChange: (view) => {
                     if (active && store.getState().streetView.pano) {
                         store.getState().setPano(view);
@@ -72,7 +73,7 @@ function Viewer({ open }: { open: boolean }) {
         };
     }, [started, streetView, store]);
 
-    // запрос перейти — клик по карте или адрес
+    // a request to go to a point comes from a map click or from the address
     useEffect(() => {
         if (viewer && request) {
             viewer.show(request.view);

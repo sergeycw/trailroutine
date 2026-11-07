@@ -1,6 +1,6 @@
-// Частота запросов с одного IP в собранном wasm-Worker: привязки `[[ratelimits]]`, счётчик API, бюджет
-// чтений R2, `429` с CORS. В vitest.config.js лимиты понижены: API — 2 вызова и 5 единиц бюджета (по 64
-// чтения) за 60 с. Тайлов высот со своим счётчиком больше нет (change retire-old-client-services).
+// The request rate from one IP in the built wasm Worker: the `[[ratelimits]]` bindings, the API counter, the R2
+// read budget, `429` with CORS. vitest.config.js lowers the limits: API 2 calls and 5 budget units (64 reads
+// each) per 60 s. The elevation tiles with their own counter do not exist any more (change retire-old-client-services).
 import {exports as workerExports} from 'cloudflare:workers';
 import {describe, expect, it} from 'vitest';
 
@@ -51,7 +51,7 @@ describe('rate limit', () => {
     });
 });
 
-// Точки в `count` разных градусах: на каждый — заголовок и кусок, то есть 2 × count чтений.
+// Points in `count` different degrees: a header and a chunk for each, thus 2 × count reads.
 function scattered(count) {
     return Array.from({length: count}, (_, i) => `${(i % 100) - 49.5} ${Math.floor(i / 100) * 10 + 0.5}`).join('\n');
 }
@@ -65,7 +65,7 @@ describe('reads budget', () => {
     });
 
     it('answers 429 when the reads budget of the IP is spent', async () => {
-        // 100 градусов — 200 чтений, 4 единицы из 5
+        // 100 degrees are 200 reads, 4 units of 5
         const first = await fromIp('192.0.2.11', '/', {method: 'POST', origin: CLONE_ORIGIN, body: scattered(100)});
         expect(first.status).toBe(200);
         const second = await fromIp('192.0.2.11', '/', {method: 'POST', origin: CLONE_ORIGIN, body: scattered(100)});

@@ -2,18 +2,19 @@ import type { StreetViewApi, StreetViewHandlers } from '@/streetview/api';
 import type { PanoView } from '@/streetview/hash';
 import type { LatLng } from '@/tracks/model';
 
-// Street View для browser-тестов без Google (проп streetView у App): панорамы — в точках coverage, ближайшая в радиусе;
-// окно — div с текущим видом в атрибутах, тест поворачивает его и «идёт» по панораме сам (turn, walk).
+// Street View for browser tests without Google (the prop streetView of App): the panoramas are at the coverage
+// points, the search finds the nearest one in the radius. The window is a div with the current view in its
+// attributes. The test turns the window and "walks" in the panorama itself (turn, walk).
 
 export interface FakeStreetView {
     api: StreetViewApi;
     searches: { at: LatLng; radius: number }[];
     viewers: number;
     destroyed: number;
-    // повернуть или перевести открытое окно, как пользователь в панораме
+    // turn or move the open window, as a user does in the panorama
     turn(heading: number): void;
     walk(to: LatLng): void;
-    // следующие вызовы API падают, как незагрузившийся скрипт Google
+    // the next API calls fail, as when the Google script does not load
     fail(): void;
 }
 

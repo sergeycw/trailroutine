@@ -1,7 +1,9 @@
-// Street View в адресе — формат контрола панорам старого клиента (src/lib/leaflet.control.panoramas/index.js):
-// n2=_g — режим включён (подчёркивание и коды провайдеров покрытия), n2=_g/g/lat/lng/heading/pitch/zoom — с панорамой
-// (getState окна Google: toFixed(6) координат, toFixed(1) углов и зума). Старый n=lat/lng/heading/pitch/zoom — панорама
-// Google до появления n2= (hashStateUpgrader). Коды удалённых провайдеров (w, m, c) режим не включают.
+// Street View in the address uses the format of the panorama control of the old client
+// (src/lib/leaflet.control.panoramas/index.js): n2=_g means the mode is on (an underscore and the codes of the
+// coverage providers), n2=_g/g/lat/lng/heading/pitch/zoom means the mode with a panorama (getState of the Google
+// window: toFixed(6) for the coordinates, toFixed(1) for the angles and the zoom). The old n=lat/lng/heading/pitch/zoom
+// is a Google panorama from the time before n2= (hashStateUpgrader). The codes of the deleted providers (w, m, c) do
+// not turn on the mode.
 
 export interface PanoView {
     lat: number;
@@ -41,7 +43,7 @@ function parseN2(values: readonly string[]): StreetViewHash {
     return { enabled: true, pano };
 }
 
-// n2 важнее n: старый клиент переводил n в n2 и больше n не писал
+// n2 has priority over n: the old client converted n to n2 and did not write n again
 export function parseStreetView(n2: readonly string[] | undefined, n: readonly string[] | undefined): StreetViewHash {
     if (n2) {
         return parseN2(n2);

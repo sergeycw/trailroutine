@@ -3,15 +3,15 @@ import { type EngineBackend, mainThreadBackend, workerBackend } from '@/engine/b
 import { enginePaths } from '@/engine/cheerpj-router';
 import { createEngine } from '@/engine/engine';
 
-// Стенд замеров движка (engine-bench.html): холодный старт, время маршрутов и блокировка главного
-// потока. Параметры адреса: backend=worker|main-thread (по умолчанию worker), q=<запрос BRouter>,
-// runs=<число маршрутов>. Итог — JSON в <pre> и window.__bench.
-// Блокировку меряет MessageChannel-пинг: в фоновой вкладке rAF не тикает (AGENTS.md, CheerpJ).
+// The engine test bench (engine-bench.html): cold start, route time and the block of the main
+// thread. Address parameters: backend=worker|main-thread (worker by default), q=<BRouter request>,
+// runs=<number of routes>. The result is JSON in <pre> and window.__bench.
+// A MessageChannel ping measures the block: in a background tab rAF does not tick (AGENTS.md, CheerpJ).
 
-// Тестовый район AGENTS.md: Тбилиси, от ~41.687, 44.776 к телебашне Мтацминда, тайл E40_N40.
+// The test area of the tests and the bench: Tbilisi, from ~41.687, 44.776 to the Mtatsminda TV tower, tile E40_N40.
 const DEFAULT_QUERY =
     'lonlats=44.776000,41.687000|44.751500,41.694700&profile=hiking-mountain&alternativeidx=0&format=geojson';
-// задача длиннее 50 мс — long task по определению Long Tasks API
+// a task longer than 50 ms is a long task by the definition of the Long Tasks API
 const LONG_TASK_MS = 50;
 
 interface Blocking {
@@ -40,7 +40,7 @@ function startPinger() {
     };
     channel.port2.postMessage(null);
     return {
-        // снимок за фазу и обнуление
+        // a snapshot for the phase, then a reset
         take(): Blocking {
             const result = { ...stats, maxGapMs: Math.round(stats.maxGapMs), blockedMs: Math.round(stats.blockedMs) };
             stats = { maxGapMs: 0, blockedMs: 0, pings: 0 };

@@ -1,13 +1,13 @@
 import {trackKey} from './key';
 
-// Ссылка — упрощённый трек в nktk, 3–4 байта на точку: 2 МиБ — сотни тысяч точек. Было 10 МиБ, и с одного
-// IP это ≈ 27 ТБ хранения за месяц атаки (security-аудит, п. 3; change limit-track-writes).
+// A link is a simplified track in nktk, 3–4 bytes per point: 2 MiB is hundreds of thousands of points. It was 10 MiB,
+// and from one IP this gave ≈ 27 TB of storage per month of attack (security audit, item 3; change limit-track-writes).
 const MAX_TRACK_BYTES = 2 * 1024 * 1024;
 const KEY_PATTERN = /^[A-Za-z0-9_-]{22}$/u;
-// Тело ссылки — строки nktk в base64url клиента (паддинг `=` он не срезает), склеенные через `/`.
+// The link body is nktk strings in the base64url of the client (it does not remove the `=` padding), joined with `/`.
 const LINK_BODY = /^[A-Za-z0-9_\-=/]*$/u;
 const ALLOWED_METHODS = 'GET, POST, OPTIONS';
-// Длина окна `[[ratelimits]]` в wrangler.toml.
+// The window length of `[[ratelimits]]` in wrangler.toml.
 const RETRY_AFTER_SECONDS = '60';
 
 function allowedOrigins(env) {
@@ -29,8 +29,8 @@ function respond(origin, status, body = null, headers = {}) {
     return new Response(body, {status, headers: {...corsHeaders(origin), ...headers}});
 }
 
-// Без CF-Connecting-IP (локальный wrangler dev, тесты) частоту не ограничиваем. limiter — привязка
-// [[ratelimits]]: RATE_LIMITER на все запросы, WRITE_RATE_LIMITER ещё и на POST.
+// Without CF-Connecting-IP (local wrangler dev, tests) the rate is not limited. limiter is a binding of
+// [[ratelimits]]: RATE_LIMITER for all requests, WRITE_RATE_LIMITER also for POST.
 async function overLimit(request, limiter) {
     const ip = request.headers.get('CF-Connecting-IP');
     if (!ip) {
@@ -93,7 +93,7 @@ async function saveTrack(request, env, origin, key) {
     }
     const objectKey = `tracks/${key}`;
     if (!(await env.TRACKS.head(objectKey))) {
-        // время записи — чтобы после злоупотребления найти объекты за окно листингом, не читая тел
+        // the write time: after an abuse, a listing finds the objects of a time window without reading the bodies
         await env.TRACKS.put(objectKey, bytes, {customMetadata: {created: new Date().toISOString()}});
     }
     return respond(origin, 200);

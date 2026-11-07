@@ -14,8 +14,8 @@ import { TRACK_POINTS } from '@/tracks/style';
 import mapyczJson from './fixtures/mapycz-mtatsminda.json';
 import photonJson from './fixtures/photon-mtatsminda.json';
 
-// Поиск и метка в App на настоящей карте (спека map-search): сеть — заглушка fetch с сохранёнными ответами mapy.cz и
-// photon, в сеть тесты не ходят. Названия тестов — сценарии спеки.
+// Search and the placemark in App on a real map (spec map-search): the network is a fetch stub with saved answers of
+// mapy.cz and photon, the tests do not go to the network. The test titles are the scenarios of the spec.
 
 let tiles: FixtureTiles;
 
@@ -35,7 +35,8 @@ function json(body: unknown, status = 200) {
     return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 }
 
-// сеть: mapy.cz через прокси и photon — заданными ответами, остальное — ошибка сети; запросы записываются
+// the network: mapy.cz through the proxy and photon give the set answers, the rest is a network error; the requests
+// are recorded
 function searchNetwork(responses: { mapy?: () => Response; photon?: () => Response; other?: typeof fetch } = {}) {
     const requests: string[] = [];
     const fetchFn: typeof fetch = async (input, init) => {
@@ -94,7 +95,7 @@ describe('Поиск по названию', () => {
         expect(optionTitles()[0]).toBe('Mtatsminda Park');
         await expect.element(page.getByText('Amusement park, Tbilisi, Georgia')).toBeVisible();
         await expect.element(page.getByRole('link', { name: 'Mapy.com' })).toBeVisible();
-        // пауза ввода: одна строка — один запрос
+        // input pause: one string, one request
         expect(net.requests.filter((url) => url.includes('pro.mapy.cz'))).toHaveLength(1);
         expect(net.requests[0]).toContain('phrase=mtatsminda');
     });
@@ -126,7 +127,7 @@ describe('Поиск по названию', () => {
 
 describe('Устаревшие ответы', () => {
     test('Ответ на устаревший запрос отбрасывается', async () => {
-        // первый запрос отвечает позже второго
+        // the first request answers later than the second
         let releaseFirst!: () => void;
         const firstAnswered = new Promise<void>((resolve) => {
             releaseFirst = resolve;
@@ -222,14 +223,14 @@ describe('Поиск по координатам и ссылкам', () => {
     });
 });
 
-// точка на экране карты: трек показан целиком, если видны оба конца
+// a point on the map screen: the track shows fully if both ends are visible
 const shows = (map: MaplibreMap, point: { lat: number; lng: number }) =>
     map.getBounds().contains([point.lng, point.lat]);
 
-// спека map-search, «Ссылки на треки в поиске» и «Выбор ссылки на трек»; порядок — design search-track-links
+// spec map-search, «Ссылки на треки в поиске» and «Выбор ссылки на трек»; the order is in design search-track-links
 describe('Ссылки на треки в поиске', () => {
     test('Ссылка nakarte с треком и видом', async () => {
-        // трек далеко от вида ссылки: Enter открывает трек и показывает его, а не вид
+        // the track is far from the link view: Enter opens the track and shows it, not the view
         const nktk = saveNktk({ name: 'Linked', segments: [[P(43, 42), P(43.01, 42.02)]], points: [] });
         const { map } = await render();
         await searchField().fill(`https://nakarte-routing.pages.dev/#m=12/41.7/44.8&nktk=${nktk}`);
@@ -270,7 +271,7 @@ describe('Выбор ссылки на трек', () => {
         const { map } = await render('', network.fetch);
         await searchField().fill('https://www.openstreetmap.org/user/Wladich/traces/3376100');
         await expect.poll(optionTitles).toEqual(['OSM track 3376100']);
-        // до выбора трек не качается
+        // before the choice, the track does not download
         expect(network.requests).toEqual([]);
         await userEvent.keyboard('{Enter}');
         await expect.element(page.getByRole('button', { name: 'Kazbek' })).toBeVisible();
@@ -308,7 +309,7 @@ describe('Выбор результата поиска', () => {
         await searchField().fill('mtatsminda');
         await expect.poll(optionTitles).toHaveLength(5);
         await options().first().click();
-        // границы Mtatsminda Park из ответа: 41.6902–41.6959, 44.7752–44.7872
+        // the bounds of Mtatsminda Park from the answer: 41.6902–41.6959, 44.7752–44.7872
         await expect
             .poll(
                 () => Math.abs(map.getCenter().lat - 41.69305) < 1e-3 && Math.abs(map.getCenter().lng - 44.7812) < 1e-3,
@@ -318,7 +319,7 @@ describe('Выбор результата поиска', () => {
         expect(bounds.contains([44.7753, 41.6903]) && bounds.contains([44.7871, 41.6958])).toBe(true);
         await expect.element(placemark()).toHaveTextContent('Mtatsminda Park');
         expect(location.hash).toContain('&r=41.693040/44.779477/Mtatsminda%20Park');
-        // список закрылся, фокус ушёл на карту
+        // the list closed, the focus went to the map
         await expect.element(page.getByRole('listbox')).not.toBeInTheDocument();
     });
 
@@ -337,7 +338,7 @@ describe('Выбор результата поиска', () => {
         await expect.poll(optionTitles).toHaveLength(2);
         await userEvent.keyboard('{Escape}');
         await expect.element(page.getByRole('listbox')).not.toBeInTheDocument();
-        // фокус — карте (escapePressed → setFocusToMap старого)
+        // the focus goes to the map (escapePressed → setFocusToMap of the old client)
         await expect.poll(() => document.activeElement?.classList.contains('maplibregl-canvas')).toBe(true);
     });
 });
@@ -357,7 +358,7 @@ describe('Метка найденного места', () => {
         await page.getByRole('button', { name: 'Actions for Spring' }).click();
         await page.getByRole('menuitem', { name: 'Add point', exact: true }).click();
         await placemark().click();
-        // окно названия новой точки — с названием метки
+        // the name window of the new point has the placemark name
         await expect.element(page.getByRole('textbox', { name: 'Point name' })).toHaveValue('Mtatsminda');
         await page.getByRole('button', { name: 'Ok' }).click();
         await expect

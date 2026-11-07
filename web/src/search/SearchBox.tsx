@@ -9,9 +9,11 @@ import { isLinkQuery } from './links';
 import { isTrackLinkResult, type SearchItem } from './result';
 import { type Attribution, MIN_QUERY_LENGTH, type SearchSources, search } from './search';
 
-// Строка поиска в панели с названием (design add-web-search-panoramas, «Где живёт строка поиска»): результаты — списком
-// под строкой, пока фокус внутри; клавиши — SearchViewModel.onKeyDown старого клиента. Поисковики — с паузой ввода,
-// координаты и ссылки — сразу. Ответ на устаревший запрос отбрасывается (номер запроса), прежний запрос отменяется.
+// The search bar in its own glass capsule in the top bar (TopBar.tsx, design layout-three-zones; earlier design
+// add-web-search-panoramas, «Где живёт строка поиска»): the results are a list under the bar while the focus is
+// inside; the keys are SearchViewModel.onKeyDown of the old client. Search providers run after an input pause,
+// coordinates and links at once. An answer to an outdated request is dropped (the request number), the previous
+// request is cancelled.
 
 const TYPING_DELAY_MS = 400;
 
@@ -51,7 +53,8 @@ export function SearchBox({ sources }: { sources: SearchSources }) {
             return;
         }
         const seq = request.current.seq;
-        // прежние результаты сразу убираются: иначе Enter в паузе ввода выбрал бы ответ на старый запрос
+        // the previous results go away at once: otherwise Enter during the input pause would choose the answer to the
+        // old request
         setShown({ kind: 'loading' });
         const run = async () => {
             const abort = new AbortController();
@@ -75,7 +78,7 @@ export function SearchBox({ sources }: { sources: SearchSources }) {
                     setShown(outcome);
                 }
             } catch {
-                // отменён новым запросом
+                // cancelled by a new request
             }
         };
         const immediate = isLinkQuery(trimmed) || isCoordinatesQuery(trimmed);
@@ -86,8 +89,9 @@ export function SearchBox({ sources }: { sources: SearchSources }) {
         }
     }
 
-    // Alt+L — фокус в строку поиска (hotkey старого); code, а не key: на macOS Alt меняет символ
-    // biome-ignore lint/correctness/useExhaustiveDependencies: cancel читает только ref
+    // Alt+L puts the focus into the search bar (the hotkey of the old client); code, not key: on macOS Alt changes the
+    // character
+    // biome-ignore lint/correctness/useExhaustiveDependencies: cancel reads only a ref
     useEffect(() => {
         const onKey = (event: globalThis.KeyboardEvent) => {
             if (event.altKey && event.code === 'KeyL') {
@@ -103,8 +107,8 @@ export function SearchBox({ sources }: { sources: SearchSources }) {
     }, []);
 
     function choose(result: SearchItem) {
-        // ссылка на трек: качается только сейчас, карта — на трек, строка пустеет, как поле Track URL после загрузки
-        // (design search-track-links, «Результат-трек и выбор»)
+        // a track link: the track downloads only now, the map goes to the track, the bar becomes empty, as the Track
+        // URL field after the load (design search-track-links, «Результат-трек и выбор»)
         if (isTrackLinkResult(result)) {
             void trackActions.openUrl(result.url);
             setQuery('');
@@ -123,7 +127,7 @@ export function SearchBox({ sources }: { sources: SearchSources }) {
         leave();
     }
 
-    // фокус — карте (escapePressed → setFocusToMap старого)
+    // the focus goes to the map (escapePressed → setFocusToMap of the old client)
     function leave() {
         setActive(false);
         input.current?.blur();
@@ -158,17 +162,18 @@ export function SearchBox({ sources }: { sources: SearchSources }) {
     }
 
     return (
-        // focus и blur всплывают от строки и вариантов: так видно, что фокус ушёл из поиска целиком
-        // в стеклянной капсуле зоны маршрута (TopBar, design layout-three-zones): поле без рамки, результаты — карточкой
-        // под строкой
-        // biome-ignore lint/a11y/noStaticElementInteractions: обёртка ловит фокус потомков, сама не интерактивна
+        // focus and blur bubble up from the bar and the options: so it is visible that the focus left the search fully
+        // in the glass capsule of the route zone (TopBar, design layout-three-zones): the field has no border, the
+        // results are a card under the bar
+        // biome-ignore lint/a11y/noStaticElementInteractions: the wrapper catches child focus, it is not interactive
         <div
             className="relative min-w-0 flex-1"
             data-testid="search"
             onFocus={() => {
                 if (!active) {
                     setActive(true);
-                    // фокус вернулся, а результатов нет — искать снова (onInputHasFocusChange старого)
+                    // the focus came back, and there are no results: search again (onInputHasFocusChange of the old
+                    // client)
                     if (shown.kind === 'idle') {
                         start(query);
                     }
@@ -229,14 +234,14 @@ export function SearchBox({ sources }: { sources: SearchSources }) {
                         <div id={listId} role="listbox" aria-label="Search results" className="flex flex-col">
                             {results.map((result, index) => (
                                 <div
-                                    // biome-ignore lint/suspicious/noArrayIndexKey: у двух результатов может быть одно название
+                                    // biome-ignore lint/suspicious/noArrayIndexKey: two results can have the same name
                                     key={`${result.title}-${index}`}
                                     role="option"
-                                    // фокус не уходит из строки (aria-activedescendant-образный выбор стрелками)
+                                    // the focus stays in the bar (aria-activedescendant-like choice with arrow keys)
                                     tabIndex={-1}
                                     aria-selected={index === highlighted}
-                                    // фокус остаётся в строке: иначе Safari, который не фокусирует кнопки по клику, закрыл
-                                    // бы список раньше клика
+                                    // the focus stays in the bar: otherwise Safari, which does not focus buttons on
+                                    // click, would close the list before the click
                                     onMouseDown={(event) => event.preventDefault()}
                                     onMouseMove={() => setHighlighted(index)}
                                     onClick={() => choose(result)}

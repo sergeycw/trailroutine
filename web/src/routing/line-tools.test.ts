@@ -3,8 +3,8 @@ import type { LatLng } from '@/tracks/model';
 import { fromSegment, type Leg, linePoints, type RouteLine, routeFits, simplifyRouted, toSegment } from './line';
 import { cutLine, joinLines, reverseLine, shortcutLine, shortcutRemoved, splitLeg } from './line-tools';
 
-// Операции инструментов линии на модели без карты (спека route-editing: «Разрез отрезка», «Склейка отрезков», «Срез
-// участка», «Разворот отрезка», «Разметка маршрута после правки линии»).
+// Line tool operations on the model without a map (spec route-editing: «Разрез отрезка», «Склейка отрезков»,
+// «Срез участка», «Разворот отрезка», «Разметка маршрута после правки линии»).
 
 const P = (lat: number, lng: number) => ({ lat, lng });
 const A = P(41.69, 44.78);
@@ -18,13 +18,13 @@ const E = P(41.73, 44.8);
 const hiking = (points: LatLng[]): Leg => ({ state: 'routed', activity: 'hiking', points });
 const STRAIGHT: Leg = { state: 'straight' };
 
-// A ─(hiking: R1, R2)─ B ── C ─(mtb, непроложен)─ D
+// A ─(hiking: R1, R2)─ B ── C ─(mtb, not routed)─ D
 const LINE: RouteLine = {
     waypoints: [A, B, C, D],
     legs: [hiking([R1, R2]), STRAIGHT, { state: 'failed', activity: 'mtb' }],
 };
 
-// разметка части после операции годна, а упрощение для ссылки не трогает опорные точки
+// a part markup after the operation is valid, and the simplification for an nktk link does not touch the waypoints
 function expectSound(line: RouteLine) {
     const { points, route } = toSegment(line);
     if (route) {
@@ -37,7 +37,7 @@ function expectSound(line: RouteLine) {
 
 describe('splitLeg', () => {
     test('посреди маршрута: опорная точка на звене, обе половины проложены, геометрия та же', () => {
-        // ближе всего к звену R1–R2
+        // nearest to the link R1–R2
         const split = splitLeg(LINE, 0, P(41.6935, 44.7843));
         expect(split?.index).toBe(1);
         const line = split?.line as RouteLine;
@@ -154,13 +154,13 @@ describe('Срез участка', () => {
 
     test('оба места на одном проложенном отрезке, в любом порядке', () => {
         const R3 = P(41.697, 44.788);
-        // A ─(hiking: R1, R2, R3)─ B; первое место — на звене A–R1, второе — на звене R2–R3
+        // A ─(hiking: R1, R2, R3)─ B; the first place is on the link A–R1, the second place is on the link R2–R3
         const long: RouteLine = { waypoints: [A, B], legs: [hiking([R1, R2, R3])] };
         const first = P(41.691, 44.7815);
         const second = P(41.6965, 44.7875);
         const line = shortcutLine(long, { leg: 0, latlng: first }, { leg: 0, latlng: second }) as RouteLine;
         expect(shortcutLine(long, { leg: 0, latlng: second }, { leg: 0, latlng: first })).toEqual(line);
-        // A ─(маршрут)─ X ── прямая ── Y ─(маршрут через R3)─ B
+        // A ─(route)─ X ── straight ── Y ─(route through R3)─ B
         expect(line.waypoints).toHaveLength(4);
         expect(line.legs).toEqual([hiking([]), STRAIGHT, hiking([R3])]);
         expect(shortcutRemoved(long, { leg: 0, latlng: first }, { leg: 0, latlng: second })?.slice(1, -1)).toEqual([
@@ -175,7 +175,7 @@ describe('Срез участка', () => {
         const split = splitLeg(waiting, 0, P(41.695, 44.785))?.line as RouteLine;
         expect(split.legs).toEqual([waiting.legs[0], waiting.legs[0]]);
         const [first, second] = cutLine(waiting, { leg: 0, latlng: P(41.695, 44.785) }) as [RouteLine, RouteLine];
-        // в треке ожидающий отрезок без живого запроса пишется непроложенным (settledRoute в editing.ts)
+        // in a track, a pending leg without a live request is written as unrouted (settledRoute in editing.ts)
         expect(toSegment(first).route?.legs).toEqual([{ state: 'pending', activity: 'mtb' }]);
         expect(second.legs).toEqual([waiting.legs[0]]);
     });

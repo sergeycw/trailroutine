@@ -14,8 +14,8 @@ function quadkey(z: number, x: number, y: number) {
     return key;
 }
 
-// подстановка токенов как в TileID.url MapLibre 6.13 (src/tile/tile_id.ts)
-// у слоя по датам каждый шаблон — свой источник (style.ts): образец — верхний, Sentinel-2
+// token substitution as in TileID.url of MapLibre 6.13 (src/tile/tile_id.ts)
+// in a dated layer, each template is its own source (style.ts): the sample is the top one, Sentinel-2
 function tileUrl(layer: LayerDef, z: number, x: number, y: number, pixelRatio = 1) {
     const tiles = layer.dated ? (layer.source.tiles ?? []).slice(-1) : (layer.source.tiles ?? []);
     return tiles[(x + y) % tiles.length]
@@ -26,9 +26,10 @@ function tileUrl(layer: LayerDef, z: number, x: number, y: number, pixelRatio = 
         .replace('{quadkey}', quadkey(z, x, y));
 }
 
-// Образцы — шаблоны src/layers.js, подставленные Leaflet для тайла 8/151/87 (или тайла в покрытии слоя).
-// Отличия от старого клиента намеренные: Google — z= вместо zoom=17-z (те же тайлы), Slazav и Slovakia — конечные
-// адреса после редиректа, swisstopo — без прокси, Bing — статичный адрес из стиля.
+// The samples are the templates of src/layers.js with the values that Leaflet substituted for tile 8/151/87 (or for a
+// tile in the layer coverage). The differences from the old client are intentional: Google uses z= instead of
+// zoom=17-z (the same tiles), Slazav and Slovakia use the final addresses after the redirect, swisstopo goes without
+// the proxy, Bing uses a static address from the style.
 const SAMPLES: [code: string, tile: [number, number, number], url: string][] = [
     ['Tt', [8, 151, 87], 'https://proxy.test/https/tile.tracestrack.com/topo_en/8/151/87.webp'],
     ['O', [8, 151, 87], 'https://tile.openstreetmap.org/8/151/87.png'],
@@ -172,7 +173,7 @@ describe('Каталог слоёв', () => {
     });
 
     test('у каждого слоя каталога есть образец адреса', () => {
-        // у OpenFreeMap Outdoor шаблона нет: адрес тайлов MapLibre берёт из TileJSON
+        // OpenFreeMap Outdoor has no template: MapLibre takes the tile address from TileJSON
         const templated = catalog.filter((layer) => layer.source.tiles);
         expect(SAMPLES.map(([code]) => code).sort()).toEqual(templated.map((layer) => layer.code).sort());
     });
@@ -243,7 +244,7 @@ describe('Каталог слоёв', () => {
                 `(Contains modified Copernicus Sentinel data ${year}), ` +
                 '<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>',
         );
-        // пирамида EOX для EPSG:3857 — до z14, выше тайлы растягивает карта
+        // the EOX pyramid for EPSG:3857 goes up to z14; above it, the map stretches the tiles
         expect(s2.source.maxzoom).toBe(14);
         expect(s2.group).toBe('Default layers');
         expect(s2.order).toBe((byCode.get('E')?.order ?? 0) + 1);
@@ -253,7 +254,7 @@ describe('Каталог слоёв', () => {
         for (const code of ['Np', 'Nm', 'Nr', 'Fmk', 'Se', 'Gbt', 'St', 'Sp', 'Si', 'Mt']) {
             expect(byCode.get(code)?.source.bounds, code).toHaveLength(4);
         }
-        // зум карты MapLibre = зум Leaflet - 1: Great Britain Topo с Leaflet 12, Slovakia — с 10
+        // MapLibre map zoom = Leaflet zoom - 1: Great Britain Topo from Leaflet 12, Slovakia from 10
         expect(byCode.get('Gbt')?.minZoom).toBe(11);
         expect(byCode.get('St')?.minZoom).toBe(9);
         expect(byCode.get('Si')?.source).toMatchObject({ tileSize: 128 });

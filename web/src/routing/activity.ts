@@ -1,8 +1,8 @@
 import { getActivity } from './brouter';
 
-// Выбранная активность в localStorage (спека routing, «Выбор активности сохраняется»). Свой ключ: origin общий со старым
-// клиентом. Пока своего ключа нет, берётся выбор старого клиента (trackListRoutingActivity) — как настройки слоёв
-// (layers/settings.ts): старый ключ только читается. Неизвестный идентификатор — прокладка выключена.
+// The selected activity in localStorage (spec routing, «Выбор активности сохраняется»). Own key: the origin is shared
+// with the old client. While there is no own key, the app takes the old client selection (trackListRoutingActivity),
+// as the layer settings do (layers/settings.ts): the app only reads the old key. An unknown identifier: routing is off.
 
 const STORAGE_KEY = 'nakarte-web:routing-activity';
 const LEGACY_STORAGE_KEY = 'trackListRoutingActivity';
@@ -23,8 +23,8 @@ export function loadActivity(storage: Storage | null): string | null {
     return getActivity(own ?? read(storage, LEGACY_STORAGE_KEY))?.id ?? null;
 }
 
-// «Off» удаляет свой ключ; старый ключ не трогается — его пишет старый клиент. Без своего ключа старый выбор снова
-// подхватился бы после «Off», поэтому «Off» пишется пустой строкой, а не удалением, если старый ключ есть.
+// «Off» removes the own key; the app does not touch the old key, because the old client writes it. Without the own key,
+// the old selection would come back after «Off», so «Off» writes an empty string, not a removal, if the old key exists.
 export function saveActivity(storage: Storage | null, id: string | null): void {
     try {
         if (id) {
@@ -35,6 +35,6 @@ export function saveActivity(storage: Storage | null, id: string | null): void {
             storage?.removeItem(STORAGE_KEY);
         }
     } catch {
-        // хранилище недоступно или переполнено: выбор живёт до перезагрузки
+        // the storage is not available or is full: the selection lives until a reload
     }
 }

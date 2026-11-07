@@ -1,11 +1,11 @@
 name: strava heatmap check
 
-# Раз в день проверяет, что прокси отдаёт тайл heatmap на куках, полученных по сессии STRAVA_SESSION.
-# Падение = GitHub шлёт письмо: сессия Strava умерла или Strava сменила выдачу кук.
-# Что смотреть: `npx wrangler@4 tail` в workers/cors-proxy, строки «strava heatmap cookies not refreshed»;
-# новая сессия — scripts/strava-session-secret.mjs (AGENTS.md, пункт про Strava heatmap).
-# По расписанию Actions запускаются только из ветки по умолчанию; после 60 дней без коммитов GitHub
-# отключает расписание.
+# Once a day checks that the proxy serves a heatmap tile with the cookies that it gets from the session STRAVA_SESSION.
+# A failure = GitHub sends an email: the Strava session is dead, or Strava changed how it issues the cookies.
+# What to look at: `npx wrangler@4 tail` in workers/cors-proxy, lines «strava heatmap cookies not refreshed»;
+# a new session — scripts/strava-session-secret.mjs (AGENTS.md, the item about Strava heatmap).
+# Actions run on a schedule only from the default branch; after 60 days without commits GitHub
+# disables the schedule.
 
 on:
   schedule:
@@ -19,7 +19,7 @@ jobs:
     steps:
       - name: heatmap tile through the proxy uses the session
         run: |
-          # тайл Тбилиси z12, на нём точно есть треки; Origin — клон, иначе прокси ответит 403
+          # tile of Tbilisi z12, it surely has tracks; Origin is the clone, else the proxy answers 403
           url="https://nakarte-cors-proxy.nakarte-routing.workers.dev/https/content-a.strava.com/identified/globalheat/all/hot/12/2557/1514.png?px=256&check=$(date +%s)"
           for attempt in 1 2 3; do
             if curl -sS -o /dev/null -D headers.txt -H 'Origin: https://trailroutine.com' "$url"; then

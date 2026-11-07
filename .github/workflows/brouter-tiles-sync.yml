@@ -24,8 +24,9 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
-      # S3 API R2 (aws CLI есть на раннере) с ключами токена «nakarte-elevation data upload»: запись только в
-      # бакеты nakarte-elevation и nakarte-tiles; токен Cloudflare синхронизации не нужен (change sync-tiles-via-s3)
+      # R2 S3 API (the runner has the aws CLI) with the keys of the token «nakarte-elevation data upload»: it writes
+      # only to the buckets nakarte-elevation and nakarte-tiles; the sync does not need a Cloudflare token (change
+      # sync-tiles-via-s3)
       - run: node scripts/brouter-tiles-sync.mjs
         env:
           R2_MODE: remote

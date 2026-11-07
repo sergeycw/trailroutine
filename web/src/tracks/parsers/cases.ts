@@ -4,8 +4,8 @@ import oldParsers from '../fixtures/old-parsers.json';
 import type { GeoData } from '../model';
 import { parseGeoFile } from '.';
 
-// Сценарии парсеров на фикстурах — общие для unit-тестов в Node (DOMParser из xmldom) и browser-тестов в Chromium:
-// расхождение двух DOMParser на этих файлах валит один из прогонов (design add-web-tracks, «Парсеры»).
+// Parser scenarios on fixtures, shared by unit tests in Node (DOMParser from xmldom) and browser tests in Chromium: a
+// difference between the two DOMParsers on these files fails one of the runs (design add-web-tracks, «Парсеры»).
 
 const FILES = import.meta.glob<string>('../fixtures/files/*', { query: '?bytes', import: 'default', eager: true });
 
@@ -38,7 +38,7 @@ interface OldGeoData {
 }
 
 export function parserCases() {
-    // поведение старого клиента на этих файлах и есть требование (fixtures/README.md)
+    // the behavior of the old client on these files is the requirement (fixtures/README.md)
     test.each(Object.entries(oldParsers as Record<string, OldGeoData[]>))('как старый клиент: %s', (name, expected) => {
         const actual = parse(name).map((data) => ({
             name: data.name,
@@ -68,7 +68,8 @@ export function parserCases() {
     });
 
     test('Архив с несколькими файлами', () => {
-        // readme.txt и каталог пропущены; имя в CP866 без флага UTF-8 и имя с флагом читаются оба
+        // readme.txt and the directory are skipped; both names are read: the name in CP866 without the UTF-8 flag and
+        // the name with the flag
         expect(parse('archive.zip').map(shape)).toEqual([
             { name: 'трек.gpx', error: undefined, segments: [2], points: [] },
             { name: 'track.plt', error: undefined, segments: [2, 2], points: [] },

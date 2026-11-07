@@ -1,10 +1,11 @@
 import type { LatLng } from '@/tracks/model';
 import type { Elevation } from './profile';
 
-// Запросы к API высот (спека elevation-api; ElevationProvider старого клиента, src/lib/elevations/index.js): POST
-// строк «lat lng» с шестью знаками, ответ — строка на точку, высота или NULL. Куски по 10 000 точек — лимит Worker'а
-// (10 000 точек и 250 000 байт: строка не длиннее 23 байт, кусок укладывается), последовательно, как у старого.
-// Без credentials, в отличие от старого withCredentials: Worker отражает Origin и без них, cookies ему не нужны
+// Requests to the elevation API (spec elevation-api; ElevationProvider of the old client,
+// src/lib/elevations/index.js): a POST of «lat lng» lines with six decimals; the answer is one line per point, an
+// elevation or NULL. Chunks of 10 000 points are the limit of the Worker (10 000 points and 250 000 bytes: a line is
+// not longer than 23 bytes, so a chunk fits), one after another, as in the old client. Without credentials, unlike
+// withCredentials of the old client: the Worker reflects Origin also without them, and it does not need cookies
 // (design add-web-elevation-profile, «Модули»).
 
 export const ELEVATION_CHUNK = 10000;
@@ -16,8 +17,9 @@ export interface ElevationSource {
     url: string;
 }
 
-// Долгота для API: вне [-180, 180) у Worker'а NULL (спека elevation-api, «Нет данных»). Долгота в пределах не
-// трогается — арифметика приведения даёт ей шум в последнем знаке (как wrapped в tracks/actions.ts), а 180 → -180.
+// The longitude for the API: outside [-180, 180) the Worker gives NULL (spec elevation-api, «Нет данных»). The code
+// does not change a longitude in the range: the wrap arithmetic adds noise in its last digit (as wrapped in
+// tracks/actions.ts), and 180 → -180.
 export function requestLng(lng: number): number {
     return lng >= -180 && lng < 180 ? lng : ((((lng + 180) % 360) + 360) % 360) - 180;
 }
@@ -31,7 +33,7 @@ export function parseResponse(text: string, expected: number): Elevation[] {
         return [];
     }
     const lines = text.split('\n');
-    // хвостового перевода строки у Worker'а нет; если появится — не считать его строкой
+    // the Worker does not add a trailing line break; if it appears, do not count it as a line
     if (lines.length === expected + 1 && lines[expected] === '') {
         lines.pop();
     }
@@ -54,7 +56,8 @@ function statusReason(status: number): string {
     if (status === 429) {
         return 'too many requests, try again in a minute';
     }
-    // по числу точек и байтам куски в лимит укладываются, значит — больше 512 чтений хранилища: точки вразброс
+    // the chunks fit in the limit by the number of points and bytes, so this is more than 512 storage reads: the
+    // points are far apart
     if (status === 413) {
         return 'track covers too large an area';
     }

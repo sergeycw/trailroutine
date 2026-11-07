@@ -2,12 +2,12 @@ import { readFileSync } from 'node:fs';
 import type { Page } from '@playwright/test';
 import { elevationAt, expect, openTracks, test } from './fixtures.ts';
 
-// Профиль высот и GPX с высотами со сборкой клона: сервис высот — заглушка фикстуры network (высота — функция широты,
-// elevationAt), в сеть тесты не ходят. Названия тестов — сценарии спек tracks, track-files и route-editing (design
-// add-web-elevation-profile).
+// Elevation profile and GPX with elevations on the clone build: the elevation service is a stub of the fixture network
+// (the elevation is a function of the latitude, elevationAt), the tests do not go to the network. The test titles are
+// the scenarios of the specs tracks, track-files and route-editing (design add-web-elevation-profile).
 
 // saveNktk({name: 'Mtatsminda', segments: [[41.69, 44.79 → 41.695, 44.786]], points: [TV tower 41.6945, 44.786]}):
-// строкой, потому что e2e собирается как Node-модуль (nodenext), а src/tracks/ импортирует без расширений
+// as a string, because e2e builds as a Node module (nodenext), and src/tracks/ imports without extensions
 const TBILISI = 'RAoCEAESNgoKTXRhdHNtaW5kYRIQCgbele0B0gMSBorn_gHzAhoWCICZ7QEQluT-ARoKGghUViB0b3dlcg==';
 const VIEW = './#m=15/41.69/44.785';
 const START = { x: 540, y: 420 };
@@ -27,11 +27,11 @@ test('Профиль трека', async ({ page, network }) => {
     await trackMenu(page, 'Mtatsminda', 'Show elevation profile');
     await expect(stat(page, 'distance')).toHaveText(/^0\.\d\d km$/);
     expect(network.elevationRequests).toHaveLength(1);
-    // высоты заглушки: 41.69 → 900 м, 41.695 → 950 м
+    // stub elevations: 41.69 → 900 m, 41.695 → 950 m
     await expect(stat(page, 'start')).toHaveText(`${Math.round(elevationAt(41.69))} m`);
     await expect(stat(page, 'finish')).toHaveText(`${Math.round(elevationAt(41.695))} m`);
     await expect(panel(page).getByRole('link', { name: /viewfinderpanoramas/ })).toBeVisible();
-    // Курсор на графике: метка на карте
+    // «Курсор на графике»: a marker on the map
     const graph = await page.getByTestId('profile-graph').boundingBox();
     if (!graph) {
         throw new Error('нет графика');
@@ -50,27 +50,27 @@ test('Профиль отрезка', async ({ page, network }) => {
         await page.mouse.click(point.x, point.y);
     }
     await page.keyboard.press('Escape');
-    // меню опорной точки — по стору, без отрисованного кадра
+    // the waypoint menu works from the store, without a drawn frame
     await page.mouse.move(FINISH.x, FINISH.y);
     await page.mouse.click(FINISH.x, FINISH.y, { button: 'right' });
     await page.getByTestId('map-menu').getByRole('menuitem', { name: 'Show elevation profile for segment' }).click();
     await expect(stat(page, 'distance')).toHaveText(/ km$/);
     expect(network.elevationRequests).toHaveLength(1);
-    // редактирование продолжается
+    // the editing continues
     await expect(page.getByTestId('edit-panel')).toBeVisible();
 });
 
 test('Сохранить с высотами', async ({ page, network }) => {
     await page.goto(`./#m=12/41.7/44.8&nktk=${TBILISI}`);
     const download = page.waitForEvent('download');
-    // «Save as GPX» — всегда с высотами (design trim-track-menus)
+    // «Save as GPX» is always with elevations (design trim-track-menus)
     await trackMenu(page, 'Mtatsminda', 'Save as GPX');
     const file = await download;
     expect(file.suggestedFilename()).toBe('Mtatsminda.gpx');
     const content = readFileSync(await file.path(), 'utf8');
     expect(network.elevationRequests).toHaveLength(1);
     expect(network.elevationRequests[0].split('\n')).toHaveLength(3);
-    // у точки трека и обеих точек отрезка — <ele> заглушки
+    // the track point and both points of the segment have the <ele> of the stub
     expect(content.match(/<ele>\d+\.\d<\/ele>/g)).toHaveLength(3);
     expect(content).toMatch(/<trkpt lat="41\.69\d{4}" lon="44\.7[89]\d{4}"><ele>9\d\d\.\d<\/ele><time>/);
 });

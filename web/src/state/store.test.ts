@@ -105,7 +105,7 @@ describe('откат подложки', () => {
         expect(s.getState().selection.base).toBe('O');
         expect(s.getState().basemapFallback).toBe('Of');
         expect(savedSelection(s.getState())).toEqual({ base: 'Of', overlays: [] });
-        // у OpenStreetMap отката нет: её ошибки — обычный тост
+        // OpenStreetMap has no fallback: its errors give a normal toast
         expect(s.getState().fallBackBase('O')).toBe(false);
         expect(s.getState().selection.base).toBe('O');
     });
@@ -116,7 +116,7 @@ describe('откат подложки', () => {
         expect(s.getState().fallBackBase('Tt')).toBe(true);
         expect(s.getState().selection).toEqual({ base: 'O', overlays: ['Hs'] });
         expect(s.getState().basemapFallback).toBe('Tt');
-        // сохраняется подложка, с которой откатились
+        // the basemap that the fallback started from is saved
         expect(savedSelection(s.getState())).toEqual({ base: 'Tt', overlays: ['Hs'] });
     });
 
@@ -196,7 +196,7 @@ describe('Круг помнит выбор типа', () => {
         s.getState().fallBackBase('Tt');
         expect(s.getState().settings.quickLayers).toEqual({});
         s.getState().selectBase('E');
-        // круг обычной карты: OpenStreetMap отката не запомнен — Google Map
+        // the regular map circle: the fallback OpenStreetMap is not remembered, so the circle gives Google Map
         expect(quickTarget(maps, s.getState().settings.quickLayers, undefined, maps.codes)).toBe('G');
     });
 
@@ -227,7 +227,7 @@ describe('Меню слоёв столбца', () => {
         s.getState().setQuickOverlay(heatmaps, null);
         expect(s.getState().selection.overlays).toEqual(['Hs']);
         expect(s.getState().settings.quickLayers).toEqual({ Sa: 'Sr' });
-        // слой не из группы — ничего не меняется
+        // a layer not from the group: nothing changes
         s.getState().setQuickOverlay(heatmaps, 'Hs');
         expect(s.getState().selection.overlays).toEqual(['Hs']);
     });

@@ -2,7 +2,17 @@
 
 # trailroutine
 
-A hiking map that routes tracks along roads and trails with [BRouter](https://github.com/abrensch/brouter). Public version: https://trailroutine.com (the old address https://nakarte-routing.pages.dev moves visitors there with their saved tracks).
+A free web map to plan outdoor routes: hiking, road bike, gravel, mountain bike and touring bike.
+
+- Routes follow roads and trails. The [BRouter](https://github.com/abrensch/brouter) engine runs in your browser.
+- Topographic maps, satellite imagery (also by date), Strava heatmap, contour lines and relief shading.
+- Elevation profile with slope.
+- Open GPX, KML, KMZ, GeoJSON and OziExplorer files. Save tracks as GPX with elevations or as KML.
+- Share tracks with a link. No account.
+
+Open it: https://trailroutine.com. The old address https://nakarte-routing.pages.dev moves visitors there with their saved tracks.
+
+![A hiking route from Stepantsminda to the Sabertse Pass with its elevation profile](docs/screenshot.jpg)
 
 It started as a fork of [wladich/nakarte](https://github.com/wladich/nakarte), the code of nakarte.me by Sergey Orlov, and is developed as a separate product: the app in [web/](web/) is a rewrite on React and MapLibre that reads the old links. MIT license, see [LICENSE](LICENSE).
 

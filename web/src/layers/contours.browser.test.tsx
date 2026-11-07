@@ -7,8 +7,9 @@ import { type FixtureTiles, fixtureTiles } from '@/test/tiles';
 
 const TERRARIUM = /elevation-tiles-prod\/terrarium\//;
 
-// Склон Terrarium: высота растёт на 2 м за пиксель тайла слева направо, 1000…1510 м (кодировка — README Terrain Tiles:
-// высота = R * 256 + G + B / 256 - 32768). PNG без потерь, так что библиотека декодирует ровно эти высоты
+// A Terrarium slope: the elevation grows by 2 m per tile pixel from left to right, 1000…1510 m (the encoding is from
+// the Terrain Tiles README: elevation = R * 256 + G + B / 256 - 32768). PNG is lossless, so the library decodes exactly
+// these elevations
 async function slopeTile(): Promise<string> {
     const size = 256;
     const canvas = new OffscreenCanvas(size, size);
@@ -30,7 +31,7 @@ describe('Горизонтали', () => {
 
     beforeEach(async () => {
         tiles = fixtureTiles();
-        // протокол с этой фикстурой ставит renderApp
+        // renderApp sets the protocol with this fixture
         tiles.respond(TERRARIUM, await slopeTile());
     });
 
@@ -39,7 +40,7 @@ describe('Горизонтали', () => {
     });
 
     test('Горизонтали из рельефа', async () => {
-        // m=14 — зум MapLibre 13: шаг 20 м, основные через 100 м
+        // m=14 is MapLibre zoom 13: the step is 20 m, the main lines every 100 m
         const { map } = await renderApp(tiles, '#m=14/42.66/44.64&l=O/Ct', { tracksOpen: false });
         await expect
             .poll(() => map.queryRenderedFeatures({ layers: ['Ct'] }).length, { timeout: 10_000 })
@@ -55,12 +56,13 @@ describe('Горизонтали', () => {
                 feature.properties.ele % 100 === 0 ? 1 : 0,
             );
         }
-        // подписи — только основные
+        // the labels are only on the main lines
         await expect.poll(() => map.queryRenderedFeatures({ layers: ['Ct-labels'] }).length).toBeGreaterThan(0);
         for (const label of map.queryRenderedFeatures({ layers: ['Ct-labels'] })) {
             expect(label.properties.ele % 100).toBe(0);
         }
-        // рельеф — тайлы Terrain Tiles того же зума, что тайл горизонталей, через фикстуру; в сеть ничего не ушло
+        // the relief is Terrain Tiles tiles of the same zoom as the contour tile, through the fixture; nothing went to
+        // the network
         expect(
             tiles.requested.filter((url) => TERRARIUM.test(url)).every((url) => url.includes('/terrarium/13/')),
         ).toBe(true);
@@ -77,7 +79,7 @@ describe('Горизонтали', () => {
         expect(map.queryRenderedFeatures({ layers: ['Ct'] })).toEqual([]);
         expect(tiles.external).toEqual([]);
 
-        // граница: с m=11 горизонтали уже есть, шаг 200 м
+        // the border: from m=11 the contour lines are already present, the step is 200 m
         await cleanup();
         const zoom11 = await renderApp(tiles, '#m=11/42.66/44.64&l=O/Ct', { tracksOpen: false });
         await expect

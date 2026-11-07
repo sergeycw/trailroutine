@@ -5,8 +5,8 @@ export default defineConfig({
     plugins: [
         cloudflareTest({
             wrangler: {configPath: './wrangler.toml'},
-            // лимиты частоты понижены (все запросы — 3, записи — 2), чтобы `429` проверялся несколькими запросами;
-            // `namespace_id` — имя поля miniflare, camelCase тут не выбрать
+            // the rate limits are lower (all requests 3, writes 2), so a few requests are sufficient to check `429`;
+            // `namespace_id` is the field name of miniflare, camelCase is not possible here
             miniflare: {
                 ratelimits: {
                     RATE_LIMITER: {namespace_id: '1003', simple: {limit: 3, period: 60}},

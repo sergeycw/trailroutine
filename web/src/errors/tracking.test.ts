@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
-// Запуск трекера без сети: SDK подменён, проверяются настройки, которые передаются Sentry.init, и что без DSN SDK не
-// трогается вовсе: без Sentry.init у SDK нет клиента и транспорта, отправлять нечем. Отправку и очистку настоящего
-// конверта проверяет e2e (e2e/clone-monitoring.spec.ts, заглушка приёма Sentry).
+// The tracker start without the network: the SDK is replaced. The tests check the options that go to Sentry.init,
+// and that without a DSN the code does not touch the SDK at all: without Sentry.init the SDK has no client and no
+// transport, so it cannot send. e2e checks the send and the scrub of a real envelope (e2e/clone-monitoring.spec.ts,
+// the Sentry intake stub).
 const capture = vi.hoisted(() => vi.fn());
 const sentry = vi.hoisted(() => ({
     init: vi.fn(),
@@ -14,7 +15,8 @@ vi.mock('@sentry/react', () => sentry);
 const DSN = 'https://public@o0.ingest.sentry.io/0';
 const ORIGIN = 'https://nakarte-routing.pages.dev';
 
-// у модуля своё состояние (запущен ли трекер, о каких бэкендах уже сообщено): каждый тест — с чистого импорта
+// the module has its own state (whether the tracker runs, which backends it already reported): each test starts
+// from a clean import
 async function load() {
     vi.resetModules();
     return import('./tracking');
@@ -42,7 +44,8 @@ describe('Запросы к Sentry только с ошибкой', () => {
 
     test('Заход без ошибок', async () => {
         const { options } = await started();
-        // сессия на каждый заход выключена, отчёт клиента об отброшенных событиях — тоже: без ошибки запросов нет
+        // the session on each visit is off, and so is the client report about discarded events: no requests
+        // without an error
         const defaults = ['BrowserSession', 'GlobalHandlers', 'CultureContext', 'Breadcrumbs'].map((name) => ({
             name,
         }));
@@ -66,7 +69,7 @@ describe('Отчёт без места и треков пользователя'
             httpBodies: [],
             urlQueryParams: false,
         });
-        // сообщения fetch в приложении (тосты) SDK не трогает
+        // the SDK does not touch the fetch messages in the app (toasts)
         expect(options.enhanceFetchErrorMessages).toBe('report-only');
         const { keepBreadcrumb, scrubEvent } = await import('./scrub');
         expect(options.beforeSend).toBe(scrubEvent);
@@ -79,7 +82,7 @@ describe('Ошибки в браузере пользователей', () => {
         const { tracking } = await started();
         tracking.reportEngineBackendError('worker', new Error('worker failed'));
         tracking.reportEngineBackendError('worker', new Error('worker failed again'));
-        // исключение Java из CheerpJ — не Error
+        // a Java exception from CheerpJ is not an Error
         tracking.reportEngineBackendError('main-thread', { javaClass: 'java.lang.ArithmeticException' });
         expect(sentry.captureException.mock.calls).toEqual([
             [
@@ -99,7 +102,7 @@ describe('Ошибки в браузере пользователей', () => {
         const handler = tracking.rootErrorHandler();
         const error = new Error('render failed');
         handler?.(error, { componentStack: '\n    at App' });
-        // без колбэка: с колбэком SDK пометил бы ошибку handled
+        // without a callback: with a callback the SDK would mark the error as handled
         expect(sentry.reactErrorHandler).toHaveBeenCalledWith();
         expect(capture).toHaveBeenCalledWith(error, { componentStack: '\n    at App' });
         expect(console).toHaveBeenCalledWith(error);

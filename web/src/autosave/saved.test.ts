@@ -5,7 +5,7 @@ import { fromSaved, SAVED_VERSION, toSaved } from './saved';
 
 const A = { lat: 41.690001234567, lng: 44.780009876543 };
 const R = { lat: 41.6912, lng: 44.7811 };
-// опорная точка точно на прямой между A и C: упрощение её бы убрало
+// a waypoint exactly on the straight line between A and C: the simplification would remove it
 const B = { lat: (A.lat + 41.71) / 2, lng: (A.lng + 44.8) / 2 };
 const C = { lat: 41.71, lng: 44.8 };
 
@@ -58,7 +58,7 @@ describe('трек → запись → трек', () => {
     test('свой цвет туда и обратно, номер палитры из старой записи — как раньше', () => {
         const saved = toSaved([track({ segments: [[A, C]], color: '#14b8a6' })]);
         expect(fromSaved(saved)?.[0].color).toBe('#14b8a6');
-        // запись до change track-color-picker: номер палитры, та же версия
+        // a record from before change track-color-picker: a palette index, the same version
         const old = { ...saved, tracks: [{ ...saved.tracks[0], color: 4 }] };
         expect(fromSaved(old)?.[0].color).toBe(4);
     });
