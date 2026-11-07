@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import { type BrowserContext, test as base, expect, type Page } from '@playwright/test';
+import { type BrowserContext, test as base, expect, type Page, type Route } from '@playwright/test';
 import { makeConfig } from '../src/config.ts';
 import { buildCatalog, OPENFREEMAP_TILEJSON } from '../src/layers/catalog.ts';
 import { COVERAGE_CODE, COVERAGE_TILES } from '../src/streetview/coverage.ts';
@@ -265,6 +265,8 @@ export const test = base.extend<{ network: Network; tracksOpen: boolean }>({
             const failing = new Set<string>();
             let customCors = true;
             let externalAllowed = false;
+            // the test body is over: the context closes next
+            let ended = false;
             const siteHosts = new Set<string>();
             const proxied = new Map<string, { path?: string; body?: string; status?: number }>();
             const searchStatus: Record<'mapycz' | 'photon', number> = { mapycz: 200, photon: 200 };
@@ -304,6 +306,22 @@ export const test = base.extend<{ network: Network; tracksOpen: boolean }>({
                     }
                 },
             };
+            // The answer of vite preview, with the CheerpJ stub before the engine worker script. After the test the
+            // context closes, and a route.fetch that still waits fails with «route.fetch: Test ended»: the page does
+            // not need that answer any more, so the error is not a test failure.
+            async function fulfillFromPreview(route: Route, url: string, headers?: Record<string, string>) {
+                try {
+                    const response = await route.fetch({ url, headers });
+                    if (!ENGINE_WORKER.test(new URL(url).pathname)) {
+                        return await route.fulfill({ response });
+                    }
+                    return await route.fulfill({ response, body: WORKER_PRELUDE + (await response.text()) });
+                } catch (error) {
+                    if (!ended) {
+                        throw error;
+                    }
+                }
+            }
             async function intercept(target: BrowserContext) {
                 target.on('request', (request) => {
                     if (new URL(request.url()).hostname.endsWith('leaningtech.com')) {
@@ -326,16 +344,17 @@ export const test = base.extend<{ network: Network; tracksOpen: boolean }>({
                                 contentType: 'text/html',
                             });
                         }
-                        const response = await route.fetch({ url: url.replace(origin, PREVIEW_ORIGIN) });
-                        return ENGINE_WORKER.test(pathname)
-                            ? route.fulfill({ response, body: WORKER_PRELUDE + (await response.text()) })
-                            : route.fulfill({ response });
+                        // Firefox route.fetch sends the Host of the original request, and vite preview refuses a
+                        // host that is not in preview.allowedHosts
+                        const headers = Object.fromEntries(
+                            Object.entries(route.request().headers()).filter(([name]) => name !== 'host'),
+                        );
+                        return fulfillFromPreview(route, url.replace(origin, PREVIEW_ORIGIN), headers);
                     }
                     if (hostname === 'localhost') {
-                        if (ENGINE_WORKER.test(new URL(url).pathname)) {
+                        if (ENGINE_WORKER.test(pathname)) {
                             network.engineLoads += 1;
-                            const response = await route.fetch();
-                            return route.fulfill({ response, body: WORKER_PRELUDE + (await response.text()) });
+                            return fulfillFromPreview(route, url);
                         }
                         return route.continue();
                     }
@@ -454,6 +473,7 @@ export const test = base.extend<{ network: Network; tracksOpen: boolean }>({
             }
             await intercept(context);
             await use(network);
+            ended = true;
             expect(network.external, 'запросы мимо localhost и подменённых тайлов').toEqual([]);
             expect(network.cdnRequests, 'запросы к CDN CheerpJ мимо заглушки').toEqual([]);
             // on a build with a DSN, the scenario «Заход без ошибок» of the spec clone-monitoring in all e2e: routing,
