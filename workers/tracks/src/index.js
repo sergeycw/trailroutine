@@ -99,15 +99,60 @@ async function saveTrack(request, env, origin, key) {
     return respond(origin, 200);
 }
 
+// nktl= links of nakarte.me keep their tracks in the author's storage. Its key is the same base64url md5 of the body
+// as ours (checked on a real key on 2026-11-07), so one key means one body, and the Worker can keep a copy
+// (change import-nakarte-storage-links, spec track-storage, «Track from the storage of nakarte.me»).
+const NAKARTE_TRACKS = 'https://tracks.nakarte.me/track/';
+const NAKARTE_TIMEOUT_MS = 5000;
+
+// The body of the author's track if the author has it and it passes the checks of POST, null on the author's 404,
+// undefined on any other failure. The checks stop a broken or foreign answer from landing under the key.
+async function fromNakarte(key) {
+    let response;
+    try {
+        response = await fetch(`${NAKARTE_TRACKS}${key}`, {signal: AbortSignal.timeout(NAKARTE_TIMEOUT_MS)});
+    } catch {
+        return undefined;
+    }
+    if (response.status === 404) {
+        return null;
+    }
+    if (!response.ok) {
+        return undefined;
+    }
+    const bytes = await readLimited(response, MAX_TRACK_BYTES);
+    if (!bytes) {
+        return undefined;
+    }
+    const text = new TextDecoder().decode(bytes);
+    if (!LINK_BODY.test(text) || trackKey(text) !== key) {
+        return undefined;
+    }
+    return bytes;
+}
+
+const TRACK_HEADERS = {
+    'Content-Type': 'text/plain',
+    'Cache-Control': 'public, max-age=31536000, immutable',
+};
+
 async function loadTrack(env, origin, key) {
-    const object = await env.TRACKS.get(`tracks/${key}`);
-    if (!object) {
+    const objectKey = `tracks/${key}`;
+    const object = await env.TRACKS.get(objectKey);
+    if (object) {
+        return respond(origin, 200, object.body, TRACK_HEADERS);
+    }
+    const copied = await fromNakarte(key);
+    if (copied === null) {
         return respond(origin, 404, 'Track not found');
     }
-    return respond(origin, 200, object.body, {
-        'Content-Type': 'text/plain',
-        'Cache-Control': 'public, max-age=31536000, immutable',
+    if (!copied) {
+        return respond(origin, 502, 'Track storage of nakarte.me is not available');
+    }
+    await env.TRACKS.put(objectKey, copied, {
+        customMetadata: {created: new Date().toISOString(), source: 'nakarte.me'},
     });
+    return respond(origin, 200, copied, TRACK_HEADERS);
 }
 
 const worker = {

@@ -150,6 +150,64 @@ describe('GET /track/{key}', () => {
     });
 });
 
+// The stub of tracks.nakarte.me is in vitest.config.js, with the same bodies and keys.
+describe('track from the storage of nakarte.me', () => {
+    const NAKARTE_BODY = 'nakarteTrack';
+    const FOREIGN_KEY = 'F'.repeat(22);
+    const ERROR_KEY = 'E'.repeat(22);
+    const OFFLINE_KEY = 'N'.repeat(22);
+
+    async function nakarteCalls() {
+        return (await (await fetch('https://stub.test/calls')).json()).nakarte;
+    }
+
+    it('returns a track of nakarte.me and keeps a copy with its source', async () => {
+        const key = clientKey(NAKARTE_BODY);
+        const response = await request(`/track/${key}`);
+        expect(response.status).toBe(200);
+        expect(response.headers.get('Content-Type')).toBe('text/plain');
+        expect(response.headers.get('Access-Control-Allow-Origin')).toBe(CLONE_ORIGIN);
+        expect(await response.text()).toBe(NAKARTE_BODY);
+        const stored = await env.TRACKS.get(`tracks/${key}`);
+        expect(await stored.text()).toBe(NAKARTE_BODY);
+        expect(stored.customMetadata.source).toBe('nakarte.me');
+        expect(Number.isNaN(Date.parse(stored.customMetadata.created))).toBe(false);
+    });
+
+    it('reads a copied track again from R2 without a request to nakarte.me', async () => {
+        const key = clientKey(NAKARTE_BODY);
+        await request(`/track/${key}`);
+        const before = await nakarteCalls();
+        const response = await request(`/track/${key}`);
+        expect(response.status).toBe(200);
+        expect(await response.text()).toBe(NAKARTE_BODY);
+        expect(await nakarteCalls()).toBe(before);
+    });
+
+    it('answers 404 when nakarte.me does not have the key either', async () => {
+        const before = await nakarteCalls();
+        const response = await request(`/track/${clientKey('nowhere')}`);
+        expect(response.status).toBe(404);
+        expect(await nakarteCalls()).toBe(before + 1);
+    });
+
+    it('answers 502 and stores nothing when the body of nakarte.me does not match the key', async () => {
+        const response = await request(`/track/${FOREIGN_KEY}`);
+        expect(response.status).toBe(502);
+        expect(await env.TRACKS.head(`tracks/${FOREIGN_KEY}`)).toBeNull();
+    });
+
+    it('answers 502 and stores nothing when nakarte.me fails, and asks again later', async () => {
+        for (const key of [ERROR_KEY, OFFLINE_KEY]) {
+            const before = await nakarteCalls();
+            expect((await request(`/track/${key}`)).status).toBe(502);
+            expect((await request(`/track/${key}`)).status).toBe(502);
+            expect(await env.TRACKS.head(`tracks/${key}`)).toBeNull();
+            expect(await nakarteCalls()).toBe(before + 2);
+        }
+    });
+});
+
 describe('CORS', () => {
     it('reflects an allowed Origin with credentials', async () => {
         const body = 'corsTrack';
