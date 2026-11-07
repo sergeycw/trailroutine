@@ -1,5 +1,5 @@
 import { devices, type Page } from '@playwright/test';
-import { expect, type MapOffset, mapPoint, openTracks, test } from './fixtures.ts';
+import { copiedLink, expect, type MapOffset, mapPoint, openTracks, test } from './fixtures.ts';
 
 // Line tools and track points on the clone build: a real reload, IndexedDB and «Copy link» in a different browser
 // context. The engine is the CheerpJ stub (e2e/fixtures.ts), its route goes to the side of the straight line. The test
@@ -134,8 +134,11 @@ test('Перезагрузка после разреза', async ({ page, networ
     await expect.poll(() => saved(page)).toEqual([{ legs: [['routed'], ['routed']], points: [] }]);
 });
 
-test('Ссылка после склейки', async ({ page, context, browser, network }) => {
-    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+test('Ссылка после склейки', async ({ page, context, browser, browserName, network }) => {
+    // only Chromium has the clipboard permissions (copiedLink in e2e/fixtures.ts)
+    if (browserName === 'chromium') {
+        await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    }
     await drawRouted(page);
     await page.getByRole('button', { name: 'Finish editing' }).click();
     // second segment of the same track
@@ -161,7 +164,7 @@ test('Ссылка после склейки', async ({ page, context, browser, 
     await page.getByRole('button', { name: 'Tracks menu' }).click();
     await page.getByRole('menuitem', { name: 'Copy link for all tracks' }).click();
     await expect(page.getByText('Link copied')).toBeVisible();
-    const link = await page.evaluate(() => navigator.clipboard.readText());
+    const link = await copiedLink(page, network);
     // a different user: own IndexedDB, the same track storage
     const other = await browser.newContext();
     try {

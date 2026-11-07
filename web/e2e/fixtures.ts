@@ -250,6 +250,21 @@ export async function mapPoint(page: Page, { dx, dy }: MapOffset) {
     return { x: box.x + box.width / 2 + dx, y: box.y + box.height / 2 + dy };
 }
 
+// The link of «Copy link» after «Link copied»: the page address with nktl= of the key that the app stored in the track
+// storage stub (shareLink in src/tracks/share.ts). The tests do not read the link from the clipboard: Playwright gives
+// the clipboard permissions only in Chromium, and WebKit refuses navigator.clipboard.readText(). In Chromium the
+// clipboard must have the same link.
+export async function copiedLink(page: Page, network: Network) {
+    const keys = [...network.storage.keys()];
+    expect(keys, 'одна запись в хранилище после «Copy link»').toHaveLength(1);
+    const url = new URL(page.url());
+    url.hash = [url.hash.slice(1), `nktl=${keys[0]}`].filter(Boolean).join('&');
+    if (page.context().browser()?.browserType().name() === 'chromium') {
+        expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(url.href);
+    }
+    return url.href;
+}
+
 export const test = base.extend<{ network: Network; tracksOpen: boolean }>({
     // false: the list does not open itself after goto and reload (the test opens it with openTracks where necessary)
     tracksOpen: [true, { option: true }],

@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, type MapOffset, mapPoint, openTracks, test } from './fixtures.ts';
+import { copiedLink, expect, type MapOffset, mapPoint, openTracks, test } from './fixtures.ts';
 
 // Autosave with a real page reload and the real Chromium IndexedDB (each test has its own context, so its own
 // database). The test titles are the scenarios of the specs route-editing and tracks. The engine is the CheerpJ stub
@@ -235,14 +235,17 @@ test('Несколько сессий старого клиента', async ({ p
     await expect(await trackNames(page)).toHaveCount(1);
 });
 
-test('Открытие ссылки', async ({ page, context, browser, network }) => {
-    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+test('Открытие ссылки', async ({ page, context, browser, browserName, network }) => {
+    // only Chromium has the clipboard permissions (copiedLink in e2e/fixtures.ts)
+    if (browserName === 'chromium') {
+        await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    }
     await drawRouted(page);
     await openTracks(page);
     await page.getByRole('button', { name: 'Tracks menu' }).click();
     await page.getByRole('menuitem', { name: 'Copy link for all tracks' }).click();
     await expect(page.getByText('Link copied')).toBeVisible();
-    const link = await page.evaluate(() => navigator.clipboard.readText());
+    const link = await copiedLink(page, network);
     // a different user: own IndexedDB, the same track storage
     const other = await browser.newContext();
     try {
