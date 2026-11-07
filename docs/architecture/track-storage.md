@@ -2,7 +2,7 @@
 
 One level up: [overview](README.md#overview), block ⑤.
 
-A short link to tracks: the address has only a key, and the Worker `nakarte-tracks` ([workers/tracks](../../workers/tracks/)) keeps the tracks in R2. The contract repeats the author's `tracks.nakarte.me`: the body is the same `nktk` strings, and the key is the same hash. The `nktl=` links of nakarte.me do not open, because their tracks are in the author's storage: [backlog, "User feedback"](../../openspec/backlog.md#отзывы-пользователей). Behavior: spec [track-storage](../../openspec/specs/track-storage/spec.md). Decisions: archive [add-track-storage](../../openspec/changes/archive/2026-10-07-add-track-storage/design.md); the client part: archive [add-web-tracks](../../openspec/changes/archive/2026-10-08-add-web-tracks/design.md).
+A short link to tracks: the address has only a key, and the Worker `nakarte-tracks` ([workers/tracks](../../workers/tracks/)) keeps the tracks in R2. The contract repeats the author's `tracks.nakarte.me`: the body is the same `nktk` strings, and the key is the same hash. A key that is not in R2 comes from the author's storage: the Worker asks `tracks.nakarte.me` once, accepts the body only if its md5 is the key, and keeps a copy in R2. So `nktl=` links of nakarte.me open too, and the browser never asks the author ([import-nakarte-storage-links](../../openspec/changes/archive/2026-11-07-import-nakarte-storage-links/design.md)). Behavior: spec [track-storage](../../openspec/specs/track-storage/spec.md). Decisions: archive [add-track-storage](../../openspec/changes/archive/2026-10-07-add-track-storage/design.md); the client part: archive [add-web-tracks](../../openspec/changes/archive/2026-10-08-add-web-tracks/design.md).
 
 ## From "Copy link" to the opened link
 

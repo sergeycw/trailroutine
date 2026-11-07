@@ -55,6 +55,8 @@ flowchart LR
 
 The script ([check-no-author-hosts.mjs](../../scripts/check-no-author-hosts.mjs)) reads the text files of the build except `.map` and fails on any literal `*.nakarte.me`. Before the merge, `check web` does the same check ([ci-cd.md](ci-cd.md)). Why the check is static: design `drop-author-services`, ["Static bundle check"](../../openspec/changes/archive/2026-10-08-drop-author-services/design.md#статическая-проверка-бандла).
 
+One server part asks the author: the track storage Worker reads a `nktl=` key that is not in R2 from `tracks.nakarte.me` and keeps a copy ([track-storage.md](track-storage.md)). The address is in the Worker, not in the bundle, so the check stays strict.
+
 ## Checked against
 
 [workers/cors-proxy/wrangler.toml](../../workers/cors-proxy/wrangler.toml), [workers/tracks/wrangler.toml](../../workers/tracks/wrangler.toml), [workers/elevation/wrangler.toml](../../workers/elevation/wrangler.toml), [workers/cors-proxy/src/index.js](../../workers/cors-proxy/src/index.js), [workers/tracks/src/index.js](../../workers/tracks/src/index.js), [workers/elevation/core/src/http.rs](../../workers/elevation/core/src/http.rs), [workers/elevation/worker/src/lib.rs](../../workers/elevation/worker/src/lib.rs), [functions/](../../functions/), [scripts/check-no-author-hosts.mjs](../../scripts/check-no-author-hosts.mjs), [deploy-pages.yml](../../.github/workflows/deploy-pages.yml), [check-web.yml](../../.github/workflows/check-web.yml).
