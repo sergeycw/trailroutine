@@ -199,6 +199,3 @@ export function getEngine(): Engine {
     engine ??= createEngine(defaultBackends(), { onBackendError: reportEngineBackendError });
     return engine;
 }
-
-export const startEngine = () => getEngine().start();
-export const routeInEngine = (query: string, signal?: AbortSignal) => getEngine().route(query, signal);
