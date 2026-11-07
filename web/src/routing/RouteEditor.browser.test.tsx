@@ -474,6 +474,35 @@ describe('Перетаскивание опорной точки', () => {
         expect(near(fromMoved.from, moved) && near(fromMoved.to, C)).toBe(true);
     });
 
+    test('Route preview during a drag', async () => {
+        const { map, router } = await render(VIEW, fakeRouter({ auto: true }), 'hiking');
+        await newTrack(map, [A, B, C]);
+        pressEscape();
+        const routed = router.calls.length;
+        const moved = P(41.6915, 44.783);
+        fire(map, 'mousemove', B);
+        fire(map, 'mousedown', B);
+        fire(map, 'mousemove', moved);
+        // the pointer rests: both neighbour legs are routed for the preview, the line itself is not
+        await expect.poll(() => router.previews.length, { timeout: 3000 }).toBe(2);
+        const [toMoved, fromMoved] = router.previews;
+        expect(near(toMoved.from, A) && near(toMoved.to, moved)).toBe(true);
+        expect(near(fromMoved.from, moved) && near(fromMoved.to, C)).toBe(true);
+        expect(router.calls.length).toBe(routed);
+        // the preview draws the routed legs: the bend of the fake router is a third point of each line
+        await expect
+            .poll(() =>
+                features<LineString>(map, EDIT_PREVIEW)
+                    .filter((f) => f.geometry.type === 'LineString')
+                    .map((f) => f.geometry.coordinates.length),
+            )
+            .toEqual([3, 3]);
+        fire(map, 'mouseup', moved);
+        fire(map, 'click', moved);
+        await expect.poll(() => router.calls.length).toBe(routed + 2);
+        expect(router.previews).toHaveLength(2);
+    });
+
     test('ответ роутера во время перетаскивания его не отменяет', async () => {
         const { map, router } = await render(VIEW, fakeRouter(), 'hiking');
         await newTrack(map, [A, B, C]);

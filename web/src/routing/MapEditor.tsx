@@ -46,6 +46,10 @@ const CLICK_AFTER_GESTURE_MS = 400;
 // add-web-line-tools, «Меню на карте»: contextmenu on a phone is not reliable, iOS Safari does not send it)
 const LONG_PRESS_MS = 500;
 const DRAG_THRESHOLD = 3;
+// a pause of the pointer during a drag after which the neighbour legs are routed for the preview (spec route-editing,
+// «Route preview during a drag»): a moving pointer keeps the straight preview, so the engine gets one pair of requests
+// per pause, not one per mouse move
+export const DRAG_ROUTE_DELAY_MS = 300;
 const MAC = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform);
 
 export type EditorKey = 'undo' | 'redo' | 'backspace' | 'escape' | 'enter';
@@ -302,7 +306,32 @@ function bind(
         const neighbours = [waypoints[index - 1], waypoints[index + 1]].filter((p): p is LatLng => Boolean(p));
         let latlng = origin;
         let moved = false;
+        let previewTimer: number | undefined;
+        let previewAbort: AbortController | null = null;
         const canvas = map.getCanvasContainer();
+
+        // the routed neighbour legs to the point where the pointer rests; a newer move or the end of the drag drops it
+        async function routePreview(at: LatLng) {
+            const controller = new AbortController();
+            previewAbort = controller;
+            const legs = await Promise.all(
+                neighbours.map((p) =>
+                    p === waypoints[index - 1]
+                        ? editing.previewRoute(p, at, controller.signal).then((points) => points && [p, ...points, at])
+                        : editing.previewRoute(at, p, controller.signal).then((points) => points && [at, ...points, p]),
+                ),
+            );
+            if (controller.signal.aborted || !dragging) {
+                return;
+            }
+            setPreview(
+                previewData(
+                    legs.map((leg, i) => leg ?? [neighbours[i], at]),
+                    color,
+                    { latlng: at, role },
+                ),
+            );
+        }
         // a finger on a waypoint without a move opens the point menu, not a drag
         if (touch && !inserted) {
             ownLongPress = true;
@@ -339,6 +368,10 @@ function bind(
                     { latlng, role },
                 ),
             );
+            window.clearTimeout(previewTimer);
+            previewAbort?.abort();
+            const at = latlng;
+            previewTimer = window.setTimeout(() => routePreview(at), DRAG_ROUTE_DELAY_MS);
         }
 
         const onMouseMove = (event: MouseEvent) => move(event.clientX, event.clientY);
@@ -351,6 +384,8 @@ function bind(
         };
         function finish() {
             window.clearTimeout(longPress);
+            window.clearTimeout(previewTimer);
+            previewAbort?.abort();
             window.removeEventListener('mousemove', onMouseMove);
             window.removeEventListener('mouseup', finish);
             window.removeEventListener('touchmove', onTouchMove);

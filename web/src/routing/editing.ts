@@ -406,6 +406,26 @@ export function createRouteEditing({ store, router, engine, notify, storage }: R
         redo: () => editor()?.redo(),
         pending: () => editor()?.pending() ?? 0,
 
+        // a route for the drag preview with the current activity and options; null when routing is off or fails (the
+        // preview stays straight)
+        async previewRoute(from: LatLng, to: LatLng, signal: AbortSignal): Promise<LatLng[] | null> {
+            const activity = getActivity(state().routingActivity);
+            if (!activity) {
+                return null;
+            }
+            try {
+                return await router.route(
+                    from,
+                    to,
+                    withHikingOptions(activity, state().hikingOptions),
+                    signal,
+                    'preview',
+                );
+            } catch {
+                return null;
+            }
+        },
+
         setHikingOptions(options: HikingOptions) {
             state().setHikingOptions(options);
             saveHikingOptions(storage, options);

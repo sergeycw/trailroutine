@@ -18,6 +18,8 @@ export interface FakeCall {
 
 export interface FakeRouter extends Router {
     calls: FakeCall[];
+    // the routes of the drag preview (kind 'preview'); calls has only the routes of the line
+    previews: FakeCall[];
     // the requests that still wait for an answer
     live(): FakeCall[];
     setStatus(status: EngineStatus): void;
@@ -35,6 +37,7 @@ export function fakeRouter({ auto = false, status = 'ready' as EngineStatus } = 
     let current = status;
     const router: FakeRouter = {
         calls: [],
+        previews: [],
         warmUps: 0,
         live: () => router.calls.filter((call) => !call.signal?.aborted && !settled.has(call)),
         setStatus(next) {
@@ -43,7 +46,7 @@ export function fakeRouter({ auto = false, status = 'ready' as EngineStatus } = 
                 listener();
             }
         },
-        route: (from, to, activity, signal) =>
+        route: (from, to, activity, signal, kind) =>
             new Promise((resolve, reject) => {
                 const call: FakeCall = {
                     from,
@@ -59,7 +62,7 @@ export function fakeRouter({ auto = false, status = 'ready' as EngineStatus } = 
                         reject(error);
                     },
                 };
-                router.calls.push(call);
+                (kind === 'preview' ? router.previews : router.calls).push(call);
                 signal?.addEventListener('abort', () => reject(signal.reason));
                 if (auto) {
                     call.resolve(bend(from, to));
