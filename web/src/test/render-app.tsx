@@ -28,6 +28,7 @@ interface RenderOptions {
     autosave?: ComponentProps<typeof App>['autosave'];
     // Street View: по умолчанию поддельный без панорам — в Google тесты не ходят
     streetView?: ComponentProps<typeof App>['streetView'];
+    notice?: ComponentProps<typeof App>['notice'];
     // список треков открыт после загрузки (по умолчанию да): в приложении он закрыт до кнопки Tracks (макет 4a, design
     // polish-web-ui), а тестам списка и редактора он нужен открытым
     tracksOpen?: boolean;
@@ -66,6 +67,7 @@ export async function renderApp(tiles: FixtureTiles, hash = '', options: RenderO
             router={options.router}
             autosave={options.autosave === undefined ? memoryAutosave() : options.autosave}
             streetView={options.streetView ?? fakeStreetView([]).api}
+            notice={options.notice}
         />,
     );
     await expect.poll(() => mapRef.current?.getMap().loaded(), { timeout: 10_000 }).toBe(true);

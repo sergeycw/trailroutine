@@ -38,6 +38,14 @@ describe('Адреса сервисов клона', () => {
         expect(makeConfig('clone', 'AIza-test').googleMapsApiKey).toBe('AIza-test');
     });
 
+    test('Move from the old address', () => {
+        for (const mode of ['clone', 'development']) {
+            const config = makeConfig(mode);
+            expect(config.siteOrigin).toBe('https://trailroutine.com');
+            expect(config.movedFromHosts).toEqual(['nakarte-routing.pages.dev']);
+        }
+    });
+
     test('Сборка без DSN и с DSN Sentry', () => {
         expect(makeConfig('clone').sentryDsn).toBe('');
         const dsn = 'https://public@o0.ingest.sentry.io/0';
