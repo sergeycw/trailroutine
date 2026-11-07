@@ -14,7 +14,7 @@ Open it: https://trailroutine.com.
 
 ![A hiking route from Stepantsminda to the Sabertse Pass with its elevation profile](docs/screenshot.jpg)
 
-It started as a fork of [wladich/nakarte](https://github.com/wladich/nakarte), the code of nakarte.me by Sergey Orlov, and is developed as a separate product: the app in [web/](web/) is a rewrite on React and MapLibre that reads the old links. MIT license, see [LICENSE](LICENSE).
+It started as a fork of [wladich/nakarte](https://github.com/wladich/nakarte), the code of nakarte.me by Sergey Orlov, and is developed as a separate product: the app in [web/](web/) is a rewrite on React and MapLibre. Links from nakarte.me open here: replace `nakarte.me` with `trailroutine.com`, and the map position, the layers and the tracks in the link stay. The search box also accepts these links. Tracks that nakarte.me keeps on its own server (links with `nktl=`) do not open yet. MIT license, see [LICENSE](LICENSE).
 
 ## Stack
 
