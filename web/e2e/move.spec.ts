@@ -56,9 +56,18 @@ async function seedOldAddress(page: Page) {
     }, LAYERS);
 }
 
-// the address the browser opened on the new domain, before the app removes `move` from it
-function arrival(page: Page) {
-    return page.waitForEvent('framenavigated', (frame) => frame === page.mainFrame() && frame.url().startsWith(NEW));
+// the address the browser opened on the new domain, before the app removes `move` from it. The predicate keeps the
+// address: in WebKit, frame.url() after the wait is already the address without `move`
+async function arrival(page: Page) {
+    let url = '';
+    await page.waitForEvent('framenavigated', (frame) => {
+        if (frame !== page.mainFrame() || !frame.url().startsWith(NEW)) {
+            return false;
+        }
+        url = frame.url();
+        return true;
+    });
+    return url;
 }
 
 test.describe('Move from the old address', () => {
@@ -67,9 +76,7 @@ test.describe('Move from the old address', () => {
         await seedOldAddress(page);
         const arrived = arrival(page);
         await page.goto(`${OLD}/#m=12/41.7/44.8`);
-        expect((await arrived).url()).toMatch(
-            /^https:\/\/trailroutine\.com\/#m=12\/41\.7\/44\.8&move=[\w-]{22}\.[\w-]{43}$/,
-        );
+        expect(await arrived).toMatch(/^https:\/\/trailroutine\.com\/#m=12\/41\.7\/44\.8&move=[\w-]{22}\.[\w-]{43}$/);
         await openTracks(page);
         await expect(page.getByText('Kazbegi loop')).toBeVisible();
         expect(page.url()).not.toContain('move=');
@@ -99,7 +106,7 @@ test.describe('Move from the old address', () => {
         network.serveSite('nakarte-routing.pages.dev', 'trailroutine.com');
         const arrived = arrival(page);
         await page.goto(`${OLD}/#m=12/41.7/44.8&q=kazbegi`);
-        expect((await arrived).url()).toBe(`${NEW}/#m=12/41.7/44.8&q=kazbegi`);
+        expect(await arrived).toBe(`${NEW}/#m=12/41.7/44.8&q=kazbegi`);
         expect(network.storage.size).toBe(0);
     });
 
