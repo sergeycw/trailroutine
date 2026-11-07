@@ -62,6 +62,7 @@ Source notation: `design` is `openspec/changes/archive/<date>-<name>/design.md`,
 | R2, the object key is the link key | records do not change; KV has a limit of 25 MiB and paid writes without a benefit | [add-track-storage](../../openspec/changes/archive/2026-10-07-add-track-storage/design.md) |
 | md5 from the same `blueimp-md5` as in the client | the key matches byte for byte, without a string encoding risk | [add-track-storage](../../openspec/changes/archive/2026-10-07-add-track-storage/design.md) |
 | Body limit 2 MiB, 10 writes per minute from one IP, body only from the link alphabet | 10 MiB × 60 writes per minute gave ≈ 27 TB of storage in one month of attack; a real link is 3–4 bytes per point | [limit-track-writes](../../openspec/changes/archive/2026-10-08-limit-track-writes/design.md) |
+| A `nktl=` key that is not in R2 comes from `tracks.nakarte.me` through the track storage Worker, with an md5 check and a copy in R2 | `nktl=` links of nakarte.me open; the bundle has no author address, and a copied track does not need the author's server again | [import-nakarte-storage-links](../../openspec/changes/archive/2026-11-07-import-nakarte-storage-links/design.md) |
 
 ## Elevation service
 
