@@ -1,4 +1,4 @@
-import { matchTrackLink } from '@/tracks/import-url';
+import { closedTrackService, matchTrackLink } from '@/tracks/import-url';
 import { isCoordinatesQuery, searchCoordinates } from './coordinates';
 import { isLinkQuery, type LinkSources, searchLink, UNSUPPORTED_LINK } from './links';
 import { MAPYCZ_ATTRIBUTION, mapyczUrl, type PlaceQuery, parseMapycz } from './mapycz';
@@ -53,10 +53,25 @@ const outcome = (results: SearchItem[], attribution: Attribution | null): Search
 
 export const OPEN_AS_TRACK = 'Open as track';
 
+// the sources of track links: the services of tracks/import-url.ts and the map links of search/links.ts
+export const SEARCH_HINT =
+    'Search places and coordinates, or paste a link: a map of Google, Yandex, OpenStreetMap, mapy.cz or nakarte; ' +
+    'a track of nakarte, Yandex ruler, OpenStreetMap traces, Tracedetrail or Sports Tracker; ' +
+    'a GPX, KML, KMZ or GeoJSON file.';
+
+// a link of a service that does not give its tracks (spec map-search, «Ссылки на треки в поиске»): what to do instead
+export function closedServiceMessage(service: string): string {
+    return `${service} does not share tracks with other sites. Download a GPX file in ${service}, then open it with Open file in Tracks.`;
+}
+
 // A link (design search-track-links, «Порядок разбора ссылки»): a track of a known source, then the map view from the
 // same link; "any file" only if the link is not a track and not a map link. Here the track is only recognized, the
 // choice downloads it
 async function searchAnyLink(text: string, sources: SearchSources): Promise<SearchOutcome> {
+    const closed = closedTrackService(text);
+    if (closed) {
+        return { kind: 'error', message: closedServiceMessage(closed) };
+    }
     const track = matchTrackLink(text);
     // for "any file", the name from the path says little (data, 123), so the label has the host
     const subtitle = track?.file ? `${OPEN_AS_TRACK} · ${new URL(text).host}` : OPEN_AS_TRACK;

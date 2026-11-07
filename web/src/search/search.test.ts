@@ -4,7 +4,7 @@ import mapyczJson from './fixtures/mapycz-mtatsminda.json';
 import photonJson from './fixtures/photon-mtatsminda.json';
 import { browserLanguages, mapyczUrl, parseMapycz } from './mapycz';
 import { parsePhoton, photonUrl } from './photon';
-import { search } from './search';
+import { closedServiceMessage, search } from './search';
 
 const PROXY = 'https://proxy.test/';
 const CONTEXT = { lat: 41.69, lng: 44.78, zoom: 12, languages: ['ru-RU', 'ru', 'en-US'] };
@@ -204,6 +204,23 @@ describe('ссылки на треки', () => {
             ],
         });
         expect(requests).toEqual([]);
+    });
+
+    it('Ссылка Strava', async () => {
+        const links: [string, string][] = [
+            ['Strava', 'https://www.strava.com/activities/1234567890'],
+            ['Strava', 'https://strava.app.link/AbCdEf'],
+            ['Garmin Connect', 'https://connect.garmin.com/modern/activity/123456'],
+            ['Wikiloc', 'https://ru.wikiloc.com/wikiloc/view.do?id=123'],
+            ['plotaroute', 'https://www.plotaroute.com/route/1287294'],
+            ['MapMagic', 'https://mapmagic.app/map?route=abc'],
+        ];
+        for (const [service, url] of links) {
+            expect(await titles(url)).toEqual({ kind: 'error', message: closedServiceMessage(service) });
+        }
+        expect(closedServiceMessage('Strava')).toBe(
+            'Strava does not share tracks with other sites. Download a GPX file in Strava, then open it with Open file in Tracks.',
+        );
     });
 
     it('Линейка и вид Яндекса', async () => {
