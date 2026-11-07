@@ -13,6 +13,8 @@ const MAPY_FAVEPEMEKO =
     'https://en.mapy.cz/zakladni?planovani-trasy&x=16.8975623&y=49.4113109&z=11&rc=9mml9x8qKR9nUl9xUR9Q&rs=muni&rs=muni&ri=6165&ri=3222&mrp=%7B%22c%22%3A111%7D&xc=%5B%5D&rut=1';
 const DOLNI_MORAVA =
     'https://www.google.com/maps/place/561+69+Doln%C3%AD+Morava/@50.1568257,16.754047,12z/data=!3m1!4b1!4m5!3m4!1s0x0:0x0!8m2!3d50.1223171!4d16.7995866';
+const ISTANBUL_PLACE =
+    'https://www.google.com/maps/place/Mollafenari,+Elizi,+Bab-%C4%B1+Ali+Cd.+No:27,+34120+Fatih%2F%C4%B0stanbul,+Turkey/data=!4m2!3m1!1s0x14cab996a54299cb:0x40acb197d028d115?utm_source=mstt_1&entry=gps';
 const REDIRECTS: Record<string, string> = {
     'https://mapy.cz/s/favepemeko': MAPY_FAVEPEMEKO,
     'https://mapy.com/s/favepemeko': MAPY_FAVEPEMEKO,
@@ -21,6 +23,10 @@ const REDIRECTS: Record<string, string> = {
     'https://goo.gl/maps/cJ8wwQi9oMYM9yiy6': 'https://www.google.com/maps/@49.0030846,15.2993434,14z',
     'https://goo.gl/maps/ZvjVBY78HUP8HjQi6': `https://www.google.com/sorry/index?continue=${encodeURIComponent(DOLNI_MORAVA)}&q=abc`,
     'https://goo.gl/maps/iMv4esLL1nwF9yns7': DOLNI_MORAVA,
+    // maps.app.goo.gl (2026-11-07): through the proxy Google answers with /sorry/ and the place in continue; a shared
+    // place often has a name and no coordinates
+    'https://maps.app.goo.gl/9ivZQ71CKMqRPDtQA': `https://www.google.com/sorry/index?continue=${encodeURIComponent(ISTANBUL_PLACE)}&q=abc`,
+    'https://maps.app.goo.gl/viewOfDolniMorava': DOLNI_MORAVA,
 };
 
 // HEAD through the proxy: the browser follows the proxy redirects and gives the final address in response.url; an
@@ -278,6 +284,19 @@ describe('ссылки на карты', () => {
 
     it('Неизвестная ссылка', async () => {
         expect(await searchLink('https://example.com/map', sources)).toEqual({ error: 'Unsupported link' });
+    });
+
+    it('Короткая ссылка Google на место', async () => {
+        requests.length = 0;
+        expect(await searchLink('https://maps.app.goo.gl/9ivZQ71CKMqRPDtQA', sources)).toEqual({
+            placeName: 'Mollafenari, Elizi, Bab-ı Ali Cd. No:27, 34120 Fatih/İstanbul, Turkey',
+        });
+        expect(requests).toEqual([`HEAD ${proxied('https://maps.app.goo.gl/9ivZQ71CKMqRPDtQA')}`]);
+        const view = await searchLink('https://maps.app.goo.gl/viewOfDolniMorava', sources);
+        expect('results' in view && view.results.map((item) => item.title)).toEqual([
+            'Google map - 561 69 Dolní Morava',
+            'Google map view',
+        ]);
     });
 
     it('Ссылка OpenStreetMap', async () => {
