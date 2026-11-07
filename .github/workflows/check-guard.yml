@@ -25,4 +25,6 @@ jobs:
           cache: npm
           cache-dependency-path: workers/guard/package-lock.json
       - run: npm ci
+      # known vulnerabilities of the production dependencies fail the check (security audit, P3)
+      - run: npm audit --omit=dev
       - run: npm test
