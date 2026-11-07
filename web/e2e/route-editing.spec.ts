@@ -88,7 +88,9 @@ test('Отмена клика', async ({ page, network }) => {
 test('Перезагрузка страницы', async ({ page }) => {
     await page.goto(VIEW);
     await chooseActivity(page, 'Mountain bike');
-    await expect(page.getByRole('button', { name: 'Routing: Mountain bike' })).toBeVisible();
+    // the exact name comes after «… BRouter engine is loading»: the reload waits for the engine. WebKit stops the loads
+    // of the page when the reload starts, and the engine would report a start failure to Sentry
+    await expect(page.getByRole('button', { name: 'Routing: Mountain bike', exact: true })).toBeVisible();
     await page.reload();
     await page
         .getByRole('button', { name: /^Routing/ })
