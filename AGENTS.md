@@ -171,7 +171,7 @@
 
 Локальный стек для клона (записи в `../.claude/launch.json`, всё из этого checkout): `nakarte-web` — dev-сервер на 8769 (`npm run dev:clone` из `web/` — режим клона); `nakarte-tiles-worker` — `wrangler dev` тайлов на 8788 (dev-сервер в режиме клона проксирует `/tiles` туда); `nakarte-cors-proxy` — `wrangler dev` прокси на 8787, нужен, только если направить `corsProxyUrl` в `web/src/config.ts` на него; `nakarte-wasm-bench` и `nakarte-wasm-tiles` — стенд движка `experiments/wasm/serve.mjs` на 8767 и 8768. Тайлы в локальный R2: `wrangler r2 object put nakarte-tiles/<имя>.rd5 --file ../../brouter/segments4/<имя>.rd5 --local` из `workers/tiles`. Файлы движка для dev-сервера — после `build.sh`.
 
-## Свои бэкенды вместо `*.nakarte.me`
+## Свои бэкенды
 
 - Адреса своих Worker'ов — `web/src/config.ts` (`makeConfig`: режим `clone` отличается только движком и путём тайлов BRouter). Новый сервис — отдельный change и своё поле в `web/src/config.ts`.
 - Монорепо: сервис живёт в `workers/<сервис>/` со своим `wrangler.toml` и деплоится отдельно, а контракт сервиса (спека) и правка клиента идут одним PR.

@@ -2,7 +2,7 @@
 
 One level up: [overview](README.md#overview), block "Cloudflare" and ⑦.
 
-What limits the load and the cost on Cloudflare, and what stops trailroutine from sending requests to the author's infrastructure. Behavior: specs [worker-limits](../../openspec/specs/worker-limits/spec.md) and clone-deploy, requirement ["Bundle without author hosts"](../../openspec/specs/clone-deploy/spec.md#requirement-бандл-без-адресов-автора); the CORS of each service is in its spec. Decisions and numbers: archive [add-worker-limits](../../openspec/changes/archive/2026-10-07-add-worker-limits/design.md). Rules for a new counter: `AGENTS.md`, ["Own backends instead of `*.nakarte.me`"](../../AGENTS.md#свои-бэкенды-вместо-nakarteme).
+What limits the load and the cost on Cloudflare, and what stops trailroutine from sending requests to the author's infrastructure. Behavior: specs [worker-limits](../../openspec/specs/worker-limits/spec.md) and clone-deploy, requirement ["Bundle without author hosts"](../../openspec/specs/clone-deploy/spec.md#requirement-бандл-без-адресов-автора); the CORS of each service is in its spec. Decisions and numbers: archive [add-worker-limits](../../openspec/changes/archive/2026-10-07-add-worker-limits/design.md). Rules for a new counter: `AGENTS.md`, ["Own backends"](../../AGENTS.md#свои-бэкенды).
 
 ## Order of checks in a Worker
 
