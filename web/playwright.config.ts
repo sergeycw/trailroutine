@@ -9,6 +9,11 @@ export default defineConfig({
     forbidOnly: !!process.env.CI,
     reporter: process.env.CI ? 'github' : 'list',
     use: { baseURL: BASE_URL, trace: 'retain-on-failure' },
-    projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+    // Chrome on iPad uses WebKit, so the same e2e also run in WebKit with the iPad window. The tests that Playwright
+    // cannot run in WebKit skip there with the reason.
+    projects: [
+        { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+        { name: 'ipad-webkit', use: { ...devices['iPad Pro 11'] } },
+    ],
     webServer: { command: 'npx vite preview', url: BASE_URL, reuseExistingServer: !process.env.CI },
 });

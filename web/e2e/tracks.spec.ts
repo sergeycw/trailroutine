@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { parseHash } from '../src/state/hash.ts';
-import { expect, openTracks, test } from './fixtures.ts';
+import { copiedLink, expect, openTracks, test } from './fixtures.ts';
 
 // The test titles are the scenarios of the specs tracks and track-files (openspec/specs/tracks,
 // openspec/specs/track-files). The track storage and the proxy are in memory (e2e/fixtures.ts), the tests do not go to
@@ -60,18 +60,19 @@ test('Неизвестный ключ', async ({ page }) => {
     await expect(page.getByRole('list', { name: 'Tracks' })).toHaveCount(0);
 });
 
-test('Ссылка готова', async ({ page, context, browser, network }) => {
-    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+test('Ссылка готова', async ({ page, context, browser, browserName, network }) => {
+    // only Chromium has the clipboard permissions (copiedLink in e2e/fixtures.ts)
+    if (browserName === 'chromium') {
+        await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    }
     await page.goto(`./#m=12/41.7/44.8&l=O&nktk=${TBILISI}`);
     await expect(await track(page, 'Mtatsminda')).toBeVisible();
     await openTracks(page);
     await page.getByRole('button', { name: 'Tracks menu' }).click();
     await page.getByRole('menuitem', { name: 'Copy link for all tracks' }).click();
     await expect(page.getByText('Link copied')).toBeVisible();
-    const link = await page.evaluate(() => navigator.clipboard.readText());
-    const key = new URL(link).hash.match(/nktl=([\w-]{22})$/)?.[1];
-    expect(key).toBeDefined();
-    expect(network.storage.has(key as string)).toBe(true);
+    const link = await copiedLink(page, network);
+    expect(new URL(link).hash).toMatch(/nktl=[\w-]{22}$/);
     // the link opens the same tracks for a different user; a tab of the same browser would add them to the
     // autosaved ones (spec tracks, «Треки из адреса дополняют сохранённые»)
     const other = await browser.newContext();

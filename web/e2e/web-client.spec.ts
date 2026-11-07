@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { parseRedirects, resolveRedirect } from '../vite/redirects.ts';
 import { expect, openTracks, test } from './fixtures.ts';
 
@@ -57,7 +57,11 @@ async function servePagesRedirects(page: Page) {
     );
 }
 
-test('Ссылка на /next/ с параметрами', async ({ page, network }) => {
+// WebKit: «route.fulfill: Cannot fulfill with redirect status», the stub of Pages cannot answer with 3xx
+const NO_REDIRECT_FULFILL = 'WebKit: route.fulfill не отдаёт ответ 3xx';
+
+test('Ссылка на /next/ с параметрами', async ({ page, browserName, network }) => {
+    test.skip(browserName === 'webkit', NO_REDIRECT_FULFILL);
     await servePagesRedirects(page);
     await page.goto('/next/#m=13/42.68490/47.07008&l=O');
     expect(new URL(page.url()).pathname).toBe('/');
@@ -67,7 +71,8 @@ test('Ссылка на /next/ с параметрами', async ({ page, networ
         .toContain(`https://tile.openstreetmap.org/${tileOf(42.6849, 47.07008, 13)}.png`);
 });
 
-test('Стенд по старому адресу', async ({ page }) => {
+test('Стенд по старому адресу', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', NO_REDIRECT_FULFILL);
     await servePagesRedirects(page);
     await page.goto('/next/engine-bench.html');
     expect(new URL(page.url()).pathname).toBe('/engine-bench.html');
@@ -114,7 +119,16 @@ test.describe('старые ссылки', () => {
         // test only needs the app to open without exceptions
         network.allowExternal();
         const errors: string[] = [];
-        page.on('pageerror', (error) => errors.push(error.message));
+        // Playwright WebKit reports each console error of the page as pageerror, not only uncaught exceptions:
+        // - the harmless window error «ResizeObserver loop completed with undelivered notifications.», which Sentry
+        //   also ignores by default;
+        // - «Fetch API cannot load … due to access control checks.» of a tile request that WebKit refuses: a custom
+        //   layer of an old link has the URL htto://slazav.xyz/…, and MapLibre gets the failed tile as in Chromium
+        page.on('pageerror', (error) => {
+            if (!/^ResizeObserver loop| due to access control checks\.$/.test(error.message)) {
+                errors.push(error.message);
+            }
+        });
         for (const hash of [...OLD_LINKS, ...REMOVED_FEATURE_LINKS]) {
             // through about:blank: a navigation from one # to another does not reload the page
             await page.goto('about:blank');
@@ -240,6 +254,11 @@ test('Ошибка подложки OpenFreeMap', async ({ page, network }) => {
 test.describe('в тёмной теме системы', () => {
     test.use({ colorScheme: 'dark' });
 
+    // light glass: semi-transparent white, or opaque white with prefers-reduced-transparency (the macOS runner of
+    // check-web.yml reports it, index.css, utility glass)
+    const LIGHT_GLASS = /^oklch\(1 0 0( \/ 0\.74)?\)$/;
+    const background = (locator: Locator) => locator.evaluate((element) => getComputedStyle(element).backgroundColor);
+
     test('Тёмная тема системы', async ({ page, network }) => {
         // the toast of the default basemap fallback: any toast is sufficient for the theme check
         network.failTiles('Of');
@@ -247,13 +266,13 @@ test.describe('в тёмной теме системы', () => {
         // the glass of the search bar, the toast and the layers button is light (--glass in index.css), not dark
         const panel = page.getByTestId('search-bar');
         await expect(panel).toBeVisible();
-        await expect(panel).toHaveCSS('background-color', 'oklch(1 0 0 / 0.74)');
+        await expect.poll(() => background(panel)).toMatch(LIGHT_GLASS);
         await expect(page.locator('html')).toHaveCSS('color-scheme', 'light');
         const toast = page.locator('[data-slot="toast"]');
         await expect(toast).toBeVisible();
-        await expect(toast).toHaveCSS('background-color', 'oklch(1 0 0 / 0.74)');
+        await expect.poll(() => background(toast)).toMatch(LIGHT_GLASS);
         // the system theme does not turn on the dark: classes of shadcn components (@custom-variant dark in index.css)
-        await expect(page.getByTestId('layers-button')).toHaveCSS('background-color', 'oklch(1 0 0 / 0.74)');
+        await expect.poll(() => background(page.getByTestId('layers-button'))).toMatch(LIGHT_GLASS);
     });
 });
 
@@ -286,6 +305,9 @@ test('Вид пишется в адрес', async ({ page, network }) => {
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.down();
     await page.mouse.move(box.x + box.width / 2 - 200, box.y + box.height / 2 + 100, { steps: 10 });
+    // a pause before the release: in WebKit a fast synthetic drag starts the MapLibre inertia, and the map moves on
+    // after the release
+    await page.waitForTimeout(300);
     await page.mouse.up();
     // the map moved to the south-west: the center is more north and more east, the zoom and the other parameters stay
     await expect.poll(() => new URL(page.url()).hash).not.toBe('#m=10/41.00000/44.00000&p=1&l=Of');

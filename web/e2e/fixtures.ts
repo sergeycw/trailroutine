@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import { type BrowserContext, test as base, expect, type Page } from '@playwright/test';
+import { type BrowserContext, test as base, expect, type Page, type Route } from '@playwright/test';
 import { makeConfig } from '../src/config.ts';
 import { buildCatalog, OPENFREEMAP_TILEJSON } from '../src/layers/catalog.ts';
 import { COVERAGE_CODE, COVERAGE_TILES } from '../src/streetview/coverage.ts';
@@ -203,6 +203,9 @@ interface Network {
     serveSite(...hosts: string[]): void;
     // take the received envelopes: a test that expects a report takes it, all other tests must end without reports
     takeSentryEnvelopes(): string[];
+    // envelopes of a known app report that the test does not check: the final check skips them, also when they come
+    // after the test body (e2e/move.spec.ts)
+    ignoreSentry(match: (envelope: string) => boolean): void;
 }
 
 // Sentry report intake: o<organization>.ingest.sentry.io, with a region o<…>.ingest.us.sentry.io,
@@ -229,6 +232,37 @@ export async function openTracks(page: Page) {
     if ((await button.getAttribute('aria-expanded')) !== 'true') {
         await button.click();
     }
+}
+
+// An offset in screen pixels from the center of the map canvas. The tests give their map points as offsets: with the
+// same view in the address, a point is at the same place on the map in each window of playwright.config.ts (Desktop
+// Chrome 1280×720, iPad Pro 11 834×1194).
+export interface MapOffset {
+    dx: number;
+    dy: number;
+}
+
+export async function mapPoint(page: Page, { dx, dy }: MapOffset) {
+    const box = await page.locator('.maplibregl-canvas').boundingBox();
+    if (!box) {
+        throw new Error('нет холста карты');
+    }
+    return { x: box.x + box.width / 2 + dx, y: box.y + box.height / 2 + dy };
+}
+
+// The link of «Copy link» after «Link copied»: the page address with nktl= of the key that the app stored in the track
+// storage stub (shareLink in src/tracks/share.ts). The tests do not read the link from the clipboard: Playwright gives
+// the clipboard permissions only in Chromium, and WebKit refuses navigator.clipboard.readText(). In Chromium the
+// clipboard must have the same link.
+export async function copiedLink(page: Page, network: Network) {
+    const keys = [...network.storage.keys()];
+    expect(keys, 'одна запись в хранилище после «Copy link»').toHaveLength(1);
+    const url = new URL(page.url());
+    url.hash = [url.hash.slice(1), `nktl=${keys[0]}`].filter(Boolean).join('&');
+    if (page.context().browser()?.browserType().name() === 'chromium') {
+        expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(url.href);
+    }
+    return url.href;
 }
 
 export const test = base.extend<{ network: Network; tracksOpen: boolean }>({
@@ -265,7 +299,10 @@ export const test = base.extend<{ network: Network; tracksOpen: boolean }>({
             const failing = new Set<string>();
             let customCors = true;
             let externalAllowed = false;
+            // the test body is over: the context closes next
+            let ended = false;
             const siteHosts = new Set<string>();
+            const ignoredSentry: ((envelope: string) => boolean)[] = [];
             const proxied = new Map<string, { path?: string; body?: string; status?: number }>();
             const searchStatus: Record<'mapycz' | 'photon', number> = { mapycz: 200, photon: 200 };
             const network: Network = {
@@ -276,6 +313,9 @@ export const test = base.extend<{ network: Network; tracksOpen: boolean }>({
                 googleApiLoads: [],
                 sentryEnvelopes: [],
                 takeSentryEnvelopes: () => network.sentryEnvelopes.splice(0),
+                ignoreSentry: (match) => {
+                    ignoredSentry.push(match);
+                },
                 engineLoads: 0,
                 cdnRequests: [],
                 storage: new Map(),
@@ -304,6 +344,22 @@ export const test = base.extend<{ network: Network; tracksOpen: boolean }>({
                     }
                 },
             };
+            // The answer of vite preview, with the CheerpJ stub before the engine worker script. After the test the
+            // context closes, and a route.fetch that still waits fails with «route.fetch: Test ended»: the page does
+            // not need that answer any more, so the error is not a test failure.
+            async function fulfillFromPreview(route: Route, url: string, headers?: Record<string, string>) {
+                try {
+                    const response = await route.fetch({ url, headers });
+                    if (!ENGINE_WORKER.test(new URL(url).pathname)) {
+                        return await route.fulfill({ response });
+                    }
+                    return await route.fulfill({ response, body: WORKER_PRELUDE + (await response.text()) });
+                } catch (error) {
+                    if (!ended) {
+                        throw error;
+                    }
+                }
+            }
             async function intercept(target: BrowserContext) {
                 target.on('request', (request) => {
                     if (new URL(request.url()).hostname.endsWith('leaningtech.com')) {
@@ -312,6 +368,11 @@ export const test = base.extend<{ network: Network; tracksOpen: boolean }>({
                 });
                 await target.route('**/*', async (route) => {
                     const url = route.request().url();
+                    // WebKit also routes the blob: URL of the maplibre-contour worker (Chromium does not). It is a
+                    // local object of the page, and its hostname is empty, so the checks below would abort it
+                    if (url.startsWith('blob:')) {
+                        return route.continue();
+                    }
                     const { hostname, pathname, origin } = new URL(url);
                     if (siteHosts.has(hostname)) {
                         if (pathname === '/__seed__') {
@@ -321,16 +382,17 @@ export const test = base.extend<{ network: Network; tracksOpen: boolean }>({
                                 contentType: 'text/html',
                             });
                         }
-                        const response = await route.fetch({ url: url.replace(origin, PREVIEW_ORIGIN) });
-                        return ENGINE_WORKER.test(pathname)
-                            ? route.fulfill({ response, body: WORKER_PRELUDE + (await response.text()) })
-                            : route.fulfill({ response });
+                        // Firefox route.fetch sends the Host of the original request, and vite preview refuses a
+                        // host that is not in preview.allowedHosts
+                        const headers = Object.fromEntries(
+                            Object.entries(route.request().headers()).filter(([name]) => name !== 'host'),
+                        );
+                        return fulfillFromPreview(route, url.replace(origin, PREVIEW_ORIGIN), headers);
                     }
                     if (hostname === 'localhost') {
-                        if (ENGINE_WORKER.test(new URL(url).pathname)) {
+                        if (ENGINE_WORKER.test(pathname)) {
                             network.engineLoads += 1;
-                            const response = await route.fetch();
-                            return route.fulfill({ response, body: WORKER_PRELUDE + (await response.text()) });
+                            return fulfillFromPreview(route, url);
                         }
                         return route.continue();
                     }
@@ -449,11 +511,15 @@ export const test = base.extend<{ network: Network; tracksOpen: boolean }>({
             }
             await intercept(context);
             await use(network);
+            ended = true;
             expect(network.external, 'запросы мимо localhost и подменённых тайлов').toEqual([]);
             expect(network.cdnRequests, 'запросы к CDN CheerpJ мимо заглушки').toEqual([]);
             // on a build with a DSN, the scenario «Заход без ошибок» of the spec clone-monitoring in all e2e: routing,
             // profile, layers, search give no reports
-            expect(network.sentryEnvelopes, 'отчёты Sentry, которых тест не ждал').toEqual([]);
+            expect(
+                network.sentryEnvelopes.filter((envelope) => !ignoredSentry.some((match) => match(envelope))),
+                'отчёты Sentry, которых тест не ждал',
+            ).toEqual([]);
         },
         { auto: true },
     ],

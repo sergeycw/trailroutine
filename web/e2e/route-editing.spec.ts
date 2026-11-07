@@ -1,17 +1,17 @@
 import type { Page } from '@playwright/test';
-import { expect, openTracks, test } from './fixtures.ts';
+import { expect, type MapOffset, mapPoint, openTracks, test } from './fixtures.ts';
 
 // The test titles are the scenarios of the specs route-editing and routing (openspec/specs/). The clone build
 // calculates the route with the routing engine in the browser; a stub replaces the CheerpJ runtime from the CDN
 // (e2e/fixtures.ts, FAKE_CHEERPJ), so the engine worker, its protocol and its queue are real, but there is no network.
 
-// Tbilisi, zoom 15 of the old client; window Desktop Chrome 1280×720, map center (640, 360). The points below the
-// center are south of NO_ROUTE_LAT of the stub and get a route, the point near the top edge is north of it, where there
-// is «no routing data for this area».
+// Tbilisi, zoom 15 of the old client; the points are offsets from the map center (mapPoint in e2e/fixtures.ts). The
+// points below the center are south of NO_ROUTE_LAT of the stub and get a route, the point 160 px above the center is
+// north of it, where there is «no routing data for this area».
 const VIEW = './#m=15/41.69/44.785';
-const START = { x: 540, y: 420 };
-const FINISH = { x: 740, y: 380 };
-const NO_DATA = { x: 700, y: 200 };
+const START = { dx: -100, dy: 60 };
+const FINISH = { dx: 100, dy: 20 };
+const NO_DATA = { dx: 60, dy: -160 };
 
 async function chooseActivity(page: Page, name: string) {
     await openTracks(page);
@@ -22,7 +22,8 @@ async function chooseActivity(page: Page, name: string) {
     await page.getByRole('menuitemradio', { name, exact: true }).click();
 }
 
-async function clickMap(page: Page, point: { x: number; y: number }) {
+async function clickMap(page: Page, offset: MapOffset) {
+    const point = await mapPoint(page, offset);
     await page.mouse.move(point.x, point.y);
     await page.mouse.click(point.x, point.y);
 }
@@ -87,7 +88,9 @@ test('Отмена клика', async ({ page, network }) => {
 test('Перезагрузка страницы', async ({ page }) => {
     await page.goto(VIEW);
     await chooseActivity(page, 'Mountain bike');
-    await expect(page.getByRole('button', { name: 'Routing: Mountain bike' })).toBeVisible();
+    // the exact name comes after «… BRouter engine is loading»: the reload waits for the engine. WebKit stops the loads
+    // of the page when the reload starts, and the engine would report a start failure to Sentry
+    await expect(page.getByRole('button', { name: 'Routing: Mountain bike', exact: true })).toBeVisible();
     await page.reload();
     await page
         .getByRole('button', { name: /^Routing/ })
