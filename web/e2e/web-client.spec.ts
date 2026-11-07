@@ -114,7 +114,13 @@ test.describe('старые ссылки', () => {
         // test only needs the app to open without exceptions
         network.allowExternal();
         const errors: string[] = [];
-        page.on('pageerror', (error) => errors.push(error.message));
+        // Playwright WebKit reports the harmless window error «ResizeObserver loop completed with undelivered
+        // notifications.» as pageerror; Sentry also ignores it by default
+        page.on('pageerror', (error) => {
+            if (!/^ResizeObserver loop/.test(error.message)) {
+                errors.push(error.message);
+            }
+        });
         for (const hash of [...OLD_LINKS, ...REMOVED_FEATURE_LINKS]) {
             // through about:blank: a navigation from one # to another does not reload the page
             await page.goto('about:blank');
