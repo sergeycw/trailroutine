@@ -11,7 +11,7 @@ import { useTrackActions } from '@/tracks/actions-context';
 import { distance } from '@/tracks/geometry';
 import { type LatLng, trackColor, type Waypoint } from '@/tracks/model';
 import { TRACK_LINES, TRACK_POINTS, TRACK_UNROUTED } from '@/tracks/style';
-import { EDIT_PREVIEW, EDIT_WAYPOINTS, previewData, toolPreviewData, waypointRole } from './edit-style';
+import { DRAW_CURSOR, EDIT_PREVIEW, EDIT_WAYPOINTS, previewData, toolPreviewData, waypointRole } from './edit-style';
 import type { RouteEditing } from './editing';
 import { useRouteEditing } from './editing-context';
 import type { End } from './editor';
@@ -268,7 +268,7 @@ function bind(
         if (overWaypoint || dragging) {
             cursor = 'move';
         } else if (edit?.drawing || state().lineTool || state().pointTool) {
-            cursor = 'crosshair';
+            cursor = DRAW_CURSOR;
         }
         map.getCanvas().style.cursor = cursor;
     }

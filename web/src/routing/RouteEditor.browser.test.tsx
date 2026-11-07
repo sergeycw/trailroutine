@@ -268,7 +268,8 @@ describe('Клик при рисовании', () => {
         const { map } = await render(VIEW, fakeRouter(), 'hiking');
         await newTrack(map, [A, B]);
         await expect.element(badge()).toBeInTheDocument();
-        expect(map.getCanvas().style.cursor).toBe('crosshair');
+        expect(map.getCanvas().style.cursor).toContain('data:image/svg+xml');
+        expect(map.getCanvas().style.cursor).toContain('crosshair');
     });
 
     test('резинка от последней точки к курсору', async () => {

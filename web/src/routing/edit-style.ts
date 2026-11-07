@@ -16,6 +16,17 @@ import { legPath } from './line';
 // style: the MapLibre style diff compares the data of all GeoJSON sources element by element, and an imported line has
 // thousands of waypoints. Any style rebuild resets the preview to empty: the next mouse move brings it back.
 
+// The drawing cursor of the editor, the line tools and the track points. The system crosshair is a thin black cross
+// that gets lost on a dark or busy map (owner's to-do 2026-11-07): this cross has a white halo, a gap at the center and a
+// dot on the hotspot, so it shows on any basemap. The hotspot is the center (12 12); `crosshair` is the fallback.
+const DRAW_CURSOR_SVG =
+    "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'>" +
+    "<g fill='none' stroke-linecap='round'>" +
+    "<path d='M12 2v7M12 15v7M2 12h7M15 12h7' stroke='white' stroke-width='4'/>" +
+    "<path d='M12 2v7M12 15v7M2 12h7M15 12h7' stroke='#111' stroke-width='2'/></g>" +
+    "<circle cx='12' cy='12' r='1.6' fill='#111' stroke='white' stroke-width='1'/></svg>";
+export const DRAW_CURSOR = `url("data:image/svg+xml,${encodeURIComponent(DRAW_CURSOR_SVG)}") 12 12, crosshair`;
+
 export const EDIT_LEGS = 'route-edit-legs';
 export const EDIT_LINE = 'route-edit-line';
 export const EDIT_CASING = 'route-edit-casing';
