@@ -234,6 +234,22 @@ export async function openTracks(page: Page) {
     }
 }
 
+// An offset in screen pixels from the center of the map canvas. The tests give their map points as offsets: with the
+// same view in the address, a point is at the same place on the map in each window of playwright.config.ts (Desktop
+// Chrome 1280×720, iPad Pro 11 834×1194).
+export interface MapOffset {
+    dx: number;
+    dy: number;
+}
+
+export async function mapPoint(page: Page, { dx, dy }: MapOffset) {
+    const box = await page.locator('.maplibregl-canvas').boundingBox();
+    if (!box) {
+        throw new Error('нет холста карты');
+    }
+    return { x: box.x + box.width / 2 + dx, y: box.y + box.height / 2 + dy };
+}
+
 export const test = base.extend<{ network: Network; tracksOpen: boolean }>({
     // false: the list does not open itself after goto and reload (the test opens it with openTracks where necessary)
     tracksOpen: [true, { option: true }],

@@ -1,21 +1,19 @@
 import { devices, type Page } from '@playwright/test';
-import { expect, openTracks, test } from './fixtures.ts';
+import { expect, type MapOffset, mapPoint, openTracks, test } from './fixtures.ts';
 
 // Line tools and track points on the clone build: a real reload, IndexedDB and «Copy link» in a different browser
 // context. The engine is the CheerpJ stub (e2e/fixtures.ts), its route goes to the side of the straight line. The test
 // titles are the scenarios of the specs route-editing and tracks (design add-web-line-tools).
 
-// Tbilisi, zoom 15 of the old client; window Desktop Chrome 1280×720. The points south of NO_ROUTE_LAT of the stub get
-// a route.
+// Tbilisi, zoom 15 of the old client; the points are offsets from the map center (mapPoint in e2e/fixtures.ts). The
+// points south of NO_ROUTE_LAT of the stub get a route.
 const VIEW = './#m=15/41.69/44.785';
-const START = { x: 540, y: 420 };
-const MIDDLE = { x: 640, y: 470 };
-const FINISH = { x: 740, y: 400 };
-const SECOND_START = { x: 560, y: 560 };
-const SECOND_FINISH = { x: 760, y: 600 };
-const SPOT = { x: 900, y: 500 };
-
-type Point = { x: number; y: number };
+const START = { dx: -100, dy: 60 };
+const MIDDLE = { dx: 0, dy: 110 };
+const FINISH = { dx: 100, dy: 40 };
+const SECOND_START = { dx: -80, dy: 200 };
+const SECOND_FINISH = { dx: 120, dy: 240 };
+const SPOT = { dx: 260, dy: 140 };
 
 async function chooseActivity(page: Page, name: string) {
     await openTracks(page);
@@ -26,12 +24,15 @@ async function chooseActivity(page: Page, name: string) {
     await page.getByRole('menuitemradio', { name, exact: true }).click();
 }
 
-async function clickMap(page: Page, point: Point, button: 'left' | 'right' = 'left') {
+async function clickMap(page: Page, offset: MapOffset, button: 'left' | 'right' = 'left') {
+    const point = await mapPoint(page, offset);
     await page.mouse.move(point.x, point.y);
     await page.mouse.click(point.x, point.y, { button });
 }
 
-async function dragMap(page: Page, from: Point, to: Point) {
+async function dragMap(page: Page, fromOffset: MapOffset, toOffset: MapOffset) {
+    const from = await mapPoint(page, fromOffset);
+    const to = await mapPoint(page, toOffset);
     await page.mouse.move(from.x, from.y);
     await page.mouse.down();
     await page.mouse.move(to.x, to.y, { steps: 5 });
@@ -96,7 +97,7 @@ async function kilometers(page: Page) {
 }
 
 // a click on the line is caught from the drawn frame: right after the track loads, the frame can be missing
-async function startEditing(page: Page, at: Point) {
+async function startEditing(page: Page, at: MapOffset) {
     await expect(async () => {
         await clickMap(page, at);
         await expect(page.getByTestId('edit-panel')).toBeVisible({ timeout: 1000 });
@@ -128,7 +129,7 @@ test('Перезагрузка после разреза', async ({ page, networ
     // routing is off, but a drag of the end of the second half goes to the engine: its markup is a route
     const loads = network.engineLoads;
     await startEditing(page, FINISH);
-    await dragMap(page, FINISH, { x: 780, y: 440 });
+    await dragMap(page, FINISH, { dx: 140, dy: 80 });
     await expect.poll(() => network.engineLoads).toBe(loads + 1);
     await expect.poll(() => saved(page)).toEqual([{ legs: [['routed'], ['routed']], points: [] }]);
 });

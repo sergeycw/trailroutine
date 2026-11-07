@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import type { Page } from '@playwright/test';
-import { elevationAt, expect, openTracks, test } from './fixtures.ts';
+import { elevationAt, expect, mapPoint, openTracks, test } from './fixtures.ts';
 
 // Elevation profile and GPX with elevations on the clone build: the elevation service is a stub of the fixture network
 // (the elevation is a function of the latitude, elevationAt), the tests do not go to the network. The test titles are
@@ -9,9 +9,10 @@ import { elevationAt, expect, openTracks, test } from './fixtures.ts';
 // saveNktk({name: 'Mtatsminda', segments: [[41.69, 44.79 → 41.695, 44.786]], points: [TV tower 41.6945, 44.786]}):
 // as a string, because e2e builds as a Node module (nodenext), and src/tracks/ imports without extensions
 const TBILISI = 'RAoCEAESNgoKTXRhdHNtaW5kYRIQCgbele0B0gMSBorn_gHzAhoWCICZ7QEQluT-ARoKGghUViB0b3dlcg==';
+// the points are offsets from the map center (mapPoint in e2e/fixtures.ts)
 const VIEW = './#m=15/41.69/44.785';
-const START = { x: 540, y: 420 };
-const FINISH = { x: 740, y: 400 };
+const START = { dx: -100, dy: 60 };
+const FINISH = { dx: 100, dy: 40 };
 
 const panel = (page: Page) => page.getByTestId('elevation-profile');
 const stat = (page: Page, key: string) => panel(page).locator(`[data-stat="${key}"]`);
@@ -45,14 +46,16 @@ test('Профиль отрезка', async ({ page, network }) => {
     await page.goto(VIEW);
     await expect(page.locator('.maplibregl-canvas')).toBeVisible();
     await page.getByRole('button', { name: 'New track' }).first().click();
-    for (const point of [START, FINISH]) {
+    for (const offset of [START, FINISH]) {
+        const point = await mapPoint(page, offset);
         await page.mouse.move(point.x, point.y);
         await page.mouse.click(point.x, point.y);
     }
     await page.keyboard.press('Escape');
     // the waypoint menu works from the store, without a drawn frame
-    await page.mouse.move(FINISH.x, FINISH.y);
-    await page.mouse.click(FINISH.x, FINISH.y, { button: 'right' });
+    const finish = await mapPoint(page, FINISH);
+    await page.mouse.move(finish.x, finish.y);
+    await page.mouse.click(finish.x, finish.y, { button: 'right' });
     await page.getByTestId('map-menu').getByRole('menuitem', { name: 'Show elevation profile for segment' }).click();
     await expect(stat(page, 'distance')).toHaveText(/ km$/);
     expect(network.elevationRequests).toHaveLength(1);

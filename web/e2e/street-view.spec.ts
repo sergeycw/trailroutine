@@ -1,10 +1,9 @@
-import { expect, test } from './fixtures.ts';
+import { expect, mapPoint, test } from './fixtures.ts';
 
 // Street View in the built clone (spec street-view). The Maps JavaScript API is a stub of the fixture network
 // (FAKE_GOOGLE_MAPS), the coverage tiles are a fixture; any other request to Google fails the test. The map center
-// (640, 360) is the panorama STREET_VIEW_PANORAMAS[0].
+// is the panorama STREET_VIEW_PANORAMAS[0].
 const VIEW = './#m=15/41.693/44.78&l=O';
-const CENTER = { x: 640, y: 360 };
 
 test('Режим без панорамы', async ({ page, network }) => {
     await page.goto(VIEW);
@@ -17,8 +16,9 @@ test('Режим без панорамы', async ({ page, network }) => {
 test('Панорама найдена', async ({ page, network }) => {
     await page.goto(VIEW);
     await page.getByRole('button', { name: 'Street View', exact: true }).click();
-    await page.mouse.move(CENTER.x, CENTER.y);
-    await page.mouse.click(CENTER.x, CENTER.y);
+    const center = await mapPoint(page, { dx: 0, dy: 0 });
+    await page.mouse.move(center.x, center.y);
+    await page.mouse.click(center.x, center.y);
     const panorama = page.getByTestId('google-panorama');
     await expect(panorama).toHaveAttribute('data-view', '41.69300,44.78000,0');
     await expect(page.getByTestId('panorama-marker')).toBeVisible();

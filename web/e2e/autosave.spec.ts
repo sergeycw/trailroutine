@@ -1,17 +1,17 @@
 import type { Page } from '@playwright/test';
-import { expect, openTracks, test } from './fixtures.ts';
+import { expect, type MapOffset, mapPoint, openTracks, test } from './fixtures.ts';
 
 // Autosave with a real page reload and the real Chromium IndexedDB (each test has its own context, so its own
 // database). The test titles are the scenarios of the specs route-editing and tracks. The engine is the CheerpJ stub
 // (e2e/fixtures.ts): its route goes to the side of the straight line, so a routed segment is much longer than the
 // straight line.
 
-// Tbilisi, zoom 15 of the old client; window Desktop Chrome 1280×720. The points south of NO_ROUTE_LAT of the stub get
-// a route.
+// Tbilisi, zoom 15 of the old client; the points are offsets from the map center (mapPoint in e2e/fixtures.ts). The
+// points south of NO_ROUTE_LAT of the stub get a route.
 const VIEW = './#m=15/41.69/44.785';
-const START = { x: 540, y: 420 };
-const FINISH = { x: 740, y: 380 };
-const MOVED = { x: 760, y: 440 };
+const START = { dx: -100, dy: 60 };
+const FINISH = { dx: 100, dy: 20 };
+const MOVED = { dx: 120, dy: 80 };
 
 // saveNktk({name: 'Mtatsminda', segments: [[41.69, 44.79 → 41.695, 44.786]], points: [TV tower]}) and
 // saveNktk({name: 'Narikala', segments: [[41.688, 44.808 → 41.6875, 44.81]]}): as strings, because e2e builds
@@ -28,12 +28,15 @@ async function chooseActivity(page: Page, name: string) {
     await page.getByRole('menuitemradio', { name, exact: true }).click();
 }
 
-async function clickMap(page: Page, point: { x: number; y: number }) {
+async function clickMap(page: Page, offset: MapOffset) {
+    const point = await mapPoint(page, offset);
     await page.mouse.move(point.x, point.y);
     await page.mouse.click(point.x, point.y);
 }
 
-async function dragMap(page: Page, from: { x: number; y: number }, to: { x: number; y: number }) {
+async function dragMap(page: Page, fromOffset: MapOffset, toOffset: MapOffset) {
+    const from = await mapPoint(page, fromOffset);
+    const to = await mapPoint(page, toOffset);
     await page.mouse.move(from.x, from.y);
     await page.mouse.down();
     await page.mouse.move(to.x, to.y, { steps: 5 });

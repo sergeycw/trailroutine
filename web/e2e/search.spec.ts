@@ -1,12 +1,13 @@
 import type { Page } from '@playwright/test';
-import { expect, test } from './fixtures.ts';
+import { expect, type MapOffset, mapPoint, test } from './fixtures.ts';
 
 // Search, placemark and ruler in the built clone (specs map-search and tracks). The search providers answer with the
 // saved answers of the fixture network (mapy.cz through the clone proxy, photon), the test does not go to the network.
-// Window Desktop Chrome 1280×720, map center (640, 360).
+// The map points are offsets from the map center (mapPoint in e2e/fixtures.ts).
 const VIEW = './#m=15/41.69/44.785&l=O';
 
-async function clickMap(page: Page, point: { x: number; y: number }) {
+async function clickMap(page: Page, offset: MapOffset) {
+    const point = await mapPoint(page, offset);
     await page.mouse.move(point.x, point.y);
     await page.mouse.click(point.x, point.y);
 }
@@ -48,8 +49,8 @@ test('Измерить расстояние', async ({ page }) => {
     await expect(page.locator('.maplibregl-canvas')).toBeVisible();
     await page.getByRole('button', { name: 'Measure distance' }).click();
     // ≈ 3.56 m per pixel at z15 near Tbilisi: 340 px ≈ 1.2 km
-    await clickMap(page, { x: 470, y: 400 });
-    await clickMap(page, { x: 810, y: 400 });
+    await clickMap(page, { dx: -170, dy: 40 });
+    await clickMap(page, { dx: 170, dy: 40 });
     // while the line is drawn, the length is in the editor of the top bar
     await expect(page.getByTestId('edit-panel').getByRole('textbox', { name: 'Track name' })).toHaveValue('Ruler');
     await expect(page.getByTestId('edit-length')).toHaveText(/^1\.2\d km$/u);
