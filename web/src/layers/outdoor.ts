@@ -5,11 +5,12 @@ import type {
     FormattedSpecification,
     LayerSpecification,
 } from 'maplibre-gl';
+import { poiFilter, poiIcon } from './poi-icons';
 
 // The outdoor vector style of the basemap OpenFreeMap Outdoor (design add-vector-outdoor-style): the layers of the
 // OpenMapTiles schema (https://openmaptiles.org/schema/) from the OpenFreeMap tiles. The style is a custom one, not
 // Liberty: without glyphs and sprite, MapLibre 6 draws the labels with the system font, as the track labels
-// (src/tracks/style.ts), and there are no POI icons.
+// (src/tracks/style.ts), and the app draws the few POI icons itself (layers/poi-icons.ts).
 //
 // Layer ids are <code>-<name>: the suffix does not overlap with the codes of the catalog and of custom layers (-cs…),
 // as Ct-labels.
@@ -387,6 +388,29 @@ export function outdoorLayers(code: string, language: string): LayerSpecificatio
                 'text-field': labelText(language),
                 'text-font': FONT,
                 'text-size': 11,
+            },
+            paint: labelPaint(),
+        },
+        // POI icons from zoom 14, where the OpenMapTiles poi layer starts (layers/poi-icons.ts); the name is optional and
+        // goes away first when the place is crowded
+        {
+            id: `${code}-poi`,
+            type: 'symbol',
+            ...source,
+            'source-layer': 'poi',
+            minzoom: 14,
+            filter: poiFilter(),
+            layout: {
+                'icon-image': poiIcon(),
+                'icon-size': 0.9,
+                'text-field': labelText(language),
+                'text-font': FONT,
+                'text-size': 10,
+                'text-max-width': 8,
+                'text-offset': [0, 1.2],
+                'text-anchor': 'top',
+                'text-optional': true,
+                'symbol-sort-key': ['coalesce', ['get', 'rank'], 99],
             },
             paint: labelPaint(),
         },
