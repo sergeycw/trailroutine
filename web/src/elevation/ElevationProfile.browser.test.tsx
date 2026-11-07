@@ -317,6 +317,85 @@ describe('Курсор профиля и карта', () => {
     });
 });
 
+// a finger on the graph: a touch pointer event at a fraction of the width of the graph frame (the scroller), so the
+// fingers stay in place on the screen while the graph grows with the zoom
+function finger(type: string, id: number, fraction: number) {
+    const frame = page.getByTestId('profile-graph').element().parentElement as HTMLElement;
+    const rect = frame.getBoundingClientRect();
+    page.getByTestId('profile-graph')
+        .element()
+        .dispatchEvent(
+            new PointerEvent(type, {
+                bubbles: true,
+                cancelable: true,
+                pointerType: 'touch',
+                pointerId: id,
+                isPrimary: id === 1,
+                clientX: rect.left + (rect.width - 1) * fraction,
+                clientY: rect.top + 20,
+            }),
+        );
+}
+
+describe('Finger gestures on the elevation profile', () => {
+    test('Finger cursor', async () => {
+        await render(trackLink('Walk', [SOUTH]));
+        await openTrackProfile('Walk');
+        finger('pointerdown', 1, 0.25);
+        finger('pointermove', 1, 0.4);
+        finger('pointermove', 1, 0.5);
+        await expect.poll(cursorLabel).toContain('0.50 km');
+        // the finger stays on the graph longer than a long press after the move: still no selection
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        expect(profilePanel().getByText('Selection').query()).toBeNull();
+        finger('pointerup', 1, 0.5);
+        expect(stat('distance')).toBe('1.00 km');
+    });
+
+    test('Selection with a long press', async () => {
+        const { map } = await render(trackLink('Walk', [SOUTH]));
+        await openTrackProfile('Walk');
+        finger('pointerdown', 1, 0.25);
+        // the long press: the panel shows the selection before the move
+        await expect.element(profilePanel().getByText('Selection')).toBeVisible();
+        finger('pointermove', 1, 0.4);
+        finger('pointermove', 1, 0.5);
+        finger('pointerup', 1, 0.5);
+        await expect.poll(() => stat('distance')).toBe('0.25 km');
+        await expect.poll(() => features(map, PROFILE_SELECTION).length).toBe(1);
+        // a tap removes the selection
+        finger('pointerdown', 1, 0.7);
+        finger('pointerup', 1, 0.7);
+        await expect.poll(() => stat('distance')).toBe('1.00 km');
+        expect(profilePanel().getByText('Selection').query()).toBeNull();
+    });
+
+    test('Two-finger zoom', async () => {
+        await render(trackLink('Walk', [SOUTH]));
+        await openTrackProfile('Walk');
+        const graph = page.getByTestId('profile-graph').element();
+        const scroller = graph.parentElement as HTMLElement;
+        const before = graph.getBoundingClientRect().width;
+        finger('pointerdown', 1, 0.4);
+        finger('pointerdown', 2, 0.6);
+        finger('pointermove', 1, 0.3);
+        finger('pointermove', 2, 0.7);
+        await expect.poll(() => graph.getBoundingClientRect().width).toBeCloseTo(before * 2, -1);
+        // the middle of the graph stays in the middle of the frame, between the fingers
+        expect(scroller.scrollLeft + scroller.clientWidth / 2).toBeCloseTo(graph.getBoundingClientRect().width / 2, -1);
+        // a move of both fingers scrolls the graph
+        const scroll = scroller.scrollLeft;
+        finger('pointermove', 1, 0.2);
+        finger('pointermove', 2, 0.6);
+        await expect.poll(() => scroller.scrollLeft).toBeCloseTo(scroll + scroller.clientWidth * 0.1, -1);
+        finger('pointerup', 1, 0.2);
+        // the finger that stays after the pinch does not remove the selection and does not start one
+        finger('pointerup', 2, 0.6);
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        expect(profilePanel().getByText('Selection').query()).toBeNull();
+    });
+});
+
 describe('Профиль следует за треком', () => {
     test('Правка во время профиля', async () => {
         const { map, api, router } = await render(VIEW);
