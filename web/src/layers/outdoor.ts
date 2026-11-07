@@ -214,7 +214,9 @@ function labelPaint(color = LABEL) {
     return { 'text-color': color, 'text-halo-color': HALO, 'text-halo-width': 1.5 };
 }
 
-export function outdoorLayers(code: string, language: string): LayerSpecification[] {
+// relief: the hillshade layers that the style draws above the land cover and under the water, the roads and the labels
+// (change outdoor-relief-in-style, buildStyle in style.ts)
+export function outdoorLayers(code: string, language: string, relief: LayerSpecification[] = []): LayerSpecification[] {
     const source = { source: code };
     return [
         // vector tiles do not fill the land: the land background is an own style layer above the gray map background
@@ -255,6 +257,7 @@ export function outdoorLayers(code: string, language: string): LayerSpecificatio
                 ],
             },
         },
+        ...relief,
         {
             id: `${code}-glacier-outline`,
             type: 'line',
