@@ -114,10 +114,13 @@ test.describe('старые ссылки', () => {
         // test only needs the app to open without exceptions
         network.allowExternal();
         const errors: string[] = [];
-        // Playwright WebKit reports the harmless window error «ResizeObserver loop completed with undelivered
-        // notifications.» as pageerror; Sentry also ignores it by default
+        // Playwright WebKit reports each console error of the page as pageerror, not only uncaught exceptions:
+        // - the harmless window error «ResizeObserver loop completed with undelivered notifications.», which Sentry
+        //   also ignores by default;
+        // - «Fetch API cannot load … due to access control checks.» of a tile request that WebKit refuses: a custom
+        //   layer of an old link has the URL htto://slazav.xyz/…, and MapLibre gets the failed tile as in Chromium
         page.on('pageerror', (error) => {
-            if (!/^ResizeObserver loop/.test(error.message)) {
+            if (!/^ResizeObserver loop| due to access control checks\.$/.test(error.message)) {
                 errors.push(error.message);
             }
         });
