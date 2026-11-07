@@ -295,6 +295,9 @@ test('Вид пишется в адрес', async ({ page, network }) => {
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.down();
     await page.mouse.move(box.x + box.width / 2 - 200, box.y + box.height / 2 + 100, { steps: 10 });
+    // a pause before the release: in WebKit a fast synthetic drag starts the MapLibre inertia, and the map moves on
+    // after the release
+    await page.waitForTimeout(300);
     await page.mouse.up();
     // the map moved to the south-west: the center is more north and more east, the zoom and the other parameters stay
     await expect.poll(() => new URL(page.url()).hash).not.toBe('#m=10/41.00000/44.00000&p=1&l=Of');
