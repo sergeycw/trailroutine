@@ -9,11 +9,12 @@ import { fromSegment, type RouteLine, type SegmentRoute, settledRoute, toSegment
 import { cutLine, joinLines, type LinePlace } from './line-tools';
 import { type Router, routerDownHint } from './router';
 
-// Связь редактора со стором, без React — как createTrackActions (design add-web-route-editor, «Связь со стором и
-// картой»). Редактор живёт дольше редактирования: после выхода он дожидается ответов роутера и хранит историю
-// («История переживает выход из редактирования»). Редакторы лежат по массиву точек отрезка, который они последним
-// записали в трек: любое внешнее изменение (разворот, удаление трека, новый трек из файла) даёт другой массив, и такой
-// редактор выбрасывается — его ответ иначе затёр бы чужую правку, а история относилась бы к другой линии.
+// The connection between the editor and the store, without React, as createTrackActions (design add-web-route-editor,
+// «Связь со стором и картой»). An editor lives longer than editing: after the exit it waits for router responses and
+// keeps the history («История переживает выход из редактирования»). Editors are keyed by the point array of the segment
+// that they last wrote to the track: any external change (reverse, track removal, a new track from a file) gives a
+// different array, and such an editor is discarded: otherwise its response would overwrite another edit, and the
+// history would belong to a different line.
 
 export type Notify = (title: string, type?: 'error' | 'success') => void;
 
@@ -28,7 +29,7 @@ export interface RouteEditingDeps {
 interface Session {
     trackId: string;
     editor: RouteEditor;
-    // массив точек отрезка, который редактор последним записал в трек
+    // the point array of the segment that the editor last wrote to the track
     written: readonly LatLng[];
 }
 
@@ -61,7 +62,7 @@ export function createRouteEditing({ store, router, engine, notify, storage }: R
         });
     }
 
-    // Линия изменилась (правка или ответ роутера, в том числе после выхода): записать отрезок и разметку в трек
+    // The line changed (an edit or a router response, also after the exit): write segment and markup to the track
     function write(session: Session) {
         const located = findSegment(session);
         if (!located) {
@@ -94,7 +95,7 @@ export function createRouteEditing({ store, router, engine, notify, storage }: R
         }
     }
 
-    // выбор на карте и меню относятся к редактируемой линии: без неё их нет
+    // the map choice and the menu belong to the edited line: without the line they do not exist
     function closeTools() {
         if (state().lineTool) {
             state().setLineTool(null);
@@ -106,7 +107,7 @@ export function createRouteEditing({ store, router, engine, notify, storage }: R
 
     function onRouteError(error: unknown) {
         if (error instanceof RoutingError && error.unreachable) {
-            // одно предупреждение на переход «работал → упал» (спека routing, «Недоступный роутер»)
+            // one warning per change from «worked» to «failed» (spec routing, «Недоступный роутер»)
             if (state().routerReachable) {
                 state().setRouterReachable(false);
                 notify(`${routerDownHint(engine)}. Lines stay straight until then.`, 'error');
@@ -141,7 +142,8 @@ export function createRouteEditing({ store, router, engine, notify, storage }: R
         return created;
     }
 
-    // Отрезок без двух точек удаляется, трек без отрезков и точек — тоже (onLineEditEnd старого клиента)
+    // A segment with fewer than two points is removed, and so is a track without segments and points (onLineEditEnd of
+    // the old client)
     function cleanUp(finished: Session) {
         const located = findSegment(finished);
         if (!located) {
@@ -186,7 +188,7 @@ export function createRouteEditing({ store, router, engine, notify, storage }: R
         if (current && current !== next) {
             stop();
         }
-        // редактирование линии и постановка точек трека взаимоисключающие (_beginPointEdit старого клиента)
+        // line editing and placing track points exclude each other (_beginPointEdit of the old client)
         if (state().pointTool) {
             state().setPointTool(null);
         }
@@ -195,10 +197,10 @@ export function createRouteEditing({ store, router, engine, notify, storage }: R
         publish();
     }
 
-    // Трек скрыли, удалили или изменили снаружи во время редактирования — редактирование заканчивается
+    // The track was hidden, removed or changed from outside during editing: editing ends
     store.subscribe((next, prev) => {
-        // режим точек трека, чей трек или переносимую точку удалили, заканчивается: панели у него уже нет, а клики по
-        // карте он забирал бы молча (ревью диффа)
+        // the track point mode ends if its track or the moved point is removed: the mode has no panel any more, and it
+        // would take map clicks without a message (diff review)
         const tool = next.pointTool;
         if (tool && next.tracks !== prev.tracks) {
             const track = next.tracks.find((item) => item.id === tool.trackId);
@@ -224,16 +226,16 @@ export function createRouteEditing({ store, router, engine, notify, storage }: R
 
     const editor = () => current?.editor ?? null;
 
-    // Отрезок трека из линии операции списка: ожидающие отрезки — непроложенные, их новый массив не знает ни один
-    // редактор, и ответа не будет (design add-web-line-tools, «Операции — функции над линией редактора»)
+    // A track segment from the line of a list operation: pending legs become unrouted, no editor knows their new array,
+    // and no response comes (design add-web-line-tools, «Операции — функции над линией редактора»)
     function segmentOf(line: RouteLine) {
         const { points, route } = toSegment(line);
         return { points, route: settledRoute(route) };
     }
 
-    // Операция списка над редактируемым отрезком: index отрезка заменяется частями parts, а remove — ещё один отрезок
-    // того же трека (Join). Редактор прежнего отрезка выбрасывается (подписка на стор: его массива больше нет в треке),
-    // edit — номер части, которую редактировать дальше; без него редактирование заканчивается.
+    // A list operation on the edited segment: the segment at index is replaced with parts, and remove is one more
+    // segment of the same track (Join). The editor of the old segment is discarded (the store subscription: its array
+    // is no longer in the track); edit is the index of the part to edit next, without it editing ends.
     function replaceEdited(parts: RouteLine[], options: { remove?: number; edit?: number } = {}) {
         const located = current && findSegment(current);
         if (!current || !located) {
@@ -293,7 +295,7 @@ export function createRouteEditing({ store, router, engine, notify, storage }: R
         start,
         stop,
         addSegment,
-        // «New track»: трек и сразу рисование (addTrackAndEdit старого клиента); линейка — с отметками расстояния
+        // «New track»: a track and drawing at once (addTrackAndEdit of the old client); ruler: with distance ticks
         newTrack(name: string, fields: Partial<GeoData> = {}) {
             const [track] = state().addTracks(prepareImport([geoData(name || 'New track', fields)], true).tracks);
             addSegment(track.id);
@@ -311,7 +313,7 @@ export function createRouteEditing({ store, router, engine, notify, storage }: R
             state().setRouteDrag(null);
             publish();
         },
-        // клик по карте при рисовании; alt — прямой отрезок без роутера
+        // a map click while drawing; alt: a straight leg without the router
         click(latlng: LatLng, alt = false) {
             if (drawing) {
                 editor()?.addWaypoint(drawing, latlng, alt ? null : state().routingActivity);
@@ -325,8 +327,8 @@ export function createRouteEditing({ store, router, engine, notify, storage }: R
         moveWaypoint: (index: number, latlng: LatLng) => editor()?.moveWaypoint(index, latlng),
         removeWaypoint: (index: number) => editor()?.removeWaypoint(index),
 
-        // Инструменты линии (спека route-editing; design add-web-line-tools, «Undo»): Cut, Join, удаление и вынос
-        // отрезка — операции списка без undo, Shortcut и Reverse — правки редактора с undo.
+        // Line tools (spec route-editing; design add-web-line-tools, «Undo»): Cut, Join, deletion and extraction of a
+        // segment are list operations without undo, Shortcut and Reverse are editor edits with undo.
         cut(place: LinePlace) {
             const edited = line();
             const parts = edited && cutLine(edited, place);
@@ -351,7 +353,8 @@ export function createRouteEditing({ store, router, engine, notify, storage }: R
                 state().setLineTool({ kind: 'join', end });
             }
         },
-        // клик по отрезку segment трека trackId при выборе Join: тот приклеивается ближним концом otherEnd
+        // a click on the segment segment of the track trackId during the Join choice: that segment attaches with its
+        // near end otherEnd
         join(trackId: string, segment: number, otherEnd: End) {
             const tool = state().lineTool;
             const located = current && findSegment(current);
@@ -375,7 +378,7 @@ export function createRouteEditing({ store, router, engine, notify, storage }: R
                 state().setLineTool({ kind: 'shortcut', from });
             }
         },
-        // клик по месту to при выборе Shortcut; false — удалять нечего, выбор продолжается (getShortCutNodes)
+        // a click on place to in the Shortcut choice; false: nothing to remove, the choice goes on (getShortCutNodes)
         shortcut(to: LinePlace) {
             const tool = state().lineTool;
             if (tool?.kind !== 'shortcut' || !editor()?.shortcut(tool.from, to)) {
@@ -385,7 +388,7 @@ export function createRouteEditing({ store, router, engine, notify, storage }: R
             return true;
         },
         cancelTool: () => state().setLineTool(null),
-        // меню в экранной точке x, y; рисование заканчивается (contextmenu старого редактора — stopDrawingLine)
+        // a menu at the screen point x, y; drawing ends (contextmenu of the old editor: stopDrawingLine)
         openMenu(x: number, y: number, target: MenuTarget) {
             if (target.kind !== 'point' && drawing) {
                 drawing = null;
@@ -408,13 +411,13 @@ export function createRouteEditing({ store, router, engine, notify, storage }: R
                 router.warmUp();
             }
         },
-        // при загрузке страницы с выбранной активностью движок прогревается сразу (спека browser-routing-engine)
+        // on a page load with a selected activity, the engine warms up immediately (spec browser-routing-engine)
         warmUp() {
             if (state().routingActivity) {
                 router.warmUp();
             }
         },
-        // режим и состояние движка для кнопки прокладки (useSyncExternalStore)
+        // the mode and the engine state for the routing button (useSyncExternalStore)
         engine,
         engineStatus: () => router.status(),
         subscribeEngine: (listener: () => void) => router.subscribe(listener),

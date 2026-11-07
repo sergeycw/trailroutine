@@ -1,13 +1,13 @@
 import type { LatLng } from './model';
 
-// Геометрия треков без карты. Формулы — как в Leaflet 1.0.3 старого клиента, чтобы длины, упрощение и ссылки
-// совпадали с ним: CRS.Earth (R = 6 371 000 м, сферический закон косинусов), LineUtil.simplify (отсев по радиусу +
-// Дуглас — Пекер) в градусах, как L.LineUtil.simplifyLatlngs (src/lib/leaflet.lineutil.simplifyLatLngs).
+// Track geometry without a map. The formulas are as in Leaflet 1.0.3 of the old client, so that lengths, simplification
+// and links match it: CRS.Earth (R = 6 371 000 m, spherical law of cosines), LineUtil.simplify (radius filter +
+// Douglas–Peucker) in degrees, as L.LineUtil.simplifyLatlngs (src/lib/leaflet.lineutil.simplifyLatLngs).
 
 const EARTH_RADIUS = 6371000;
 const RAD = Math.PI / 180;
 
-// Допуск упрощения при импорте и в ссылках — шаг сетки nktk (arcUnit = (2^24 − 1) / 360), ≈ 2.4 м
+// Simplification tolerance on import and in links is the nktk grid step (arcUnit = (2^24 − 1) / 360), ≈ 2.4 m
 export const SIMPLIFY_TOLERANCE = 360 / (1 << 24);
 
 export function distance(a: LatLng, b: LatLng): number {
@@ -27,7 +27,7 @@ export function lineLength(line: readonly LatLng[]): number {
 
 const lengthCache = new WeakMap<readonly (readonly LatLng[])[], number>();
 
-// Длина трека кешируется по ссылке на массив отрезков: стор меняет массив целиком при любой правке
+// The track length is cached by the reference to the segments array: the store replaces the whole array on any edit
 export function tracksLength(segments: readonly (readonly LatLng[])[]): number {
     let length = lengthCache.get(segments);
     if (length === undefined) {
@@ -37,7 +37,7 @@ export function tracksLength(segments: readonly (readonly LatLng[])[]): number {
     return length;
 }
 
-// formatLength старого клиента
+// formatLength of the old client
 export function formatLength(meters: number): string {
     const digits = meters < 10000 ? 2 : meters < 100000 ? 1 : 0;
     return `${(meters / 1000).toFixed(digits)} km`;
@@ -68,7 +68,8 @@ function sqDistToSegment(p: LatLng, a: LatLng, b: LatLng) {
     return (p.lng - x) ** 2 + (p.lat - y) ** 2;
 }
 
-// L.LineUtil.simplify. Дуглас — Пекер — стеком, а не рекурсией: большой GPX с прямой линией иначе упирается в стек.
+// L.LineUtil.simplify. Douglas–Peucker uses a stack, not recursion: with recursion, a large GPX with a straight line
+// overflows the call stack.
 export function simplify<T extends LatLng>(points: readonly T[], tolerance = SIMPLIFY_TOLERANCE): T[] {
     if (!tolerance || points.length === 0) {
         return points.slice();
@@ -110,13 +111,13 @@ export function simplify<T extends LatLng>(points: readonly T[], tolerance = SIM
     return reduced.filter((_, i) => markers[i]);
 }
 
-// LatLng.wrap() Leaflet: wrapNum(lng, [-180, 180], includeMax) — ровно 180 остаётся 180
+// LatLng.wrap() of Leaflet: wrapNum(lng, [-180, 180], includeMax): exactly 180 stays 180
 export function wrapLng(lng: number): number {
     return lng === 180 ? lng : ((((lng + 180) % 360) + 360) % 360) - 180;
 }
 
-// unwrapLatLngsCrossing180Meridian старого клиента: каждая следующая точка берётся в той копии мира, что ближе к
-// предыдущей, — линия через 180° остаётся непрерывной (долгота может выйти за ±180, MapLibre это рисует)
+// unwrapLatLngsCrossing180Meridian of the old client: each next point goes into the world copy that is nearer to the
+// previous point, so a line across 180° stays continuous (the longitude can go outside ±180, MapLibre draws this)
 export function unwrapLine(line: readonly LatLng[]): LatLng[] {
     const result: LatLng[] = [];
     for (const point of line) {
@@ -131,8 +132,8 @@ export function unwrapLine(line: readonly LatLng[]): LatLng[] {
     return result;
 }
 
-// Линия при добавлении в список (addTracksFromGeodataArray старого клиента): развернуть через 180°, упростить,
-// одну точку повторить — линия из одной точки иначе не рисуется и не редактируется
+// A line when it is added to the list (addTracksFromGeodataArray of the old client): unwrap across 180°, simplify,
+// repeat a single point: otherwise a line of one point is not drawn and cannot be edited
 export function normalizeLine(line: readonly LatLng[]): LatLng[] {
     const simplified = simplify(unwrapLine(line));
     if (simplified.length === 1) {
@@ -149,8 +150,8 @@ function positiveLng(lng: number) {
     return ((lng % 360) + 360) % 360;
 }
 
-// splitLinesAt180Meridian старого клиента (meridian180.js): для экспорта долготы приводятся к [−180, 180), а отрезок,
-// который пересекает 180°, делится на два с точками в 0.000001° от меридиана по обе стороны
+// splitLinesAt180Meridian of the old client (meridian180.js): for export, longitudes go into [−180, 180), and a
+// segment that crosses 180° is split in two, with points 0.000001° from the meridian on both sides
 export function splitAt180(line: readonly LatLng[]): LatLng[][] {
     if (line.length < 2) {
         return [];

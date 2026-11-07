@@ -1,19 +1,20 @@
 name = "nakarte-guard"
 main = "src/index.js"
 compatibility_date = "2025-09-01"
-# Счётчик частоты для Pages Functions клона (привязку rate limiting Pages не поддерживают). Снаружи закрыт:
-# его зовут только функции по service binding GUARD (корневой wrangler.toml), поэтому заголовку X-Client-IP
-# можно верить. Решения — change limit-pages-functions.
+# The rate counter for the Pages Functions of the clone (Pages does not support the rate limiting binding). It is
+# closed from outside: only the functions call it through the service binding GUARD (the root wrangler.toml), thus
+# the X-Client-IP header is trusted. Decisions: change limit-pages-functions.
 workers_dev = false
 preview_urls = false
 
-# Потолок на один вызов: один вызов привязки, без подзапросов наружу.
+# The limit for one invocation: one binding call, no subrequests to outside.
 [limits]
 cpu_ms = 50
 subrequests = 5
 
-# Запросы к /tiles/ и /brouter-wasm/ с одного IP за 60 с: маршрут — ≈ 40 Range-чтений тайлов, запуск
-# движка — чтения jar и профилей. namespace_id уникален в аккаунте (1002–1008 — Worker'ы клона, 1001 освобождён).
+# Requests to /tiles/ and /brouter-wasm/ from one IP per 60 s: a route is ≈ 40 Range reads of tiles, an engine
+# start is reads of the jar and the profiles. namespace_id is unique in the account (1002–1008 are the Workers of the
+# clone, 1001 is free).
 [[ratelimits]]
 name = "RATE_LIMITER"
 namespace_id = "1008"

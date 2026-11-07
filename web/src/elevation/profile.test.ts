@@ -19,14 +19,14 @@ import {
 } from './profile';
 
 const P = (lat: number, lng: number) => ({ lat, lng });
-// профиль с точками через 100 м на одном отрезке — для сводки важны только расстояния и отрезки
+// a profile with points every 100 m on one segment: for the summary only the distances and the segments matter
 const even = (n: number, step = 100, starts = [0]) => ({
     distances: Float64Array.from({ length: n }, (_, i) => i * step),
     starts,
 });
 
 describe('samplingInterval', () => {
-    // числа — calcSamplingInterval старого клиента на тех же длинах
+    // the numbers are from calcSamplingInterval of the old client on the same lengths
     it('шаг 10–50 м и не больше 9 999 точек', () => {
         expect(samplingInterval(1000)).toBe(10);
         expect(samplingInterval(50_000)).toBe(25);
@@ -69,7 +69,7 @@ describe('sampleSegments', () => {
     });
 
     it('начала и концы отрезков не выводят выборку за 10 000 точек (один запрос)', () => {
-        // ≈ 600 км: шаг samplingInterval даёт 9 999 точек, а каждый отрезок добавляет ещё до двух
+        // ≈ 600 km: the samplingInterval step gives 9 999 points, and each segment adds up to two more
         for (const count of [2, 10, 100]) {
             const segments = Array.from({ length: count }, (_, k) => [
                 P(40 + k * 0.01, 40),
@@ -180,7 +180,7 @@ describe('курсор', () => {
 });
 
 describe('Участки крутизны', () => {
-    // 1 км через 100 м: первая половина ровно на 800 м, вторая — подъём 100 м (20 %)
+    // 1 km every 100 m: the first half is flat at 800 m, the second half climbs 100 m (20 %)
     const flatThenClimb = [800, 800, 800, 800, 800, 800, 820, 840, 860, 880, 900];
     const span = (sections: { from: number; to: number }[]) => sections.map(({ from, to }) => [from, to]);
 
@@ -197,7 +197,7 @@ describe('Участки крутизны', () => {
             [0, 2],
             [2, 5],
         ]);
-        // хвост не короче половины участка — свой участок
+        // a tail not shorter than half of a section is a separate section
         const longTail = { distances: Float64Array.from([0, 100, 160]), starts: [0] };
         expect(span(slopeSections(longTail, [0, 0, 0], 100))).toEqual([
             [0, 1],
@@ -214,7 +214,7 @@ describe('Участки крутизны', () => {
             [0, 1],
             [2, 3],
         ]);
-        // прогон короче участка — один участок, единичная точка — ни одного
+        // a run shorter than a section gives one section, a single point gives none
         expect(span(slopeSections(even(3), [0, 5, null], 1000))).toEqual([[0, 1]]);
         expect(slopeSections(even(3), [null, 5, null], 100)).toEqual([]);
     });
@@ -233,7 +233,7 @@ describe('Участки крутизны', () => {
     it('участок под курсором', () => {
         const sections = slopeSections(even(11), flatThenClimb);
         expect(sectionAt(sections, 0.5)).toBe(sections[0]);
-        // общая точка двух участков — следующий, конец прогона — последний
+        // the shared point of two sections gives the next one, the end of a run gives the last one
         expect(sectionAt(sections, 5)).toBe(sections[5]);
         expect(sectionAt(sections, 10)).toBe(sections[9]);
         const gapped = slopeSections(even(5), [0, 10, null, 0, 10], 100);
@@ -245,7 +245,7 @@ describe('Участки крутизны', () => {
 
 describe('уклон у курсора', () => {
     it('модуль округляется как ступень: −2.5 % — «↓ 3%», ступень 3–6', () => {
-        // 120 м спуска на 3 м: −2.5 %
+        // a descent of 3 m on 120 m: −2.5 %
         const samples = { points: [], distances: Float64Array.from([0, 120]), starts: [0], length: 120 };
         const data = { samples, values: [100, 97], updating: false, error: null };
         expect(cursorInfo(data, 0.5).slope).toBe('↓ 3%');

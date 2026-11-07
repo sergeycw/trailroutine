@@ -1,5 +1,5 @@
-// Счётчик для Pages Functions в workerd: 204, пока IP укладывается в лимит, потом 429.
-// В vitest.config.js лимит понижен до 3 за 60 с.
+// The counter for Pages Functions in workerd: 204 while the IP is within the limit, then 429.
+// vitest.config.js lowers the limit to 3 per 60 s.
 import {exports as workerExports} from 'cloudflare:workers';
 import {describe, expect, it} from 'vitest';
 

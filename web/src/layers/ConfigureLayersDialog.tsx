@@ -8,10 +8,11 @@ import { isCustomLayerCode } from './custom';
 import { isColumnButton } from './quick-layers';
 import { isListed, listedByDefault } from './settings';
 
-// Настройка списка слоёв — как LayersConfigDialog старого клиента (leaflet.control.layers.configure): слои по группам с
-// галочкой «в списке»; Reset — умолчания (listedByDefault), Cancel — без изменений, Ok — сохранить. Хоткеев слоёв нет
-// (решение владельца, design add-web-map-layers). Кнопок столбца — первых слоёв групп и снимков по датам — в диалоге
-// нет: они в столбце всегда, и галочка на них не влияет (design custom-bases-in-list).
+// Layer list settings, as LayersConfigDialog of the old client (leaflet.control.layers.configure): layers by group,
+// each with an "in the list" check box. Reset sets the defaults (listedByDefault), Cancel keeps the list, Ok saves it.
+// Layers have no hotkeys (owner decision, design add-web-map-layers). The dialog does not show the column buttons (the
+// first layers of the groups and dated imagery): they are always in the column, and the check box has no effect on
+// them (design custom-bases-in-list).
 
 type Draft = Record<string, boolean>;
 
@@ -72,8 +73,8 @@ export function ConfigureLayersDialog({ open, onOpenChange }: ConfigureLayersDia
                     <Button
                         variant="outline"
                         onClick={() => {
-                            // умолчания каталога и групп столбца (listedByDefault); свои слои не умолчание —
-                            // скрываются, как Reset старого диалога
+                            // the defaults of the catalog and of the column groups (listedByDefault); custom layers are
+                            // not in the defaults, so Reset hides them, as Reset of the old dialog does
                             setDraft(
                                 Object.fromEntries(
                                     all.map((layer) => [

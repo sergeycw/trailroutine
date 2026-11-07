@@ -4,9 +4,9 @@ import type { Page } from '@playwright/test';
 import { parseRedirects, resolveRedirect } from '../vite/redirects.ts';
 import { expect, openTracks, test } from './fixtures.ts';
 
-// Названия тестов — сценарии спеки web-client (openspec/specs/web-client/spec.md).
+// The test titles are the scenarios of the spec web-client (openspec/specs/web-client/spec.md).
 
-// тайл z/x/y, в который попадает точка, — формула Web Mercator из вики OSM (Slippy map tilenames)
+// the z/x/y tile that contains the point: the Web Mercator formula from the OSM wiki (Slippy map tilenames)
 function tileOf(lat: number, lng: number, zoom: number) {
     const n = 2 ** zoom;
     const latRad = (lat * Math.PI) / 180;
@@ -15,8 +15,8 @@ function tileOf(lat: number, lng: number, zoom: number) {
     return `${zoom}/${x}/${y}`;
 }
 
-// тайлы подложки по умолчанию — через прокси клона, без ключа (спека map-layers, «Слои через прокси»)
-// векторные тайлы подложки по умолчанию в фикстуре network (e2e/fixtures.ts)
+// the tiles of the default basemap go through the clone proxy, without a key (spec map-layers, «Слои через прокси»)
+// the vector tiles of the default basemap in the fixture network (e2e/fixtures.ts)
 const OPENFREEMAP_TILES = 'https://tiles.openfreemap.org/planet/fixture/';
 
 const canvas = '.maplibregl-canvas';
@@ -43,8 +43,9 @@ test('Стенд движка', async ({ page }) => {
     await expect(page).toHaveTitle('engine bench');
 });
 
-// vite preview файл _redirects не читает: на /next/… страница получает тот ответ, что дали бы Pages по правилам
-// public/_redirects (проверено wrangler pages dev 2026-10-09). Перенос # через редирект — работа браузера.
+// vite preview does not read the _redirects file: on /next/… the page gets the answer that Pages would give by the
+// rules of public/_redirects (checked with wrangler pages dev on 2026-10-09). The browser keeps the # through the
+// redirect.
 const REDIRECTS = parseRedirects(readFileSync(new URL('../public/_redirects', import.meta.url), 'utf8'));
 
 async function servePagesRedirects(page: Page) {
@@ -74,8 +75,9 @@ test('Стенд по старому адресу', async ({ page }) => {
     await expect(page).toHaveTitle('engine bench');
 });
 
-// Реальные ссылки nakarte.me (фикстура разбора адреса) и параметры удалённых функций, которые «Copy link» старого
-// клиента копировал вместе с # (ресёрч new-ui, п. 6): j= (JNX), min= и autoprofile (встраивание), sid= (сессия).
+// Real nakarte.me links (the fixture of the address parsing) and the parameters of removed features that «Copy link» of
+// the old client copied together with # (research new-ui, item 6): j= (JNX), min= and autoprofile (embedding), sid=
+// (session).
 const OLD_LINKS = readFileSync(new URL('../src/state/fixtures/old-links.txt', import.meta.url), 'utf8')
     .split('\n')
     .filter((line) => line.startsWith('https://'))
@@ -86,11 +88,12 @@ const REMOVED_FEATURE_LINKS = [
     '#m=12/41.69/44.78&l=O&sid=kq3f1x_abc123',
 ];
 const REMOVED_PARAMS = ['p', 'j', 'min', 'autoprofile', 'sid', 'q'];
-// saveNktk трека «Mtatsminda» (e2e/tracks.spec.ts): строкой, e2e собирается как Node-модуль и src/tracks/ не импортирует
+// saveNktk of the track «Mtatsminda» (e2e/tracks.spec.ts): as a string, e2e builds as a Node module and does not import
+// src/tracks/
 const MTATSMINDA = 'RAoCEAESNgoKTXRhdHNtaW5kYRIQCgbele0B0gMSBorn_gHzAhoWCICZ7QEQluT-ARoKGghUViB0b3dlcg==';
-// ключ nktl из фикстуры старых ссылок
+// nktl key from the fixture of old links
 const STORED_KEY = 'KYOMJFo4WrootHEbXrMSTA';
-// ответ OSM на трек 3376100 (src/tracks/fixtures/README.md)
+// OSM answer for track 3376100 (src/tracks/fixtures/README.md)
 const OSM_TRACE = fileURLToPath(new URL('../src/tracks/fixtures/services/osm-3376100.gpx', import.meta.url));
 const TRACK_LINKS: [hash: string, track: string][] = [
     [`#m=12/41.7/44.8&l=O&nktk=${MTATSMINDA}`, 'Mtatsminda'],
@@ -103,18 +106,18 @@ const TRACK_LINKS: [hash: string, track: string][] = [
 ];
 
 test.describe('старые ссылки', () => {
-    // открывать список после каждой из десятков ссылок — лишние секунды на медленном CI: он нужен только для треков
+    // to open the list after each of tens of links costs extra seconds on a slow CI: only the tracks need it
     test.use({ tracksOpen: false });
 
     test('Набор реальных старых ссылок', async ({ page, network }) => {
         test.slow();
-        // свои слои ссылок на чужих серверах и файлы треков по ссылкам: запросы обрываются, тесту важно, что приложение
-        // открылось без исключений
+        // custom layers of the links on third-party servers and track files by links: the requests are aborted, the
+        // test only needs the app to open without exceptions
         network.allowExternal();
         const errors: string[] = [];
         page.on('pageerror', (error) => errors.push(error.message));
         for (const hash of [...OLD_LINKS, ...REMOVED_FEATURE_LINKS]) {
-            // через about:blank: переход с одного # на другой страницу не перезагружает
+            // through about:blank: a navigation from one # to another does not reload the page
             await page.goto('about:blank');
             await page.goto(`/${hash}`);
             await expect(page.locator(canvas), hash).toBeVisible();
@@ -123,7 +126,7 @@ test.describe('старые ссылки', () => {
             for (const key of REMOVED_PARAMS) {
                 expect(after.get(key), `${key} в ${hash}`).toBe(params.get(key));
             }
-            // вид из m= сохраняется (формат приложения — 5 знаков после запятой)
+            // the view from m= stays (the app format has 5 digits after the decimal point)
             const view = /^(\d+)\/(-?\d+\.\d+)\/(-?\d+\.\d+)$/.exec(params.get('m') ?? '');
             if (view) {
                 const [zoom, lat, lng] = (after.get('m') ?? '').split('/');
@@ -137,7 +140,8 @@ test.describe('старые ссылки', () => {
         }
         expect(OLD_LINKS.length).toBeGreaterThan(50);
 
-        // треки и панорама из параметров старых ссылок: хранилище и прокси отвечают заглушками фикстуры network
+        // tracks and a panorama from the parameters of old links: the storage and the proxy answer with stubs of the
+        // fixture network
         network.storage.set(STORED_KEY, MTATSMINDA);
         network.proxyResponds('https://www.openstreetmap.org/trace/3376100/data', { path: OSM_TRACE });
         for (const [hash, name] of TRACK_LINKS) {
@@ -162,7 +166,7 @@ test('Иконка сайта', async ({ page }) => {
     expect(await href('link[rel="icon"][type="image/svg+xml"]')).toBe('/favicon.svg');
     expect(await href('link[rel="icon"][sizes]')).toBe('/favicon.ico');
     expect(await href('link[rel="apple-touch-icon"]')).toBe('/apple-touch-icon.png');
-    // файлы из web/public отдаёт сервер сборки (vite preview, на проде — Pages)
+    // the server of the build serves the files from web/public (vite preview, Pages in production)
     for (const [path, type] of [
         ['favicon.svg', 'image/svg+xml'],
         ['favicon.ico', 'image/'],
@@ -172,7 +176,8 @@ test('Иконка сайта', async ({ page }) => {
         expect(response.status(), path).toBe(200);
         expect(response.headers()['content-type'], path).toContain(type);
     }
-    // содержимое: в ICO три картинки 16, 32 и 48 px (поле ширины каждой записи каталога), PNG — 180×180 по заголовку IHDR
+    // content: the ICO has three images of 16, 32 and 48 px (the width field of each directory entry), the PNG is
+    // 180×180 by the IHDR header
     const ico = await (await page.request.get('favicon.ico')).body();
     const count = ico.readUInt16LE(4);
     expect(Array.from({ length: count }, (_, i) => ico.readUInt8(6 + 16 * i))).toEqual([16, 32, 48]);
@@ -183,7 +188,7 @@ test('Иконка сайта', async ({ page }) => {
 test('Первый заход', async ({ page, network }) => {
     await page.goto('./');
     await expect(page.getByRole('link', { name: 'OpenFreeMap', exact: true })).toBeVisible();
-    // векторный тайл 512 px: на зуме MapLibre 12 (m=13) — тайл z12
+    // vector tile of 512 px: at MapLibre zoom 12 (m=13) the tile is z12
     await expect.poll(() => network.tilesOf('Of')).toContain(`${OPENFREEMAP_TILES}${tileOf(42.37889, 45.63, 12)}.pbf`);
     await expect(page.getByText('Map tiles failed to load')).toHaveCount(0);
     const box = await page.locator(canvas).boundingBox();
@@ -237,10 +242,10 @@ test.describe('в тёмной теме системы', () => {
     test.use({ colorScheme: 'dark' });
 
     test('Тёмная тема системы', async ({ page, network }) => {
-        // тост отката подложки по умолчанию — любой тост годится для проверки темы
+        // the toast of the default basemap fallback: any toast is sufficient for the theme check
         network.failTiles('Of');
         await page.goto('./');
-        // стекло строки поиска, тоста и кнопки слоёв — светлое (--glass в index.css), а не тёмное
+        // the glass of the search bar, the toast and the layers button is light (--glass in index.css), not dark
         const panel = page.getByTestId('search-bar');
         await expect(panel).toBeVisible();
         await expect(panel).toHaveCSS('background-color', 'oklch(1 0 0 / 0.74)');
@@ -248,7 +253,7 @@ test.describe('в тёмной теме системы', () => {
         const toast = page.locator('[data-slot="toast"]');
         await expect(toast).toBeVisible();
         await expect(toast).toHaveCSS('background-color', 'oklch(1 0 0 / 0.74)');
-        // классы dark: компонентов shadcn не включаются темой системы (@custom-variant dark в index.css)
+        // the system theme does not turn on the dark: classes of shadcn components (@custom-variant dark in index.css)
         await expect(page.getByTestId('layers-button')).toHaveCSS('background-color', 'oklch(1 0 0 / 0.74)');
     });
 });
@@ -262,7 +267,7 @@ test('Ссылка с видом', async ({ page, network }) => {
 });
 
 test('Неверный вид в ссылке', async ({ page, network }) => {
-    // второй адрес отличается только #: страница не перезагружается, приложение получает hashchange
+    // the second address differs only in #: the page does not reload, the app gets hashchange
     for (const hash of ['#m=99/49.44893/52.5547', '#m=11/49.44893/']) {
         await page.goto(`./${hash}`);
         await expect.poll(() => new URL(page.url()).hash).toBe('#m=13/42.37889/45.63000&l=Of');
@@ -273,7 +278,7 @@ test('Неверный вид в ссылке', async ({ page, network }) => {
 test('Вид пишется в адрес', async ({ page, network }) => {
     await page.goto('./#m=10/41/44&p=1');
     await expect.poll(() => new URL(page.url()).hash).toBe('#m=10/41.00000/44.00000&p=1&l=Of');
-    // тянуть карту можно, когда она загрузилась: первые тайлы запрошены
+    // drag the map only after it loads: the first tiles are requested
     await expect.poll(() => network.tilesOf('Of').some((url) => url.endsWith('.pbf'))).toBe(true);
     const box = await page.locator(canvas).boundingBox();
     if (!box) {
@@ -283,7 +288,7 @@ test('Вид пишется в адрес', async ({ page, network }) => {
     await page.mouse.down();
     await page.mouse.move(box.x + box.width / 2 - 200, box.y + box.height / 2 + 100, { steps: 10 });
     await page.mouse.up();
-    // карта уехала на юго-запад — центр севернее и восточнее, зум и остальные параметры те же
+    // the map moved to the south-west: the center is more north and more east, the zoom and the other parameters stay
     await expect.poll(() => new URL(page.url()).hash).not.toBe('#m=10/41.00000/44.00000&p=1&l=Of');
     expect(new URL(page.url()).hash).toMatch(/^#m=10\/41\.\d{5}\/44\.\d{5}&p=1&l=Of$/);
 });

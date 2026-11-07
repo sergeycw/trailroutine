@@ -1,8 +1,8 @@
 name: check web
 
-# Приложение web/ (openspec/specs/web-client): линт, типы, Vitest (unit и browser mode),
-# сборка, проверка бандла на адреса автора, Playwright e2e. В сеть тесты не ходят. Деплой гоняет
-# те же тесты перед публикацией Pages (deploy-pages.yml, job pages).
+# The app web/ (openspec/specs/web-client): lint, types, Vitest (unit and browser mode),
+# build, check of the bundle for the author hosts, Playwright e2e. The tests do not go to the network. The deploy
+# runs the same tests before the Pages publication (deploy-pages.yml, job pages).
 
 on:
   push:
@@ -31,13 +31,13 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci
-      # браузеры Playwright не кешируются: так советует его документация (playwright.dev/docs/ci)
+      # the Playwright browsers are not cached: its documentation recommends this (playwright.dev/docs/ci)
       - run: npx playwright install --with-deps chromium
       - run: npx biome ci
       - run: npm run typecheck
       - run: npm test
-      # поддельный DSN (формат DSN, не секрет): e2e трекера ошибок идут только на сборке с DSN, приём Sentry подменён
-      # заглушкой (e2e/clone-monitoring.spec.ts)
+      # fake DSN (the DSN format, not a secret): the e2e of the error tracker run only on a build with a DSN, a stub
+      # replaces the Sentry intake (e2e/clone-monitoring.spec.ts)
       - run: npm run build
         env:
           VITE_SENTRY_DSN: https://public@o0.ingest.sentry.io/0

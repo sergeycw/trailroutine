@@ -9,10 +9,10 @@ import { isoDay } from './dated';
 const GIBS =
     /^https:\/\/gibs\.earthdata\.nasa\.gov\/wmts\/epsg3857\/best\/HLS_([LS])30_Nadir_BRDF_Adjusted_Reflectance\/default\/([\d-]+)\/GoogleMapsCompatible_Level12\/(\d+)\//;
 const EARTH_SEARCH = 'https://earth-search.aws.element84.com/v1/search?';
-// Казбеги
+// Kazbegi
 const AT = '42.7/44.6';
 
-// Даты сцен — от сегодняшнего дня: «не моложе 3 дней» считается от настоящих часов браузера
+// Scene dates count from today: the rule "at least 3 days old" uses the real clock of the browser
 function daysAgo(days: number): string {
     return isoDay(new Date(Date.now() - days * 24 * 60 * 60 * 1000));
 }
@@ -33,7 +33,7 @@ function searchBody(scenes = SCENES) {
     };
 }
 
-// Earth Search: ответ по очереди из responses (последний повторяется), запрошенные адреса — в calls
+// Earth Search: the answers come from responses in turn (the last one repeats), the requested addresses go to calls
 function fakeEarthSearch(...responses: (() => Response)[]) {
     const calls: string[] = [];
     const fetch: typeof window.fetch = async (input) => {
@@ -56,7 +56,7 @@ const hashDate = () => new URLSearchParams(location.hash.slice(1)).get('d');
 describe('Снимки по датам', () => {
     let tiles: FixtureTiles;
 
-    // тайлы GIBS: [спутник, дата, зум]
+    // GIBS tiles: [satellite, date, zoom]
     const gibsTiles = () =>
         tiles.requested.flatMap((url) => {
             const match = GIBS.exec(url);
@@ -64,7 +64,7 @@ describe('Снимки по датам', () => {
         });
 
     beforeEach(() => {
-        // настройки слоёв (выбор и память кругов столбца) иначе переходят из теста в тест
+        // otherwise the layer settings (the selection and the memory of the column circles) pass from test to test
         localStorage.clear();
         tiles = fixtureTiles();
     });
@@ -99,7 +99,7 @@ describe('Снимки по датам', () => {
     test('Дата по умолчанию', async () => {
         const search = fakeEarthSearch(ok);
         const { map } = await renderApp(tiles, `#m=12/${AT}&l=Hls`, { fetch: search.fetch, tracksOpen: false });
-        // моложе 3 дней — пропущена, 97 % — облачно: самая свежая ясная — 7 дней назад
+        // the scene less than 3 days old is skipped, the 97 % scene is cloudy: the newest clear scene is 7 days ago
         await expect.poll(hashDate).toBe(daysAgo(7));
         expect(search.calls).toHaveLength(1);
         const url = new URL(search.calls[0]);
@@ -121,7 +121,7 @@ describe('Снимки по датам', () => {
         await expect.poll(() => map.areTilesLoaded()).toBe(true);
         expect(gibsTiles()).toEqual([]);
         expect(hashDate()).toBeNull();
-        // список открывается с повтором; открытие после ошибки само запрашивает снова
+        // the list opens with a retry; an open after an error requests the dates again by itself
         await dateButton().click();
         await expect.poll(() => search.calls.length).toBe(2);
         await expect.poll(hashDate).toBe(daysAgo(7));
@@ -168,7 +168,8 @@ describe('Снимки по датам', () => {
         const search = fakeEarthSearch(ok);
         await renderApp(tiles, `#m=12/${AT}&l=Hls&d=${daysAgo(7)}`, { fetch: search.fetch, tracksOpen: false });
         await dateButton().click();
-        // ввод не применяет дату, пока не нажат Enter: иначе часть даты (месяц 1 из «10») уже была бы датой
+        // the input does not apply the date before Enter: otherwise a part of the date (month 1 of «10») is already a
+        // date
         const other = page.getByLabelText('Other date');
         await other.fill('2025-08-01');
         expect(hashDate()).toBe(daysAgo(7));
@@ -183,7 +184,7 @@ describe('Снимки по датам', () => {
         const search = fakeEarthSearch(ok);
         await renderApp(tiles, `#m=12/${AT}&l=Hls&d=2026-10-05`, { fetch: search.fetch, tracksOpen: false });
         await expect.element(dateButton()).toBeVisible();
-        // OpenStreetMap — пункт меню круга обычной карты (design quick-layer-menus)
+        // OpenStreetMap is a menu item of the standard map circle (design quick-layer-menus)
         await page.getByRole('button', { name: 'Map layers', exact: true }).click();
         await page.getByRole('menuitemradio', { name: 'OpenStreetMap' }).click();
         await expect.poll(hashDate).toBeNull();
@@ -192,7 +193,8 @@ describe('Снимки по датам', () => {
     });
 
     test('Ошибка пустого тайла', async () => {
-        // ответ 500 — как GIBS на тайл даты без съёмки (вперемешку с прозрачным PNG); /__status__/ — плагин vitest.config.ts
+        // status 500, as GIBS answers for a date tile without imagery (mixed with a transparent PNG); /__status__/ is a
+        // plugin in vitest.config.ts
         tiles.respond(GIBS, new URL('/__status__/500/gibs.png', location.href).href);
         const { map } = await renderApp(tiles, `#m=12/${AT}&l=Hls&d=2026-10-07`, {
             fetch: fakeEarthSearch(ok).fetch,
@@ -200,7 +202,7 @@ describe('Снимки по датам', () => {
         });
         await expect.poll(() => gibsTiles().length).toBeGreaterThan(0);
         await expect.poll(() => map.areTilesLoaded()).toBe(true);
-        // тост появился бы асинхронно после ошибки: даём ему время
+        // the toast would appear asynchronously after the error: give it time
         await new Promise((resolve) => setTimeout(resolve, 500));
         expect(page.getByText('Map tiles failed to load').all()).toHaveLength(0);
     });
@@ -243,7 +245,7 @@ describe('Снимки по датам', () => {
             await renderApp(tiles, `#m=12/${AT}&l=Hls&d=2026-10-05`, { fetch: search.fetch, tracksOpen: false });
             await expect.element(quickButton()).toHaveAttribute('aria-pressed', 'true');
             expect(quickBases()).toEqual(['OpenFreeMap Outdoor', 'Google Map', 'ESRI Satellite']);
-            // прежней подложки у ссылки нет — второе нажатие возвращает подложку по умолчанию
+            // the link has no previous basemap: the second click returns the default basemap
             await quickButton().click();
             await expect.poll(layersParam).toBe('Of');
         });

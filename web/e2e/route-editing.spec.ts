@@ -1,12 +1,13 @@
 import type { Page } from '@playwright/test';
 import { expect, openTracks, test } from './fixtures.ts';
 
-// Названия тестов — сценарии спек route-editing и routing (openspec/specs/). Сборка клона считает маршрут движком в
-// браузере; рантайм CheerpJ с CDN подменён заглушкой (e2e/fixtures.ts, FAKE_CHEERPJ), поэтому воркер движка, его
-// протокол и очередь — настоящие, а сети нет.
+// The test titles are the scenarios of the specs route-editing and routing (openspec/specs/). The clone build
+// calculates the route with the routing engine in the browser; a stub replaces the CheerpJ runtime from the CDN
+// (e2e/fixtures.ts, FAKE_CHEERPJ), so the engine worker, its protocol and its queue are real, but there is no network.
 
-// Тбилиси, зум старого клиента 15; окно Desktop Chrome 1280×720, центр карты — (640, 360). Точки ниже центра лежат
-// южнее NO_ROUTE_LAT заглушки и прокладываются, точка у верхнего края — севернее, там «нет данных района».
+// Tbilisi, zoom 15 of the old client; window Desktop Chrome 1280×720, map center (640, 360). The points below the
+// center are south of NO_ROUTE_LAT of the stub and get a route, the point near the top edge is north of it, where there
+// is «no routing data for this area».
 const VIEW = './#m=15/41.69/44.785';
 const START = { x: 540, y: 420 };
 const FINISH = { x: 740, y: 380 };
@@ -26,7 +27,8 @@ async function clickMap(page: Page, point: { x: number; y: number }) {
     await page.mouse.click(point.x, point.y);
 }
 
-// длина трека: пока линия редактируется — из редактора в верхней строке (список тогда закрыт), иначе из списка
+// track length: while the line is in editing, from the editor in the top bar (the list is closed then), else from the
+// list
 async function trackLength(page: Page) {
     const editing = page.getByTestId('edit-length');
     if (await editing.count()) {
@@ -47,11 +49,11 @@ test('Новый трек', async ({ page, network }) => {
     await page.getByRole('button', { name: 'New track' }).first().click();
     await clickMap(page, START);
     await clickMap(page, FINISH);
-    // прямая между точками ≈ 0.7 км, маршрут заглушки уходит в сторону — заметно длиннее
+    // the straight line between the points is ≈ 0.7 km, the route of the stub goes to the side and is much longer
     await expect.poll(() => kilometers(page)).toBeGreaterThan(2);
     await page.getByRole('button', { name: 'Finish editing' }).click();
     await expect(page.getByTestId('edit-panel')).toHaveCount(0);
-    // маршрут посчитан в воркере движка, рантайм — заглушка с адреса CDN
+    // the engine worker calculated the route, the runtime is a stub on the CDN address
     expect(page.workers().map((worker) => worker.url())).toContainEqual(expect.stringContaining('engine.worker'));
     expect(network.engineLoads).toBe(1);
 });
@@ -63,7 +65,7 @@ test('Нет маршрута', async ({ page }) => {
     await clickMap(page, START);
     await clickMap(page, NO_DATA);
     await expect(page.getByText('Routing failed: no routing data for this area')).toBeVisible();
-    // отрезок остался прямой между опорными точками: длина — как у прямой
+    // the segment stays a straight line between the waypoints: the length is that of the straight line
     await expect.poll(() => kilometers(page)).toBeLessThan(1);
     await expect.poll(() => kilometers(page)).toBeGreaterThan(0);
 });
@@ -78,7 +80,7 @@ test('Отмена клика', async ({ page, network }) => {
     await expect(await trackLength(page)).toHaveText('0.00 km');
     await page.keyboard.press('ControlOrMeta+Shift+z');
     await expect.poll(() => kilometers(page)).toBeGreaterThan(0);
-    // прокладка выключена — рантайм движка не грузится
+    // routing is off: the engine runtime does not load
     expect(network.engineLoads).toBe(0);
 });
 

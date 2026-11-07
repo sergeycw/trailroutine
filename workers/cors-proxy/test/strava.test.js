@@ -1,12 +1,12 @@
-// Обновление кук Strava heatmap по сессии в workerd. Страница www.strava.com — заглушка
-// `outboundService` из vitest.config.js: поведение задаёт значение `_strava4_session`
-// (ok, redirect, login, offsite, anon, partial, noexpiry, error), хвост сессии отделяет кеш тестов.
+// The refresh of the Strava heatmap cookies by the session in workerd. The page www.strava.com is the stub
+// `outboundService` from vitest.config.js: the value of `_strava4_session` sets the behavior
+// (ok, redirect, login, offsite, anon, partial, noexpiry, error), the session tail separates the cache of the tests.
 import {exports as workerExports} from 'cloudflare:workers';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 
 import {RETRY_PAUSE_MS, fetchHeatmapCookies, heatmapCookie, policyExpiry} from '../src/strava.js';
 
-// то же число — в vitest.config.js
+// vitest.config.js has the same number
 const POLICY_EXPIRY_MS = 2_000_000_000 * 1000;
 const HOUR = 60 * 60 * 1000;
 const MINUTE = 60 * 1000;
@@ -106,7 +106,7 @@ describe('heatmapCookie', () => {
         expect(await heatmapCookie(env(s), null, now + 19 * HOUR)).toEqual(first);
         expect((await calls(s)).strava).toBe(1);
 
-        // за 30 минут до срока политики — новое обновление
+        // from 30 minutes before the policy expiry, a new refresh occurs
         expect(await heatmapCookie(env(s), null, POLICY_EXPIRY_MS - 20 * MINUTE)).toEqual(first);
         expect((await calls(s)).strava).toBe(2);
     });
@@ -164,7 +164,7 @@ describe('heatmapCookie', () => {
 });
 
 describe('proxy with STRAVA_SESSION', () => {
-    // в vitest.config.js STRAVA_SESSION — `_strava4_session=ok-worker`
+    // in vitest.config.js, STRAVA_SESSION is `_strava4_session=ok-worker`
     function request(path) {
         return workerExports.default.fetch(`https://proxy.test${path}`, {
             headers: {Origin: 'https://nakarte-routing.pages.dev', Cookie: 'client=1'},

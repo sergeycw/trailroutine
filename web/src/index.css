@@ -2,12 +2,13 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
-/* CSS MapLibre без layer(): Preflight Tailwind лежит в @layer base, а неслоёные правила побеждают слоёные,
-   поэтому там, где MapLibre задаёт свойство, выигрывает MapLibre (design add-web-skeleton, «Проверки»). */
+/* The MapLibre CSS without layer(): the Tailwind Preflight is in @layer base, and rules outside a layer win over
+   rules in a layer. So where MapLibre sets a property, MapLibre wins (design add-web-skeleton, «Проверки»). */
 @import "maplibre-gl/dist/maplibre-gl.css";
 
-/* Только светлая тема, но классы dark: в компонентах shadcn остаются. Без этой строки Tailwind 4 включает их по
-   prefers-color-scheme: dark, то есть по теме системы; с ней — только под классом .dark, которого в приложении нет. */
+/* Only the light theme, but the dark: classes stay in the shadcn components. Without this line, Tailwind 4 turns
+   them on by prefers-color-scheme: dark, that is, by the system theme; with it, only under the class .dark, which
+   the app does not have. */
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
@@ -53,15 +54,16 @@
     --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* только светлая тема (record-ui-decisions): блока .dark нет, браузер не красит контролы в тёмные */
+/* only the light theme (record-ui-decisions): there is no .dark block, and the browser does not paint the controls
+   dark */
 :root {
     color-scheme: light;
-    /* высота нижних панелей (профиль высот и панорама): над ними встают панели редактора, атрибуция карты и тосты;
-       ставит App. --profile-inset — только профиль: над ним встаёт панорама */
+    /* the height of the bottom panels (elevation profile and panorama): the editor panels, the map attribution and
+       the toasts go above them; App sets it. --profile-inset is only the profile: the panorama goes above it */
     --bottom-inset: 0px;
     --profile-inset: 0px;
-    /* место под кнопку профиля высот снизу по центру, пока она есть: над ней встаёт раскрытая атрибуция с линейкой
-       масштаба; ставит MapActions */
+    /* the space for the elevation profile button at the bottom center while the button exists: the expanded
+       attribution with the scale bar goes above it; MapActions sets it */
     --profile-button-inset: 0px;
     --background: oklch(1 0 0);
     --foreground: oklch(0.145 0 0);
@@ -69,7 +71,8 @@
     --card-foreground: oklch(0.145 0 0);
     --popover: oklch(1 0 0);
     --popover-foreground: oklch(0.145 0 0);
-    /* акцент — приглушённый синий (макет Claude Design 4a, design polish-web-ui): основная кнопка, выбранное */
+    /* the accent is a muted blue (Claude Design mock-up 4a, design polish-web-ui): the main button, the selected
+       items */
     --primary: oklch(0.5 0.13 255);
     --primary-foreground: oklch(0.985 0 0);
     --secondary: oklch(0.97 0 0);
@@ -88,7 +91,8 @@
     --chart-4: oklch(0.371 0 0);
     --chart-5: oklch(0.269 0 0);
     --radius: 0.75rem;
-    /* стекло над картой: полупрозрачный белый с размытием, светлая кромка, мягкая тень (утилита glass ниже) */
+    /* the glass above the map: semi-transparent white with blur, a light edge, a soft shadow (the utility glass
+       below) */
     --glass: oklch(1 0 0 / 0.74);
     --glass-edge: oklch(1 0 0 / 0.7);
     --glass-blur: 14px;
@@ -102,8 +106,8 @@
     --sidebar-ring: oklch(0.708 0 0);
 }
 
-/* Стеклянная поверхность панелей, меню и кнопок над картой. Размытие над WebGL-холстом стоит кадров на слабом телефоне:
-   при prefers-reduced-transparency — непрозрачный фон без размытия */
+/* The glass surface of the panels, menus and buttons above the map. The blur above the WebGL canvas costs frames on
+   a weak phone: with prefers-reduced-transparency, an opaque background without blur */
 @utility glass {
     background-color: var(--glass);
     backdrop-filter: blur(var(--glass-blur)) saturate(1.6);
@@ -129,9 +133,9 @@
     }
 }
 
-/* Контролы MapLibre в стиле стекла (макет 4a, design polish-web-ui), круглые: зум — вертикальной капсулой, одиночные
-   кнопки — кругом (design layout-three-zones). Вне @layer и после maplibre-gl.css: те же селекторы MapLibre, порядок
-   перебивает его белый фон, скругление 4px и рамку 2px */
+/* The MapLibre controls in the glass style (mock-up 4a, design polish-web-ui), round: the zoom is a vertical
+   capsule, single buttons are circles (design layout-three-zones). Outside @layer and after maplibre-gl.css: the
+   same MapLibre selectors, and the order overrides its white background, the 4px radius and the 2px border */
 .maplibregl-ctrl-group {
     background-color: var(--glass);
     backdrop-filter: blur(var(--glass-blur)) saturate(1.6);
@@ -144,7 +148,7 @@
         0 1px 2px oklch(0 0 0 / 0.08),
         0 6px 20px oklch(0 0 0 / 0.12);
 }
-/* 34 px + рамка группы = 36 px, как круглые кнопки приложения (ROUND_BUTTON, components/round-button.ts) */
+/* 34 px + the group border = 36 px, as the round buttons of the app (ROUND_BUTTON, components/round-button.ts) */
 .maplibregl-ctrl-group button {
     width: 34px;
     height: 34px;
@@ -155,10 +159,11 @@
 .maplibregl-ctrl-top-right .maplibregl-ctrl {
     margin: 8px 12px 0 0;
 }
-/* Слева снизу — линейка масштаба над атрибуцией, над нижними панелями (--bottom-inset, App), низ свёрнутой атрибуции —
-   вровень с кнопкой профиля (MapActions, 12 px от низа). Свёрнутый столбец помещается слева от кнопки профиля; раскрытая
-   атрибуция нескольких слоёв доходит до центра и на широком окне — тогда столбец встаёт над кнопкой
-   (--profile-button-inset, пока кнопка есть; design map-chrome) */
+/* At the bottom left: the scale bar above the attribution, above the bottom panels (--bottom-inset, App). The bottom
+   of the collapsed attribution is level with the profile button (MapActions, 12 px from the bottom). The collapsed
+   column fits on the left of the profile button; the expanded attribution of several layers reaches the center also
+   on a wide window, and then the column goes above the button (--profile-button-inset, while the button exists;
+   design map-chrome) */
 .maplibregl-ctrl-bottom-left {
     bottom: calc(var(--bottom-inset) + 4px);
 }
@@ -168,8 +173,9 @@
 .maplibregl-ctrl-bottom-left .maplibregl-ctrl {
     margin: 0 0 8px 12px;
 }
-/* Линейка — стеклянная капсула. MapLibre задаёт элементу ширину = длине отрезка шкалы (inline width), поэтому сама
-   капсула — ::before шире элемента на 8 px с боков, а скобка шкалы — ::after ровно по ширине элемента */
+/* The scale bar is a glass capsule. MapLibre sets the element width = the length of the scale segment (inline
+   width), so the capsule itself is ::before, 8 px wider than the element on each side, and the scale bracket is
+   ::after, exactly as wide as the element */
 .maplibregl-ctrl.maplibregl-ctrl-scale {
     position: relative;
     margin-left: 20px;
@@ -208,9 +214,9 @@
     border: 1.5px solid currentColor;
     border-top: 0;
 }
-/* Атрибуция — кнопка (i) стеклянным кругом 28 px, раскрытая — стеклянная плашка с кнопкой слева. MapLibre держит
-   compact всегда (AttributionControl compact в MapButtons): свёрнута — только кнопка, раскрыта — класс
-   maplibregl-compact-show */
+/* The attribution is a button (i) as a glass circle of 28 px; expanded, it is a glass banner with the button on the
+   left. MapLibre keeps compact always on (AttributionControl compact in MapButtons): collapsed, it is only the
+   button; expanded, it has the class maplibregl-compact-show */
 .maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact {
     min-height: 28px;
     margin: 0 0 8px 12px;
@@ -227,7 +233,7 @@
     font-size: 11px;
     line-height: 16px;
 }
-/* свёрнутая — ровно круг: у float с пустым содержимым ширина — padding и рамка */
+/* collapsed, it is exactly a circle: a float with empty content has the width of the padding and the border */
 .maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact:not(.maplibregl-compact-show) {
     width: 28px;
     padding: 0;
@@ -246,13 +252,15 @@
 .maplibregl-ctrl-attrib a {
     color: inherit;
 }
-/* Геолокация, пока следит за положением (-active, с -waiting — ждёт ответа), — как включённые Street View и хитмэп:
-   заливка --primary и белый значок; слежение в фоне после сдвига карты (-background) — значок --primary без заливки
-   (design route-thread-loader). MapLibre рисует значок картинкой с зашитым голубым #33b5e5, а переменную в data: URL не
-   подставить, поэтому форма значка — маска (копия путей из maplibre-gl.css: у -background нет центральной точки), цвет —
-   фоном. Выключенная, неактивная и ошибочная кнопки — картинки MapLibre. Три класса и элемент: равная специфичность с
-   :hover MapLibre (.maplibregl-ctrl button:not(:disabled):hover) и правило позже — заливка держится и под мышью. В режиме
-   высокой контрастности — картинки MapLibre для него: там фон значка система перекрасила бы в цвет фона, и он пропал бы */
+/* Geolocation, while it tracks the position (-active; with -waiting, it waits for an answer), looks as the Street
+   View and heatmap buttons when they are on: a --primary fill and a white icon. The background tracking after a map
+   move (-background) is a --primary icon without a fill (design route-thread-loader). MapLibre draws the icon as an
+   image with a hard-coded light blue #33b5e5, and a variable cannot go into a data: URL, so the icon shape is a mask
+   (a copy of the paths from maplibre-gl.css: -background has no center dot), and the color is the background. The
+   off, inactive and error buttons use the MapLibre images. Three classes and an element: the same specificity as
+   :hover of MapLibre (.maplibregl-ctrl button:not(:disabled):hover), and the rule comes later, so the fill stays also
+   below the mouse. In the high contrast mode, the MapLibre images for that mode apply: there the system would repaint
+   the icon background to the background color, and the icon would disappear */
 @media not (forced-colors: active) {
     .maplibregl-ctrl-group button.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-active {
         background-color: var(--primary);
@@ -279,14 +287,15 @@
     }
 }
 
-/* Нитка ожидания прокладки (routing/RouteThread.tsx, design route-thread-loader): тропа иконки сайта рисуется и
-   стирается по кругу. Числа — в единицах кривой (квадрат 1024, кривая из favicon.svg длиной 2823.5; замер
-   getTotalLength и getPointAtLength в Chromium, 2026-10-30). Штрих толщиной 96 входит в квадрат с ≈ 278 (кривая там идёт
-   почти вдоль левого края) и выходит к 2688, поэтому видимый участок — от 270 до 2700, штрих — его длиной 2430, промежуток
-   длиннее всей кривой: второго штриха в квадрате нет. Сдвиг s ставит штрих на [-s, 2430 - s]: 2160 — кончается у входа,
-   -270 — целый, -2700 — начинается у выхода. Цикл: дорисовывается, держится целым, уезжает хвостом вперёд, короткая
-   пауза пустого квадрата. Отрицательная задержка запускает его с целой нитки: ожидание короче доли секунды (сервер,
-   прогретый движок) иначе мигнуло бы пустым квадратом */
+/* The routing wait thread (routing/RouteThread.tsx, design route-thread-loader): the trail of the site icon draws and
+   erases in a loop. The numbers are in curve units (a square of 1024, the curve from favicon.svg with the length
+   2823.5; measured with getTotalLength and getPointAtLength in Chromium, 2026-10-30). The stroke of width 96 enters
+   the square at ≈ 278 (there the curve goes almost along the left edge) and leaves it at 2688, so the visible part is
+   from 270 to 2700. The dash has its length of 2430, and the gap is longer than the full curve: there is no second
+   dash in the square. An offset s puts the dash on [-s, 2430 - s]: 2160 ends it at the entry, -270 makes it whole,
+   -2700 starts it at the exit. The cycle: the dash draws, stays whole, moves away tail first, then a short pause with
+   an empty square. A negative delay starts the cycle with a whole thread: otherwise a wait shorter than a fraction of
+   a second (server, warm engine) would flash an empty square */
 @keyframes route-thread {
     0% {
         stroke-dashoffset: 2160;

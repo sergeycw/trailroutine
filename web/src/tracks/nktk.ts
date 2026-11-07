@@ -3,14 +3,15 @@ import { type LegMark, routeFits, type SegmentRoute, settledRoute } from '@/rout
 import { hexToRgb, nearestPaletteIndex, normalizeColor, rgbToHex } from './color';
 import { type GeoData, geoData, type LatLng, type TrackData, type Waypoint } from './model';
 
-// Строка трека nktk (parsers/nktk.js старого клиента): base64url от байтов «версия + данные». Версия — первое
-// упакованное число: 1–3 — свой формат упакованных чисел, 4 — protobuf (схема parsers/nktk.proto). Без версии
-// (version 0) — ссылки track://. Запись — только версия 4, как saveNktk. На этих строках держатся выданные ссылки
-// nktl= и объекты хранилища (аудит системного дизайна, п. 2), поэтому разбор всех версий остаётся навсегда.
-// Разметка маршрута — необязательное поле 3 в Segment версии 4 (схема — nktk.proto рядом, design add-web-autosave,
-// «Ссылка: необязательное поле разметки»): протобуф старого клиента незнакомое поле пропускает и открывает геометрию.
+// nktk track string (parsers/nktk.js of the old client): base64url of the bytes "version + data". The version is the
+// first packed number: 1–3 are a custom format of packed numbers, 4 is protobuf (schema parsers/nktk.proto). No
+// version number (version 0) means track:// links. Only version 4 is written, as in saveNktk. The given nktl= links
+// and storage objects depend on these strings (system design audit, item 2), so parsing of all versions stays forever.
+// The route markup is the optional field 3 in Segment of version 4 (schema: nktk.proto next to this file, design
+// add-web-autosave, «Ссылка: необязательное поле разметки»): the protobuf of the old client skips an unknown field
+// and opens the geometry.
 
-// Сетка координат: 2^24 − 1 делений на 360°, ≈ 2.4 м
+// Coordinate grid: 2^24 − 1 divisions per 360°, ≈ 2.4 m
 export const ARC_UNIT = ((1 << 24) - 1) / 360;
 
 const DEFAULT_NAME = 'Text encoded track';
@@ -19,7 +20,7 @@ function corrupt(): GeoData[] {
     return [geoData(DEFAULT_NAME, { error: 'CORRUPT' })];
 }
 
-// urlSafeBase64.decode старого клиента: пробелы и переводы строк выкидываются, = в конце не обязателен
+// urlSafeBase64.decode of the old client: spaces and line breaks are removed, = at the end is optional
 export function decodeBase64Url(text: string): Uint8Array | null {
     const base64 = text
         .replace(/[\n\r \t]/gu, '')
@@ -34,7 +35,7 @@ export function decodeBase64Url(text: string): Uint8Array | null {
     return binary.length ? Uint8Array.from(binary, (char) => char.charCodeAt(0)) : null;
 }
 
-// С `=` в конце, как urlSafeBase64.encode старого клиента: тело ссылки nktl совпадает со старым байт в байт
+// With `=` at the end, as urlSafeBase64.encode of the old client: the nktl link body matches the old one byte for byte
 export function encodeBase64Url(bytes: Uint8Array): string {
     let binary = '';
     for (const byte of bytes) {
@@ -45,7 +46,8 @@ export function encodeBase64Url(bytes: Uint8Array): string {
 
 class TruncatedError extends Error {}
 
-// PackedStreamReader: число — 1–4 байта, 7 бит на байт, старший бит — «дальше ещё байт», со смещением к знаковому
+// PackedStreamReader: a number is 1–4 bytes, 7 bits per byte, the high bit means "one more byte follows", with an
+// offset to a signed value
 class PackedReader {
     position = 0;
     private readonly bytes: Uint8Array;
@@ -99,7 +101,7 @@ class PackedReader {
     }
 }
 
-// parseNktkOld: обрыв строки — CORRUPT с тем, что успело прочитаться (недочитанный отрезок тоже)
+// parseNktkOld: a cut string gives CORRUPT with the data read before the cut (an incomplete segment too)
 function parsePacked(bytes: Uint8Array, version: number): GeoData {
     const reader = new PackedReader(bytes);
     const result = geoData('');
@@ -136,7 +138,7 @@ function parsePacked(bytes: Uint8Array, version: number): GeoData {
             result.color = reader.readNumber();
             result.measureTicksShown = Boolean(reader.readNumber());
         } catch {
-            // версия 0 (track://) могла кончиться на отрезках
+            // version 0 (track://) could end on the segments
             result.color = 0;
             result.measureTicksShown = false;
             truncated = version > 0;
@@ -156,7 +158,7 @@ function parsePacked(bytes: Uint8Array, version: number): GeoData {
             const midY = pointsCount ? reader.readNumber() : 0;
             for (let i = 0; i < pointsCount; i++) {
                 const name = reader.readString(reader.readNumber());
-                reader.readNumber(); // символ точки, не используется
+                reader.readNumber(); // point symbol, not used
                 const x = reader.readNumber() + midX;
                 const y = reader.readNumber() + midY;
                 result.points.push({ name, lat: y / ARC_UNIT, lng: x / ARC_UNIT });
@@ -165,7 +167,7 @@ function parsePacked(bytes: Uint8Array, version: number): GeoData {
             truncated = true;
         }
     }
-    // у старого клиента недочитанные цвет и отметки — нули
+    // in the old client, the color and the ticks that were not read are zeros
     result.name ||= DEFAULT_NAME;
     result.color ??= 0;
     result.measureTicksShown ??= false;
@@ -176,12 +178,12 @@ function parsePacked(bytes: Uint8Array, version: number): GeoData {
     return result;
 }
 
-// Протобуф версии 4 — ручной разбор схемы nktk.proto (сгенерированный nktk_pb.js старого клиента, pbf 3)
+// Version 4 protobuf: manual parsing of the nktk.proto schema (the generated nktk_pb.js of the old client, pbf 3)
 interface ViewMessage {
     color: number;
     shown: boolean;
     ticksShown: boolean;
-    // свой цвет 0xRRGGBB; null — поля нет (чёрный — 0, поэтому не ноль, а null)
+    // custom color 0xRRGGBB; null means no field (black is 0, so null and not zero)
     rgb: number | null;
 }
 interface SegmentMessage {
@@ -189,7 +191,7 @@ interface SegmentMessage {
     lons: number[];
     route: RouteMessage | null;
 }
-// SegmentRoute из nktk.proto: шаги между номерами опорных точек, коды отрезков и таблица активностей отрезка
+// SegmentRoute from nktk.proto: steps between waypoint indexes, leg codes and the activity table of the segment
 interface RouteMessage {
     gaps: number[];
     legs: number[];
@@ -227,8 +229,8 @@ function readSegment(tag: number, obj: SegmentMessage, pbf: PbfReader) {
     else if (tag === 3 && pbf.type === 2) obj.route = readRouteField(pbf);
 }
 
-// Поле разметки разбирается отдельно: битое внутри (не тот тип, оборванное число) — отрезок без разметки, а не весь трек
-// CORRUPT. Старый клиент такое поле пропускает по длине, и геометрия у него открывается.
+// The markup field is parsed separately: if it is broken inside (a wrong type, a cut number), the segment has no
+// markup, and the whole track is not CORRUPT. The old client skips such a field by its length and opens the geometry.
 function readRouteField(pbf: PbfReader): RouteMessage | null {
     const end = pbf.readVarint() + pbf.pos;
     if (end > pbf.length) {
@@ -266,7 +268,7 @@ function readView(tag: number, obj: ViewMessage, pbf: PbfReader) {
     if (tag === 1) obj.color = pbf.readVarint(true);
     else if (tag === 2) obj.shown = pbf.readBoolean();
     else if (tag === 3) obj.ticksShown = pbf.readBoolean();
-    // чужой тип или значение вне 0xRRGGBB — как нет поля: цвет палитры из color
+    // a foreign type or a value outside 0xRRGGBB is the same as no field: the palette color from color
     else if (tag === 4 && pbf.type === 0) {
         const rgb = pbf.readVarint();
         obj.rgb = rgb <= 0xffffff ? rgb : null;
@@ -285,7 +287,7 @@ function deltaDecode(lats: number[], lons: number[]): LatLng[] {
     return points;
 }
 
-// Код отрезка: 0 — прямой, 2k+1 — проложен активностью activities[k], 2k+2 — непроложенный с activities[k]
+// Leg code: 0 is straight, 2k+1 is routed with the activity activities[k], 2k+2 is not routed with activities[k]
 function decodeLeg(code: number, activities: readonly string[]): LegMark | null {
     if (code === 0) {
         return { state: 'straight' };
@@ -297,7 +299,7 @@ function decodeLeg(code: number, activities: readonly string[]): LegMark | null 
     return { state: code % 2 === 1 ? 'routed' : 'failed', activity };
 }
 
-// Негодная разметка (не сходится с точками отрезка, код вне таблицы) — null: отрезок открывается ломаной
+// Invalid markup (no match with the segment points, a code outside the table) is null: the segment opens as a polyline
 function decodeRoute(message: RouteMessage | null, points: readonly LatLng[]): SegmentRoute | null {
     if (!message || message.gaps.length !== message.legs.length) {
         return null;
@@ -345,7 +347,7 @@ function parseProtobuf(bytes: Uint8Array): GeoData[] {
     } catch {
         return corrupt();
     }
-    // у старого клиента без track или view разбор падал исключением
+    // in the old client, parsing without track or view failed with an exception
     const v = view as ViewMessage | null;
     const t = track as TrackMessage | null;
     if (!v || !t) {
@@ -372,7 +374,7 @@ function parseProtobuf(bytes: Uint8Array): GeoData[] {
     return [result];
 }
 
-// Одна строка nktk с версией (параметр nktk=, элемент тела nktl)
+// One nktk string with a version (the nktk= parameter, an item of the nktl body)
 export function parseNktk(text: string): GeoData[] {
     const bytes = decodeBase64Url(text);
     if (!bytes) {
@@ -394,12 +396,12 @@ export function parseNktk(text: string): GeoData[] {
     return corrupt();
 }
 
-// Строки через `/` — тело хранилища nktl и несколько треков в nktk=
+// Strings joined with `/`: the nktl storage body and several tracks in nktk=
 export function parseNktkSequence(text: string): GeoData[] {
     return text.split('/').flatMap(parseNktk);
 }
 
-// track://… — версия 0 без номера версии
+// track://…: version 0 without the version number
 export function parseTrackUrlData(text: string): GeoData[] {
     const bytes = decodeBase64Url(text);
     return bytes ? [parsePacked(bytes, 0)] : corrupt();
@@ -455,20 +457,22 @@ function writeRoute({ gaps, legs, activities }: RouteMessage, pbf: PbfWriter) {
     }
 }
 
-// Разметка, которую можно записать: ожидающий отрезок — непроложенный (ответ к ссылке не придёт), негодная — никакая
+// Markup that can be written: a pending leg is written as not routed (no response comes to a link), invalid markup is
+// not written
 function writableRoute(points: readonly LatLng[], route: SegmentRoute | null | undefined): RouteMessage | null {
     const settled = settledRoute(route);
     return settled && routeFits(points, settled) ? encodeRoute(settled) : null;
 }
 
-// saveNktk старого клиента: версия 4; пустые поля не пишутся, как в сгенерированном коде pbf. Трек без разметки даёт
-// строку старого клиента байт в байт: поле route пишется, только если у отрезка есть разметка.
+// saveNktk of the old client: version 4; empty fields are not written, as in the generated pbf code. A track without
+// markup gives the string of the old client byte for byte: the route field is written only if the segment has markup.
 export function saveNktk(track: TrackData): string {
     const pbf = new PbfWriter();
     pbf.writeMessage(
         1,
         (_: null, out: PbfWriter) => {
-            // свой цвет: в color — ближайший цвет палитры для читателей без поля rgb (клиент автора), в rgb — точный
+            // custom color: color has the nearest palette color for readers without the rgb field (the author's
+            // client), rgb has the exact color
             const color = typeof track.color === 'string' ? nearestPaletteIndex(track.color) : track.color;
             if (color) out.writeVarintField(1, color);
             if (!track.hidden) out.writeBooleanField(2, true);

@@ -14,7 +14,8 @@ import { fakeStreetView } from './fake-street-view';
 import { memoryAutosave } from './memory-autosave';
 import type { FixtureTiles } from './tiles';
 
-// Сеть треков в browser-тестах: без заглушки любой запрос хранилища или прокси — ошибка сети (в сеть тесты не ходят)
+// The track network in browser tests: without a stub, each request to the storage or the proxy is a network error
+// (the tests do not use the network)
 const NO_NETWORK: typeof fetch = async (input) => {
     throw new TypeError(`no network in tests: ${String(input)}`);
 };
@@ -23,21 +24,21 @@ interface RenderOptions {
     fetch?: typeof fetch;
     writeClipboard?: ComponentProps<typeof App>['writeClipboard'];
     router?: ComponentProps<typeof App>['router'];
-    // хранилище автосохранения; по умолчанию — своё пустое в памяти на каждый рендер: рендеры App в одной странице
-    // не видят треков друг друга, а общий IndexedDB страницы тестов не засоряется
+    // the autosave storage; by default, a new empty in-memory storage for each render: renders of App on one page
+    // do not see the tracks of each other, and the shared IndexedDB of the test page stays clean
     autosave?: ComponentProps<typeof App>['autosave'];
-    // Street View: по умолчанию поддельный без панорам — в Google тесты не ходят
+    // Street View: by default, a fake one without panoramas, because the tests do not go to Google
     streetView?: ComponentProps<typeof App>['streetView'];
     notice?: ComponentProps<typeof App>['notice'];
-    // список треков открыт после загрузки (по умолчанию да): в приложении он закрыт до кнопки Tracks (макет 4a, design
-    // polish-web-ui), а тестам списка и редактора он нужен открытым
+    // the track list is open after the load (by default, yes): in the app it is closed until the Tracks button
+    // (mock-up 4a, design polish-web-ui), but the tests of the list and the editor need it open
     tracksOpen?: boolean;
 }
 
-// Кнопка списка треков верхней строки: «Tracks» и число треков
+// The track list button of the top bar: «Tracks» and the number of tracks
 export const tracksButton = () => page.getByRole('button', { name: /^Tracks( \d+)?$/ });
 
-// Открыть список треков, если закрыт
+// Open the track list if it is closed
 export async function openTracks() {
     const button = tracksButton();
     await expect.element(button).toBeVisible();
@@ -47,13 +48,14 @@ export async function openTracks() {
     await expect.element(page.getByTestId('track-list')).toBeVisible();
 }
 
-// Горизонтали в browser-тестах: боевой обработчик протокола грузит рельеф из Blob-воркера мимо transformRequest, то есть
-// в сеть, тестовый — на главном потоке через фикстуру. Протокол глобальный: ставить перед каждым рендером App
+// Contours in browser tests: the production protocol handler loads the terrain from a Blob worker past
+// transformRequest, that is, from the network. The test handler loads it on the main thread through the fixture. The
+// protocol is global: set it before each render of App
 export async function fixtureContours(tiles: FixtureTiles) {
     (await maplibre).addProtocol(CONTOUR_PROTOCOL, contourProtocol(tiles.transformRequest));
 }
 
-// App с подменёнными тайлами и готовой картой. hash — адрес страницы до старта приложения (m=, l= …).
+// App with replaced tiles and a ready map. hash is the page address before the app starts (m=, l= …).
 export async function renderApp(tiles: FixtureTiles, hash = '', options: RenderOptions = {}) {
     history.replaceState(null, '', `${location.pathname}${location.search}${hash}`);
     await fixtureContours(tiles);
@@ -74,7 +76,7 @@ export async function renderApp(tiles: FixtureTiles, hash = '', options: RenderO
     if (options.tracksOpen !== false) {
         await openTracks();
     }
-    // biome-ignore lint/style/noNonNullAssertion: карта загружена строкой выше
+    // biome-ignore lint/style/noNonNullAssertion: the line above waits until the map loads
     return { screen, map: mapRef.current!.getMap() };
 }
 
@@ -83,13 +85,15 @@ const ALWAYS_THERE = new Set([
     ...[...PROFILE_LAYERS, ...TRACK_LAYERS, ...EDIT_LAYERS].map((layer) => layer.id),
 ]);
 
-// слой стиля векторной подложки или горизонталей — `<код>-<имя>` (Of-water, Ct-labels; layers/outdoor.ts, style.ts):
-// тесты слоёв проверяют, какие слои каталога на карте, а не устройство их стиля. Код каталога — с заглавной буквы: свои
-// слои (-cs…) и служебные (street-view-coverage) правило не трогает
+// a style layer of the vector basemap or of the contours is `<code>-<name>` (Of-water, Ct-labels; layers/outdoor.ts,
+// style.ts): the layer tests check which catalog layers are on the map, not how their style is made. A catalog code
+// starts with a capital letter: the rule does not touch the custom layers (-cs…) and the service layers
+// (street-view-coverage)
 const STYLE_LAYER_OF_CODE = /^([A-Z][A-Za-z0-9]*)-[a-z]/;
 
-// коды слоёв карты снизу вверх, без серого фона, слоёв профиля высот, треков и редактора (они есть всегда,
-// layers/style.ts); слои стиля одного кода подряд — один код
+// the codes of the map layers from bottom to top, without the gray background and the layers of the elevation
+// profile, the tracks and the editor (they are always there, layers/style.ts); consecutive style layers of one code
+// give one code
 export function mapLayerIds(map: { getStyle(): { layers: { id: string }[] } }) {
     const codes = map
         .getStyle()

@@ -1,7 +1,8 @@
 use crate::format::{NO_VALUE, SPLIT, TILE_SIZE};
 
-// Положение точки в куске. Арифметика повторяет `GetInterpolated` и `TileIndexFromLatLon`
-// Go-сервера автора буквально (те же шаги в f64), чтобы ответы совпадали до сотых.
+// The position of a point in a chunk. The arithmetic repeats `GetInterpolated` and
+// `TileIndexFromLatLon` of the Go server of the author exactly (the same steps in f64), so the
+// answers match to hundredths.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Cell {
     pub lat0: i32,
@@ -14,8 +15,8 @@ pub struct Cell {
 }
 
 pub fn locate(lat: f64, lon: f64) -> Option<Cell> {
-    // У автора `nan` и точки за ±90/±180 не ошибка, а `NULL`: индекс тайла выходит за сетку.
-    // В Rust `NaN as i64` даёт 0, поэтому проверяем явно.
+    // For the author, `nan` and points beyond ±90/±180 are not an error but `NULL`: the tile index
+    // is outside the grid. In Rust `NaN as i64` gives 0, thus the check is explicit.
     if !lat.is_finite() || !lon.is_finite() {
         return None;
     }
@@ -30,7 +31,7 @@ pub fn locate(lat: f64, lon: f64) -> Option<Cell> {
     }
     let x = (lon * parts - tile_x) * steps;
     let y = (lat * parts - tile_y) * steps;
-    // `min` страхует от x == 300.0 из-за округления f64: у автора там чтение за краем строки.
+    // `min` guards against x == 300.0 after f64 rounding: the author reads past the row end there.
     let ix = (x.floor() as usize).min(TILE_SIZE - 2);
     let iy = (y.floor() as usize).min(TILE_SIZE - 2);
     let tile_x = tile_x as i32;

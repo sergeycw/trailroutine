@@ -1,5 +1,5 @@
-//! `elevation-server --data DIR [--port 8789]`; разрешённые origin — из `ALLOWED_ORIGINS`
-//! (через запятую, как в `wrangler.toml`).
+//! `elevation-server --data DIR [--port 8789]`; the allowed origins come from `ALLOWED_ORIGINS`
+//! (comma-separated, as in `wrangler.toml`).
 
 use std::path::PathBuf;
 

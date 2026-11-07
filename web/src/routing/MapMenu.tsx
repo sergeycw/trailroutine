@@ -14,10 +14,10 @@ import { useTrackActions } from '@/tracks/actions-context';
 import { useRouteEditing } from './editing-context';
 import type { LinePlace } from './line-tools';
 
-// Меню на карте (design add-web-line-tools, «Меню на карте»): одно на приложение, открывается в экранной точке, где
-// кликнули правой кнопкой, долго нажали пальцем или кликнули по точке трека. Пункты и тексты — onNodeRightClickShowMenu,
-// onSegmentRightClickShowMenu и onMarkerClick старого клиента; «Delete point» — удаление опорной точки на телефоне, где
-// двойной тап — зум карты.
+// The map menu (design add-web-line-tools, «Меню на карте»): one per app, it opens at the screen point where the user
+// right-clicked, long-pressed with a finger or clicked a track point. The items and texts are onNodeRightClickShowMenu,
+// onSegmentRightClickShowMenu and onMarkerClick of the old client; «Delete point» removes a waypoint on a phone, where
+// a double tap zooms the map.
 
 type Item = { text: string; run: () => void } | '-';
 
@@ -44,7 +44,7 @@ function useItems(menu: MapMenuState, edit: RouteEditState | null): { label?: st
     const segment: Item[] = [
         { text: 'Delete segment', run: editing.deleteSegment },
         { text: 'New track from segment', run: editing.newTrackFromSegment },
-        // профиль отрезка; редактирование продолжается (design add-web-elevation-profile, «Профиль следует за треком»)
+        // the segment profile; editing continues (design add-web-elevation-profile, «Профиль следует за треком»)
         { text: 'Show elevation profile for segment', run: () => profile.open(edit.trackId, edit.segment) },
     ];
     if (target.kind === 'line') {
@@ -82,12 +82,12 @@ function Menu({ menu }: { menu: MapMenuState }) {
     const editing = useRouteEditing();
     const edit = useAppStore((state) => state.routeEdit);
     const { label, items } = useItems(menu, edit);
-    // виртуальный элемент в точке клика: Menu.Positioner Base UI принимает его как anchor (useAnchorPositioning.d.ts)
+    // a virtual element at the click point: Base UI Menu.Positioner takes it as an anchor (useAnchorPositioning.d.ts)
     const anchor = useMemo(
         () => ({ getBoundingClientRect: () => DOMRect.fromRect({ x: menu.x, y: menu.y, width: 0, height: 0 }) }),
         [menu.x, menu.y],
     );
-    // меню без пунктов (цели больше нет) закрывается, иначе невидимое меню держало бы клики по карте
+    // a menu without items (the target is gone) closes, otherwise an invisible menu would block the clicks on the map
     const empty = items.length === 0;
     useEffect(() => {
         if (empty) {
@@ -110,7 +110,7 @@ function Menu({ menu }: { menu: MapMenuState }) {
                 )}
                 {items.map((item, i) =>
                     item === '-' ? (
-                        // biome-ignore lint/suspicious/noArrayIndexKey: разделитель без своего id, пункты не переставляются
+                        // biome-ignore lint/suspicious/noArrayIndexKey: a separator without an id, items do not move
                         <DropdownMenuSeparator key={i} />
                     ) : (
                         <DropdownMenuItem key={item.text} onClick={item.run}>
@@ -125,6 +125,6 @@ function Menu({ menu }: { menu: MapMenuState }) {
 
 export function MapMenu() {
     const menu = useAppStore((state) => state.mapMenu);
-    // новый ключ на каждое открытие: меню в новой точке — новое меню, а не переезд открытого
+    // a new key on each opening: a menu at a new point is a new menu, not a move of the open menu
     return menu ? <Menu key={`${menu.x},${menu.y}`} menu={menu} /> : null;
 }

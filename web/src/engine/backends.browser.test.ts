@@ -2,9 +2,9 @@ import { describe, expect, test } from 'vitest';
 import { workerBackend } from './backends';
 import { enginePaths } from './cheerpj-router';
 
-// Протокол между engine.ts и воркером движка на поддельном воркере: тот же обмен сообщениями, что у
-// engine.worker.ts, но без CheerpJ. Запросы: 'fail' в адресе рантайма — сбой старта, 'bad' — ошибка
-// маршрута, 'crash' — необработанное исключение в воркере, остальное — эхо.
+// The protocol between engine.ts and the engine worker on a fake worker: the same message exchange as in
+// engine.worker.ts, but without CheerpJ. Requests: 'fail' in the runtime URL is a start failure, 'bad' is a route
+// error, 'crash' is an unhandled exception in the worker, any other request gives an echo.
 const FAKE_WORKER = `
 addEventListener('message', ({ data }) => {
     if (data.type === 'start') {
@@ -31,7 +31,7 @@ describe('Протокол воркера движка', () => {
         const [a, b] = await Promise.all([backend.route('a'), backend.route('b')]);
         expect([a, b]).toEqual(['route:a', 'route:b']);
         await expect(backend.route('bad')).rejects.toThrow('no route found');
-        // ошибка маршрута не ломает воркер
+        // a route error does not break the worker
         await expect(backend.route('c')).resolves.toBe('route:c');
         backend.dispose();
     });

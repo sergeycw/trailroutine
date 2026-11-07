@@ -12,8 +12,8 @@ import { distance } from './geometry';
 import { parseNktkSequence } from './nktk';
 import { TRACK_TICKS } from './style';
 
-// Отметки расстояния и линейка в App (спека tracks, «Отметки расстояния», «Линейка»). Прокладка выключена — линии
-// прямые, длины считаются по опорным точкам.
+// Distance ticks and the ruler in App (spec tracks, «Отметки расстояния», «Линейка»). Routing is off: lines are
+// straight, and lengths come from the waypoints.
 
 let tiles: FixtureTiles;
 
@@ -29,7 +29,7 @@ afterEach(async () => {
 
 const VIEW = '#m=14/41.69/44.785&l=O';
 const A = P(41.685, 44.765);
-// 2.3 км на восток от A по параллели
+// 2.3 km to the east of A along the parallel
 const B = P(41.685, 44.765 + 2300 / distance(A, P(41.685, 45.765)));
 
 const tickLabels = (map: MaplibreMap) =>
@@ -54,7 +54,7 @@ describe('Отметки расстояния', () => {
         await drawTrack(map, [A, B]);
         expect(tickLabels(map)).toEqual([]);
         await trackMenu('New track', 'Show distance marks');
-        // z14 MapLibre на широте 41.7: 15 мм ≈ 170 м — шаг 0.5 км
+        // z14 MapLibre at latitude 41.7: 15 mm ≈ 170 m, so the step is 0.5 km
         await expect.poll(() => tickLabels(map)).toEqual(['0.5 km', '1 km', '1.5 km', '2 km', '0 km', '2.3 km']);
         await trackMenu('New track', 'Show distance marks');
         await expect.poll(() => tickLabels(map)).toEqual([]);
@@ -65,7 +65,7 @@ describe('Отметки расстояния', () => {
         await drawTrack(map, [A, B]);
         await trackMenu('New track', 'Show distance marks');
         await expect.poll(() => tickLabels(map)).toHaveLength(6);
-        // z11: 15 мм ≈ 1.6 км — шаг 2 км, а отметка 2 км ближе 0.8 км к концу и убирается
+        // z11: 15 mm ≈ 1.6 km, so the step is 2 km, and the 2 km tick is nearer than 0.8 km to the end and goes away
         map.jumpTo({ zoom: 11 });
         await expect.poll(() => tickLabels(map)).toEqual(['0 km', '2.3 km']);
     });
@@ -96,7 +96,7 @@ describe('Отметки расстояния', () => {
         await page.getByRole('button', { name: 'Measure distance' }).click();
         await click(map, A);
         await click(map, B);
-        // рисование ещё идёт
+        // drawing still goes on
         await expect.poll(() => tickLabels(map)).toContain('2.3 km');
     });
 });

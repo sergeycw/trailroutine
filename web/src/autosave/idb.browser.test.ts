@@ -2,8 +2,8 @@ import { afterEach, expect, test } from 'vitest';
 import { indexedDbStorage } from './idb';
 import { fromSaved, toSaved } from './saved';
 
-// Настоящий IndexedDB Chromium: запись, чтение новым экземпляром (как после перезагрузки), отказ хранилища. Что база
-// sessions старого клиента не трогается, проверяет e2e («Сессия старого клиента»).
+// The real IndexedDB of Chromium: write, read with a new instance (as after a reload), storage failure. e2e checks
+// that the code does not touch the database sessions of the old client («Сессия старого клиента»).
 
 const names: string[] = [];
 

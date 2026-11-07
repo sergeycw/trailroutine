@@ -13,7 +13,7 @@ function json(body: unknown, status = 200): Response {
     return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 }
 
-// поддельная сеть: ответ по хосту запроса, запросы записываются
+// a fake network: the answer by the request host, the requests are recorded
 function network(responses: { mapy?: () => Response; photon?: () => Response }) {
     const requests: string[] = [];
     const fetchFn: typeof fetch = async (input) => {
@@ -182,7 +182,7 @@ describe('поиск', () => {
     });
 });
 
-// порядок результатов ссылки — design search-track-links, «Порядок разбора ссылки»
+// the result order of a link: design search-track-links, «Порядок разбора ссылки»
 describe('ссылки на треки', () => {
     async function titles(query: string) {
         const { requests, sources } = network({});

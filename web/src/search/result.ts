@@ -1,11 +1,11 @@
 import type { Bounds } from '@/tracks/geometry';
 import type { LatLng } from '@/tracks/model';
 
-// Результат поиска любого источника (design add-web-search-panoramas, «Модули»). Карта переходит на bounds, если они
-// есть, иначе — на latlng с zoom; zoom — в единицах MapLibre (старый зум − 1, подвох про зум в AGENTS.md).
+// A search result of any source (design add-web-search-panoramas, «Модули»). The map moves to bounds if they are
+// present, otherwise to latlng with zoom; zoom is in MapLibre units (the old zoom − 1, the zoom pitfall in AGENTS.md).
 export interface SearchResult {
     title: string;
-    // категория и адрес места; у координат и ссылок — null
+    // the category and the address of the place; null for coordinates and links
     subtitle: string | null;
     latlng: LatLng;
     bounds: Bounds | null;
@@ -14,7 +14,8 @@ export interface SearchResult {
 
 export type SearchResponse = { results: SearchResult[] } | { error: string };
 
-// Ссылка на трек (design search-track-links, «Результат-трек и выбор»): точки нет, выбор качает трек по url
+// A track link (design search-track-links, «Результат-трек и выбор»): there is no point, the choice downloads the
+// track by url
 export interface TrackLinkResult {
     kind: 'track';
     title: string;
@@ -27,10 +28,10 @@ export type SearchItem = SearchResult | TrackLinkResult;
 export const isTrackLinkResult = (item: SearchItem): item is TrackLinkResult =>
     (item as Partial<TrackLinkResult>).kind === 'track';
 
-// зум 17 старого клиента — результат без границ у поисковиков и координаты
+// zoom 17 of the old client: a result without bounds from the search providers and coordinates
 export const PLACE_ZOOM = 16;
 
-// зум старого клиента (Leaflet, мир на z0 — 256 px) → зум MapLibre
+// the zoom of the old client (Leaflet, the world at z0 is 256 px) → MapLibre zoom
 export function fromLeafletZoom(zoom: number): number {
     return Math.max(0, zoom - 1);
 }

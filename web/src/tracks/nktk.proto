@@ -1,23 +1,24 @@
-// Схема строки трека nktk версии 4: копия src/lib/leaflet.control.track-list/lib/parsers/nktk.proto старого клиента
-// с новыми полями Segment.route (design add-web-autosave, «Ссылка: необязательное поле разметки») и View.rgb. Код не
-// генерируется: чтение и запись написаны руками в nktk.ts. Номера полей не менять — на них держатся выданные ссылки.
+// Schema of the nktk track string version 4: a copy of src/lib/leaflet.control.track-list/lib/parsers/nktk.proto of
+// the old client with the new fields Segment.route (design add-web-autosave, «Ссылка: необязательное поле разметки»)
+// and View.rgb. No code is generated: nktk.ts reads and writes by hand. Do not change the field numbers: the links
+// that were given out depend on them.
 
 syntax = "proto3";
 
 message Segment {
     repeated sint32 lats = 1;
     repeated sint32 lons = 2;
-    // разметка маршрута отрезка; нет поля — обычная ломаная. Старый клиент поле пропускает.
+    // route markup of the segment; no field means a plain polyline. The old client skips the field.
     SegmentRoute route = 3;
 }
 
 message SegmentRoute {
-    // шаги между номерами опорных точек в отрезке (≥ 1); первая опорная — точка 0, последняя — последняя точка
+    // steps between waypoint indexes in the segment (≥ 1); the first waypoint is point 0, the last is the last point
     repeated uint32 gaps = 1;
-    // по коду на отрезок между опорными: 0 — прямой, 2k+1 — проложен активностью activities[k],
-    // 2k+2 — непроложенный с активностью activities[k]
+    // one code for each leg between waypoints: 0 is straight, 2k+1 is routed with the activity activities[k],
+    // 2k+2 is not routed, with the activity activities[k]
     repeated uint32 legs = 2;
-    // id активностей (routing/brouter.ts) без повторов
+    // activity ids (routing/brouter.ts) without repeats
     repeated string activities = 3;
 }
 
@@ -40,12 +41,12 @@ message Track {
 }
 
 message View {
-    // номер цвета палитры (TRACK_COLORS); у своего цвета — номер ближайшего, для читателей без поля rgb
+    // palette color index (TRACK_COLORS); for a custom color, the nearest index, for readers without the rgb field
     int32 color = 1;
     bool shown = 2;
     bool ticksShown = 3;
-    // свой цвет трека 0xRRGGBB (design track-color-picker, «Ссылка: новое поле View.rgb»); нет поля — цвет палитры из
-    // color. optional — ради чёрного: 0 — цвет, а не отсутствие. Старый клиент поле пропускает.
+    // custom track color 0xRRGGBB (design track-color-picker, «Ссылка: новое поле View.rgb»); no field means a palette
+    // color from color. optional is for black: 0 is a color, not a missing value. The old client skips the field.
     optional uint32 rgb = 4;
 }
 

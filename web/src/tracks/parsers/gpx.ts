@@ -2,8 +2,8 @@ import { type GeoData, type GeoError, geoData, type LatLng, type Waypoint } from
 import { decodeXml } from './text';
 import { elements, nodeText, parseXml } from './xml';
 
-// GPX (parsers/gpx.js старого клиента): сегменты trkseg, затем маршруты rte отдельными отрезками, точки wpt.
-// Точка без координат — CORRUPT: отрезок обрывается на ней, точка wpt пропускается.
+// GPX (parsers/gpx.js of the old client): trkseg segments, then rte routes as separate segments, wpt points.
+// A point without coordinates gives CORRUPT: a segment ends at it, and a wpt point is skipped.
 
 function linePoints(parent: Element, tag: string, fail: () => void): LatLng[] {
     const points: LatLng[] = [];
@@ -19,7 +19,7 @@ function linePoints(parent: Element, tag: string, fail: () => void): LatLng[] {
     return points;
 }
 
-// preferNameFromFile — название первого trk с непустым name вместо имени файла (импорт трека OSM)
+// preferNameFromFile: the name of the first trk with a non-empty name instead of the file name (OSM track import)
 export function parseGpxText(text: string, name: string, preferNameFromFile = false): GeoData[] | null {
     const dom = parseXml(text);
     if (!dom || elements(dom, 'gpx').length === 0) {

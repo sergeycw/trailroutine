@@ -1,12 +1,12 @@
 version: 2
-# Файл пришёл из апстрима, где Dependabot обновлял корневой npm. В форке обновляется только своё:
-# workflows форка и сервисы в workers/. Корневые зависимости — апстрима, их бампы раздували бы дифф
-# с автором, поэтому блока для "/" нет. В форке version updates включаются вручную
-# (Settings → Advanced Security → Dependabot version updates), одного этого файла мало.
+# The file came from the upstream, where Dependabot updated the root npm. In the fork, it updates only our own parts:
+# the workflows of the fork and the services in workers/. The root dependencies belong to the upstream, their bumps
+# would make the diff with the author larger, so there is no block for "/". In the fork, enable version updates manually
+# (Settings → Advanced Security → Dependabot version updates), this file alone is not sufficient.
 updates:
   - package-ecosystem: github-actions
     directory: "/"
-    # main.yml — workflow апстрима (`check`), его не трогаем
+    # main.yml is the workflow of the upstream (`check`), do not change it
     exclude-paths:
       - ".github/workflows/main.yml"
     schedule:
@@ -23,16 +23,16 @@ updates:
     schedule:
       interval: weekly
     ignore:
-      # @cloudflare/vitest-pool-workers 0.22 (последняя на 2026-10-07) требует vitest ^4.1, с vitest 5
-      # тесты в workerd падают; снять, когда выйдет пул под новый мажор (бампать их вместе)
+      # @cloudflare/vitest-pool-workers 0.22 (the latest on 2026-10-07) requires vitest ^4.1, with vitest 5
+      # the tests in workerd fail; remove this when a pool for the new major comes out (bump them together)
       - dependency-name: "vitest"
         update-types: ["version-update:semver-major"]
     groups:
       workers-npm:
         patterns: ["*"]
 
-  # worker-build закреплён в workflows (0.8.7) под крейт worker 0.8: бамп worker до 0.9 без
-  # обновления worker-build уронит npm test в check-elevation, это и есть проверка
+  # worker-build is pinned in the workflows (0.8.7) for the crate worker 0.8: a bump of worker to 0.9 without
+  # an update of worker-build makes npm test in check-elevation fail, and this is the check
   - package-ecosystem: cargo
     directory: "/workers/elevation"
     schedule:

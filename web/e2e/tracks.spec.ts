@@ -3,8 +3,9 @@ import { fileURLToPath } from 'node:url';
 import { parseHash } from '../src/state/hash.ts';
 import { expect, openTracks, test } from './fixtures.ts';
 
-// Названия тестов — сценарии спек tracks и track-files (openspec/specs/tracks, openspec/specs/track-files). Хранилище треков и
-// прокси — в памяти (e2e/fixtures.ts), в сеть тесты не ходят.
+// The test titles are the scenarios of the specs tracks and track-files (openspec/specs/tracks,
+// openspec/specs/track-files). The track storage and the proxy are in memory (e2e/fixtures.ts), the tests do not go to
+// the network.
 
 const fixture = (path: string) => fileURLToPath(new URL(`../src/${path}`, import.meta.url));
 const OLD_LINKS = readFileSync(fixture('state/fixtures/old-links.txt'), 'utf8')
@@ -21,7 +22,7 @@ function paramOf(name: string) {
 }
 
 // saveNktk({name: 'Mtatsminda', segments: [[41.69, 44.79 → 41.695, 44.786]], points: [TV tower 41.6945, 44.786]}):
-// строкой, потому что e2e собирается как Node-модуль (nodenext), а src/tracks/ импортирует без расширений
+// as a string, because e2e builds as a Node module (nodenext), and src/tracks/ imports without extensions
 const TBILISI = 'RAoCEAESNgoKTXRhdHNtaW5kYRIQCgbele0B0gMSBorn_gHzAhoWCICZ7QEQluT-ARoKGghUViB0b3dlcg==';
 
 async function track(page: import('@playwright/test').Page, name: string) {
@@ -35,7 +36,7 @@ test('Ссылка на хранилище', async ({ page, network }) => {
     await page.goto(`./#l=O&nktl=${key}`);
     await expect(await track(page, 'Mtatsminda')).toBeVisible();
     await expect.poll(() => new URL(page.url()).hash).not.toContain('nktl');
-    // без m= в адресе карта показывает трек целиком — вид рядом с Тбилиси
+    // without m= in the address the map shows the full track: a view near Tbilisi
     await expect.poll(() => new URL(page.url()).hash).toMatch(/^#l=O&m=\d+(\.\d+)?\/41\.69\d+\/44\.78\d+$/);
 });
 
@@ -71,8 +72,8 @@ test('Ссылка готова', async ({ page, context, browser, network }) =>
     const key = new URL(link).hash.match(/nktl=([\w-]{22})$/)?.[1];
     expect(key).toBeDefined();
     expect(network.storage.has(key as string)).toBe(true);
-    // по ссылке у другого пользователя открываются те же треки; вкладка того же браузера добавила бы их к
-    // автосохранённым (спека tracks, «Треки из адреса дополняют сохранённые»)
+    // the link opens the same tracks for a different user; a tab of the same browser would add them to the
+    // autosaved ones (spec tracks, «Треки из адреса дополняют сохранённые»)
     const other = await browser.newContext();
     try {
         await network.attach(other);
@@ -85,12 +86,12 @@ test('Ссылка готова', async ({ page, context, browser, network }) =>
 });
 
 test('Трек OSM', async ({ page, network }) => {
-    // ответ OSM записан 2026-10-08 (src/tracks/fixtures/README.md); импорт идёт через прокси клона
+    // the OSM answer was recorded on 2026-10-08 (src/tracks/fixtures/README.md); the import uses the clone proxy
     network.proxyResponds('https://www.openstreetmap.org/trace/3376100/data', {
         path: fixture('tracks/fixtures/services/osm-3376100.gpx'),
     });
     await page.goto('./#m=12/41.7/44.8');
-    // ссылка — в строку поиска, Enter выбирает трек (design search-track-links)
+    // the link goes into the search box, Enter selects the track (design search-track-links)
     const search = page.getByRole('combobox', { name: 'Search' });
     await search.fill('https://www.openstreetmap.org/user/Wladich/traces/3376100');
     await expect(page.getByRole('option', { name: 'OSM track 3376100' })).toBeVisible();
@@ -116,6 +117,6 @@ test('Сохранить в GPX', async ({ page }) => {
     expect(file.suggestedFilename()).toBe('Mtatsminda.gpx');
     const content = readFileSync(await file.path(), 'utf8');
     expect(content).toContain('<name>TV tower</name>');
-    // координаты — на сетке nktk (≈ 2.4 м), шесть знаков
+    // the coordinates are on the nktk grid (≈ 2.4 m), six digits
     expect(content).toMatch(/<trkpt lat="41\.69\d{4}" lon="44\.7[89]\d{4}">/);
 });

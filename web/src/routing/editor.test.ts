@@ -3,8 +3,8 @@ import type { LatLng } from '@/tracks/model';
 import { createRouteEditor, HISTORY_LIMIT, type RouteFn } from './editor';
 import { fromSegment, type Leg, type RouteLine, toSegment } from './line';
 
-// Сценарии спек route-editing и routing на модели без карты: роутер поддельный, каждый запрос ждёт, пока тест сам
-// ответит (resolve) или откажет (reject).
+// Scenarios of the specs route-editing and routing on the model without a map: the router is fake, each request waits
+// until the test itself answers (resolve) or refuses (reject).
 
 interface Call {
     from: LatLng;
@@ -37,7 +37,7 @@ function fakeRouter() {
             calls.push(call);
             signal.addEventListener('abort', () => reject(signal.reason));
         });
-    // запросы, которые ещё ждут ответа и не отменены
+    // requests that still wait for a response and are not cancelled
     return { route, calls, live: () => calls.filter((call) => !call.signal.aborted && !settled.has(call)) };
 }
 
@@ -48,7 +48,7 @@ const A = P(41.69, 44.78);
 const B = P(41.7, 44.79);
 const C = P(41.71, 44.8);
 const D = P(41.72, 44.81);
-// «маршрут» между двумя точками: две точки посередине
+// a «route» between two points: two points in the middle
 const road = (from: LatLng, to: LatLng) => [
     P(from.lat + (to.lat - from.lat) / 3, from.lng),
     P(from.lat + ((to.lat - from.lat) * 2) / 3, to.lng),
@@ -71,7 +71,7 @@ function setup(initial: RouteLine = { waypoints: [], legs: [] }) {
 const states = (line: RouteLine) =>
     line.legs.map((leg) => (leg.state === 'straight' ? 'straight' : `${leg.state}:${leg.activity}`));
 
-// линия A–B–C с проложенными отрезками
+// the line A–B–C with routed legs
 async function routedLine(activity = 'hiking') {
     const ctx = setup();
     ctx.editor.addWaypoint('end', A, activity);
@@ -104,11 +104,11 @@ describe('Клик при рисовании', () => {
         editor.addWaypoint('end', A, 'hiking');
         editor.addWaypoint('end', B, 'hiking');
         editor.addWaypoint('end', C, 'hiking');
-        // все три точки сразу, оба отрезка ждут
+        // all three points at once, both legs wait
         expect(editor.line().waypoints).toEqual([A, B, C]);
         expect(states(editor.line())).toEqual(['pending:hiking', 'pending:hiking']);
         expect(editor.pending()).toBe(2);
-        // отрезки достраиваются по мере ответов, в любом порядке
+        // legs complete as the responses come, in any order
         router.calls[1].resolve(road(B, C));
         await flush();
         expect(states(editor.line())).toEqual(['pending:hiking', 'routed:hiking']);
@@ -146,7 +146,7 @@ describe('Устаревшие ответы отбрасываются', () => {
         const [stale, fresh] = router.calls;
         expect(stale.signal.aborted).toBe(true);
         expect(fresh.to).toEqual(moved);
-        // ответ для старого положения не применяется
+        // a response for the old position does not apply
         stale.resolve(road(A, B));
         await flush();
         expect(states(editor.line())).toEqual(['pending:hiking']);
@@ -180,7 +180,7 @@ describe('Удаление последней точки', () => {
         await flush();
         editor.addWaypoint('end', C, 'hiking');
         editor.removeEndWaypoint('end');
-        // последняя точка и её отрезок удалены, ожидающий запрос отменён
+        // the last point and its leg are removed, the pending request is cancelled
         expect(editor.line().waypoints).toEqual([A, B]);
         expect(states(editor.line())).toEqual(['routed:hiking']);
         expect(router.calls[1].signal.aborted).toBe(true);
@@ -274,7 +274,7 @@ describe('Вставка опорной точки на линию', () => {
         expect(legs[0].points).toEqual([r1]);
         expect(legs[1].points).toEqual([r2]);
         expect(router.live()).toHaveLength(0);
-        // точки трека — те же плюс новая опорная
+        // the track points are the same plus the new waypoint
         expect(toSegment(editor.line()).points).toHaveLength(before.length + 1);
     });
 
@@ -287,7 +287,7 @@ describe('Вставка опорной точки на линию', () => {
             [A, moved],
             [moved, B],
         ]);
-        // вставка и перетаскивание — один шаг истории
+        // insertion and drag are one history step
         editor.undo();
         expect(editor.line().waypoints).toEqual([A, B, C]);
     });
@@ -311,7 +311,7 @@ describe('Undo и redo', () => {
         const { editor, router } = await routedLine();
         editor.addWaypoint('end', D, 'hiking');
         editor.undo();
-        // точка и её отрезок исчезли, запрос отменён
+        // the point and its leg disappeared, the request is cancelled
         expect(editor.line().waypoints).toEqual([A, B, C]);
         expect(router.calls.at(-1)?.signal.aborted).toBe(true);
         expect(editor.canRedo()).toBe(true);
@@ -327,7 +327,7 @@ describe('Undo и redo', () => {
         editor.addWaypoint('end', C, 'hiking');
         const before = router.live();
         editor.undo();
-        // все текущие запросы отменены, а A–B, который ждал маршрута в восстановленном состоянии, запрошен заново
+        // all current requests are cancelled; A–B, which waited for a route in the restored state, is requested again
         expect(before.every((call) => call.signal.aborted)).toBe(true);
         const again = router.live();
         expect(again.map((call) => [call.from, call.to])).toEqual([[A, B]]);
@@ -379,7 +379,7 @@ describe('Ошибка прокладки', () => {
         editor.addWaypoint('end', B, 'hiking');
         router.calls[0].reject(new Error('no route found'));
         await flush();
-        // прямая между опорными точками с пометкой и ошибка наружу
+        // a straight line between the waypoints with a mark, and the error goes out
         expect(toSegment(editor.line()).points).toEqual([A, B]);
         expect(states(editor.line())).toEqual(['failed:hiking']);
         expect((errors[0] as Error).message).toBe('no route found');
@@ -406,7 +406,7 @@ describe('Срез участка', () => {
         expect(editor.shortcut({ waypoint: 0 }, { waypoint: 2 })).toBe(true);
         expect(editor.line().waypoints).toEqual([A, C]);
         expect(states(editor.line())).toEqual(['straight']);
-        // прямой стык прокладку не запускает
+        // a straight joint does not start routing
         expect(router.live()).toHaveLength(0);
         editor.undo();
         expect(editor.line().waypoints).toEqual([A, B, C]);
@@ -428,7 +428,7 @@ describe('Срез участка', () => {
         editor.addWaypoint('end', C, 'hiking');
         editor.addWaypoint('end', D, 'hiking');
         const [ab, bc, cd] = router.calls;
-        // срез от середины A–B до C: A–X — новый запрос, C–D ждёт свой
+        // Shortcut from the middle of A–B to C: A–X is a new request, C–D waits for its own
         editor.shortcut({ leg: 0, latlng: P(41.695, 44.785) }, { waypoint: 2 });
         expect(states(editor.line())).toEqual(['pending:hiking', 'straight', 'pending:hiking']);
         expect(ab.signal.aborted).toBe(true);
@@ -464,7 +464,7 @@ describe('Разворот отрезка', () => {
 });
 
 describe('Опорная точка у поворота', () => {
-    // перекрёсток J; улица на запад и север, точка W в 8 м за перекрёстком на восток, следующая — на юге
+    // crossroads J; a street to the west and north, the point W 8 m past the crossroads to the east, the next one south
     const J = P(41.69, 44.78);
     const meters = (x: number, y: number) =>
         P(J.lat + y / 111195, J.lng + x / (111195 * Math.cos((J.lat * Math.PI) / 180)));
@@ -478,7 +478,7 @@ describe('Опорная точка у поворота', () => {
         editor.addWaypoint('end', WEST, 'hiking');
         editor.addWaypoint('end', W, 'hiking');
         editor.addWaypoint('end', SOUTH, 'hiking');
-        // второй отрезок отвечает первым: ус появляется, только когда проложены оба
+        // the second leg answers first: the spur appears only when both legs are routed
         router.calls[1].resolve([J, MIDDLE]);
         await flush();
         expect(editor.line().waypoints[1]).toBe(W);
@@ -504,12 +504,12 @@ describe('Опорная точка у поворота', () => {
         router.calls[1].resolve([J, MIDDLE]);
         await flush();
         expect(editor.line().waypoints).toEqual([WEST, J, SOUTH]);
-        // сдвиг — часть ответа: номер правки тот же, что после клика
+        // the shift is part of the response: the edit number is the same as after the click
         const revision = editor.revision();
         expect(revision).toBeGreaterThan(0);
         editor.undo();
         expect(editor.revision()).toBe(revision + 1);
-        // отменяется клик, а не сдвиг: точка W снова конец линии
+        // the click is undone, not the shift: the point W is the line end again
         expect(editor.line().waypoints).toEqual([WEST, W]);
         expect(states(editor.line())).toEqual(['routed:hiking']);
     });

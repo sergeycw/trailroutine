@@ -1,8 +1,8 @@
-// Разбор XML для GPX и KML — DOMParser браузера (в unit-тестах Node — @xmldom/xmldom, src/test/node-dom.ts).
+// XML parsing for GPX and KML: the browser DOMParser (in Node unit tests, @xmldom/xmldom, src/test/node-dom.ts).
 
 export function parseXml(text: string): Document | null {
-    // Префиксы имён тегов → `prefix_name`, как в старом клиенте: файлы сервисов бывают с префиксами без объявления
-    // xmlns (gpxx:, gx:), и строгий разбор XML на них падает. Искать после этого — `gx_Track`, а не `gx:Track`.
+    // Tag name prefixes → `prefix_name`, as in the old client: service files can have prefixes without an xmlns
+    // declaration (gpxx:, gx:), and strict XML parsing fails on them. After this, look for `gx_Track`, not `gx:Track`.
     const unprefixed = text.replace(/<([^ >]+):([^ >]+)/gu, '<$1_$2');
     let dom: Document;
     try {
@@ -10,7 +10,7 @@ export function parseXml(text: string): Document | null {
     } catch {
         return null;
     }
-    // браузер не бросает, а вставляет <parsererror> (Firefox — корнем, Chromium — внутрь документа)
+    // the browser does not throw, it inserts <parsererror> (Firefox as the root, Chromium inside the document)
     if (!dom.documentElement || dom.getElementsByTagName('parsererror').length > 0) {
         return null;
     }
@@ -21,7 +21,7 @@ export function elements(parent: Document | Element, tag: string): Element[] {
     return Array.from(parent.getElementsByTagName(tag));
 }
 
-// Текст узла без вложенных элементов (xmlGetNodeText старого клиента): текст и CDATA прямых потомков
+// Node text without child elements (xmlGetNodeText of the old client): text and CDATA of the direct children
 export function nodeText(node: Element | undefined): string | null {
     if (!node) {
         return null;

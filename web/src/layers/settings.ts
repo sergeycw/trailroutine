@@ -2,35 +2,38 @@ import type { LayerDef } from './catalog';
 import { isCustomLayerCode, parseCustomLayerCode, serializeCustomLayer } from './custom';
 import { quickGroupOf } from './quick-layers';
 
-// Настройки слоёв нового приложения в localStorage. Свой ключ: origin общий со старым клиентом, и его
-// leafletLayersSettings мы только читаем — один раз, пока своих настроек нет (design, «Настройки»).
+// Layer settings of the new app in localStorage. An own key: the origin is shared with the old client, and the app
+// only reads its leafletLayersSettings, one time, while there are no own settings (design, «Настройки»).
 
 export const STORAGE_KEY = 'nakarte-web:layers';
 export const LEGACY_STORAGE_KEY = 'leafletLayersSettings';
 
 export interface Selection {
     base: string;
-    // порядок не важен: наложение задаёт каталог
+    // the order is not important: the catalog sets the stacking
     overlays: string[];
 }
 
 export interface LayerSettings {
-    // показывать ли слой в переключателе; кода нет — умолчание (listedByDefault), так новый слой по умолчанию
-    // появится и у тех, у кого настройки уже сохранены (как у старого клиента)
+    // whether to show the layer in the switcher; no code — the default (listedByDefault), so a new layer by default
+    // appears also for users who already have saved settings (as in the old client)
     listed: Record<string, boolean>;
-    // коды своих слоёв -cs… в порядке добавления
+    // the codes of custom layers -cs… in the order of addition
     custom: string[];
-    // последний выбор; применяется, если в адресе нет годного l=
+    // the last selection; it applies if the address has no valid l=
     selection: Selection | null;
-    // память столбца: первый код группы → слой группы, выбранный последним (quick-layers.ts, design quick-layer-menus).
-    // Настройки без поля (до quick-layer-menus) — пустая память, версия формата та же
+    // the column memory: the first code of a group → the group layer that was selected last (quick-layers.ts, design
+    // quick-layer-menus). Settings without the field (before quick-layer-menus) give an empty memory, the format
+    // version stays the same
     quickLayers: Record<string, string>;
 }
 
-// Формат остаётся версией 1: код до custom-bases-in-list настройки другой версии не читает, и откат (revert) стёр бы
-// свои слои и выбор. Поле groupDefaults: true — listed записан, когда слои групп столбца по умолчанию уже в списке, и
-// «снят» у них — выбор пользователя. Без поля (раньше и у старого клиента) галочки писались разом, и «снят» у слоя
-// группы без isDefault — прежнее умолчание, а не выбор: при чтении такие записи отбрасываются (upgrade в loadSettings)
+// The format stays version 1: the code before custom-bases-in-list does not read settings of another version, and a
+// rollback (revert) would erase the custom layers and the selection. The field groupDefaults: true means that listed
+// was written when the column group layers were already in the list by default, and "unchecked" for them is the user
+// choice. Without the field (before, and in the old client) the check marks were written all at once, and "unchecked"
+// for a group layer without isDefault is the previous default, not a choice: the read drops such entries (upgrade in
+// loadSettings)
 interface StoredSettings extends LayerSettings {
     version: 1;
     groupDefaults: true;
@@ -38,8 +41,8 @@ interface StoredSettings extends LayerSettings {
 
 export const EMPTY_SETTINGS: LayerSettings = { listed: {}, custom: [], selection: null, quickLayers: {} };
 
-// Свой слой в настройках и ссылках хранится каноничным кодом: старый клиент перекодировал код при загрузке
-// (upgrade isTop), и сравнение дубликатов идёт по коду
+// A custom layer in the settings and in links is stored as a canonical code: the old client re-encoded the code at
+// load (upgrade isTop), and the duplicate comparison uses the code
 export function canonicalCustomCode(code: string): string | null {
     const fields = parseCustomLayerCode(code);
     return fields ? serializeCustomLayer(fields) : null;
@@ -50,7 +53,7 @@ function readStorage(storage: Storage, key: string): unknown {
         const raw = storage.getItem(key);
         return raw ? JSON.parse(raw) : null;
     } catch {
-        // нет хранилища (приватный режим, запрет сайта) или битый JSON — как будто настроек нет
+        // no storage (private mode, the site is blocked) or broken JSON: as if there are no settings
         return null;
     }
 }
@@ -89,8 +92,9 @@ function parseOwn(
     };
 }
 
-// Память кругов (quickLayers) — по первому коду группы. Первый код топокарты сменился с Tt на Of (design
-// openfreemap-default-basemap): запомненный там слой иначе потерялся бы, а старый ключ остался бы в хранилище навсегда
+// The circle memory (quickLayers) is by the first code of the group. The first code of the topo map changed from Tt to
+// Of (design openfreemap-default-basemap): otherwise the layer remembered there would be lost, and the old key would
+// stay in the storage forever
 const RENAMED_QUICK_KEYS: Readonly<Record<string, string>> = { Tt: 'Of' };
 
 function renameQuickKeys(memory: Record<string, string>): Record<string, string> {
@@ -104,9 +108,9 @@ function renameQuickKeys(memory: Record<string, string>): Record<string, string>
     return renamed;
 }
 
-// leafletLayersSettings старого клиента: {layers: [{code, isCustom, enabled, hotkey}]} (saveSettings в
-// leaflet.control.layers.configure). Коды удалённых слоёв пропускаются; hotkey не переносится: хоткеев слоёв
-// в новом приложении нет (решение владельца, design add-web-map-layers).
+// leafletLayersSettings of the old client: {layers: [{code, isCustom, enabled, hotkey}]} (saveSettings in
+// leaflet.control.layers.configure). Codes of deleted layers are skipped; hotkey does not move: the new app has no
+// layer hotkeys (owner decision, design add-web-map-layers).
 function parseLegacy(raw: unknown, isKnown: (code: string) => boolean): LayerSettings | null {
     if (!isRecord(raw) || !Array.isArray(raw.layers)) {
         return null;
@@ -139,8 +143,8 @@ export function loadSettings(storage: Storage | null, catalog: readonly LayerDef
     }
     const known = new Set(catalog.map((layer) => layer.code));
     const byCode = new Map(catalog.map((layer) => [layer.code, layer]));
-    // «снят» у слоя группы столбца без isDefault в записи без groupDefaults — прежнее умолчание, а не выбор
-    // (StoredSettings)
+    // "unchecked" for a column group layer without isDefault in a record without groupDefaults is the previous
+    // default, not a choice (StoredSettings)
     const upgrade = (listed: Record<string, boolean>) =>
         Object.fromEntries(
             Object.entries(listed).filter(
@@ -160,12 +164,13 @@ export function saveSettings(storage: Storage | null, settings: LayerSettings): 
     try {
         storage?.setItem(STORAGE_KEY, JSON.stringify(stored));
     } catch {
-        // переполнение или запрет хранилища: настройки живут до перезагрузки
+        // the storage is full or blocked: the settings live until the reload
     }
 }
 
-// Умолчание галочки Configure layers: свой слой пользователь добавил сам; слой группы столбца есть в её меню
-// (quick-layers.ts), и галочка — его место там (design custom-bases-in-list); остальное — isDefault каталога
+// The default of the Configure layers check box: the user added a custom layer personally; a column group layer is in
+// the group menu (quick-layers.ts), and the check box is its place there (design custom-bases-in-list); for the rest,
+// isDefault of the catalog
 export function listedByDefault(layer: LayerDef): boolean {
     return isCustomLayerCode(layer.code) || quickGroupOf(layer.code) !== undefined || layer.isDefault;
 }

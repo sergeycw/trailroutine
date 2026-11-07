@@ -4,8 +4,8 @@ import { useAppStore } from '@/state/context';
 import { useTrackActions } from './actions-context';
 import { trackColor } from './model';
 
-// Режим точек трека (design add-web-line-tools, «Точки трека»): постановка кликами или перенос точки. Стоит в верхней
-// строке, как редактор линии (макет 4a, design polish-web-ui): оба режима не бывают одновременно.
+// Track point mode (design add-web-line-tools, «Точки трека»): add points with clicks or move a point. It is in the
+// top row, as the line editor is (mock-up 4a, design polish-web-ui): the two modes are never on at the same time.
 export function PointPanel() {
     const actions = useTrackActions();
     const tool = useAppStore((state) => state.pointTool);

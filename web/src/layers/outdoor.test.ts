@@ -8,8 +8,8 @@ import {
 import { describe, expect, test } from 'vitest';
 import { labelLanguage, labelText, outdoorLayers, peakText } from './outdoor';
 
-// Свойства объектов — из тайлов OpenFreeMap (planet 20261004_113936_pt), декодированных 2026-10-12: z14 у Степанцминды
-// и z12 у Казбека (design add-vector-outdoor-style, «Что проверено»)
+// The object properties come from OpenFreeMap tiles (planet 20261004_113936_pt), decoded on 2026-10-12: z14 at
+// Stepantsminda and z12 at Kazbek (design add-vector-outdoor-style, «Что проверено»)
 const STEPANTSMINDA = {
     class: 'town',
     name: 'სტეფანწმინდა',
@@ -28,12 +28,12 @@ const KAZBEK = {
     ele: 5054,
 };
 const KAZBEK_PASS = { class: 'saddle', name: 'Kazbekskiy pass', 'name:latin': 'Kazbekskiy pass', ele: 4478 };
-// без латиницы и перевода — только местное название
+// no Latin script and no translation: only the local name
 const PASTUKHOVA = { class: 'peak', name: 'Пастухова', ele: 4312 };
 
 const TEXT_FIELD = latest.layout_symbol['text-field'] as unknown as StylePropertySpecification;
 
-// строки подписи: секции format склеены, разбиты по переводу строки
+// label lines: the format sections are joined and split at line breaks
 function lines(expression: unknown, properties: Record<string, unknown>): string[] {
     const parsed = createExpression(expression, 'text-field', TEXT_FIELD);
     if (parsed.result !== 'success') {
@@ -49,7 +49,7 @@ describe('Подписи OpenFreeMap Outdoor', () => {
     });
 
     test('Нет перевода на язык браузера', () => {
-        // у Степанцминды нет name:fi — вторая строка латиницей
+        // Stepantsminda has no name:fi, so the second line is in Latin script
         expect(lines(labelText('fi-FI'), STEPANTSMINDA)).toEqual(['სტეფანწმინდა', 'Stepantsminda']);
         expect(lines(labelText('en-US'), STEPANTSMINDA)).toEqual(['სტეფანწმინდა', 'Stepantsminda']);
     });
@@ -87,7 +87,7 @@ describe('Подложка OpenFreeMap Outdoor', () => {
         };
         expect(validateStyleMin(style)).toEqual([]);
         expect(JSON.stringify(layers)).not.toMatch(/icon-image|glyphs|sprite/);
-        // фон суши — первым, подписи — над линиями
+        // the land background is first, the labels are above the lines
         expect(layers[0].type).toBe('background');
         expect(layers.findIndex((layer) => layer.type === 'symbol')).toBeGreaterThan(
             layers.findLastIndex((layer) => layer.type !== 'symbol'),

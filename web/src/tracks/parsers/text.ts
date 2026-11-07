@@ -1,6 +1,6 @@
-// Байты файла → текст. Старый клиент читал файлы двоичной строкой и раскодировал названия из UTF-8 всегда, поэтому
-// GPX и KML в Windows-1251 с честным encoding= давали испорченные названия. Здесь кодировка берётся из объявления XML
-// (design add-web-tracks, «Парсеры»); TextDecoder знает windows-1251, koi8-r, ibm866 и др. по меткам WHATWG.
+// File bytes → text. The old client read files as a binary string and always decoded names from UTF-8, so GPX and
+// KML in Windows-1251 with a correct encoding= gave broken names. Here the encoding comes from the XML declaration
+// (design add-web-tracks, «Парсеры»); TextDecoder knows windows-1251, koi8-r, ibm866 and others by the WHATWG labels.
 
 const UTF8_BOM = [0xef, 0xbb, 0xbf];
 
@@ -13,14 +13,14 @@ export function decode(bytes: Uint8Array, encoding = 'utf-8'): string {
     try {
         decoder = new TextDecoder(encoding);
     } catch {
-        // метка, которой нет в WHATWG Encoding, — как без объявления
+        // a label that WHATWG Encoding does not have: as without a declaration
         decoder = new TextDecoder('utf-8');
     }
-    // BOM снимается сам только у UTF-8; у остальных кодировок его не бывает
+    // the decoder removes the BOM by itself only for UTF-8; other encodings never have a BOM
     return decoder.decode(bytes);
 }
 
-// Кодировка из <?xml … encoding="…"?> в начале файла; объявление всегда в ASCII-совместимых байтах
+// Encoding from <?xml … encoding="…"?> at the start of the file; the declaration is always in ASCII-compatible bytes
 export function xmlEncoding(bytes: Uint8Array): string {
     if (hasUtf8Bom(bytes)) {
         return 'utf-8';
@@ -34,7 +34,7 @@ export function decodeXml(bytes: Uint8Array): string {
     return decode(bytes, xmlEncoding(bytes));
 }
 
-// Начинаются ли байты с этой ASCII-строки (после BOM UTF-8, если он есть)
+// Whether the bytes start with this ASCII string (after the UTF-8 BOM, if there is one)
 export function startsWithAscii(bytes: Uint8Array, prefix: string): boolean {
     const offset = hasUtf8Bom(bytes) ? UTF8_BOM.length : 0;
     for (let i = 0; i < prefix.length; i++) {

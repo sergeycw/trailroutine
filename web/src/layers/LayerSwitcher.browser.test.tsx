@@ -7,7 +7,7 @@ import { type FixtureTiles, fixtureTiles } from '@/test/tiles';
 import { serializeCustomLayer } from './custom';
 import { STORAGE_KEY } from './settings';
 
-// Переключатель слоёв на настоящей карте; тайлы — фикстура. Названия тестов — сценарии спеки map-layers.
+// The layer switcher on a real map; the tiles are a fixture. The test titles are the scenarios of the spec map-layers.
 
 let tiles: FixtureTiles;
 
@@ -38,7 +38,7 @@ function storedListed(listed: Record<string, boolean>) {
 describe('Подложка и оверлеи', () => {
     test('Сменить подложку', async () => {
         const { map } = await renderApp(tiles);
-        // подложки каталога — в кругах столбца (design custom-bases-in-list)
+        // the catalog basemaps are in the column circles (design custom-bases-in-list)
         await page.getByRole('button', { name: 'ESRI Satellite', exact: true }).click();
         await expect.poll(() => mapLayerIds(map)).toEqual(['E']);
         tiles.requested.length = 0;
@@ -50,7 +50,7 @@ describe('Подложка и оверлеи', () => {
     });
 
     test('Серый фон под слоями', async () => {
-        // тайлы ESRI не придут никогда (404): видно, что под новой подложкой — фон, а не прежняя карта
+        // the ESRI tiles never come (404): so under the new basemap the background shows, not the previous map
         tiles.respond(/arcgisonline\.com/, new URL('/__status__/404/tile.png', location.href).href);
         const { map } = await renderApp(tiles);
         expect(map.getStyle().layers[0]).toMatchObject({
@@ -59,7 +59,7 @@ describe('Подложка и оверлеи', () => {
             paint: { 'background-color': '#ddd' },
         });
         await page.getByRole('button', { name: 'ESRI Satellite', exact: true }).click();
-        // прежняя подложка уходит сразу, без ожидания загрузки новой
+        // the previous basemap goes away at once, without a wait for the load of the new one
         await expect.poll(() => mapLayerIds(map), { timeout: 1000 }).toEqual(['E']);
         expect(map.getStyle().layers[0].id).toBe('background');
     });
@@ -67,7 +67,7 @@ describe('Подложка и оверлеи', () => {
     test('Порядок оверлеев', async () => {
         storedListed({ Sa: true, Nm: true });
         const { map } = await renderApp(tiles);
-        // хитмэп Strava — кнопкой столбца: в All layers хитмэпов нет (design custom-bases-in-list)
+        // the Strava heatmap is a column button: All layers has no heatmaps (design custom-bases-in-list)
         await page.getByRole('button', { name: 'Strava heatmap (all)', exact: true }).click();
         const switcher = await openSwitcher();
         await switcher.getByText('Norway topo').click();
@@ -114,11 +114,11 @@ describe('Полный список слоёв', () => {
     test('Полный список', async () => {
         await renderApp(tiles);
         const switcher = await openSwitcher();
-        // без своих слоёв подложек в панели нет
+        // without custom layers, the panel has no basemaps
         await expect.element(switcher.getByRole('button', { name: 'Configure layers' })).toBeVisible();
         expect(switcher.getByText('ESRI Satellite').elements()).toHaveLength(0);
         expect(switcher.getByRole('radiogroup').elements()).toHaveLength(0);
-        // оверлеи видны сразу, секция — заголовок, а не кнопка
+        // the overlays are visible at once, the section is a heading, not a button
         await expect.element(switcher.getByRole('group', { name: 'Overlays' })).toBeVisible();
         await expect.element(switcher.getByRole('checkbox', { name: 'Relief shading' })).toBeVisible();
         expect(switcher.getByRole('button', { name: 'Overlays' }).elements()).toHaveLength(0);
@@ -158,13 +158,14 @@ describe('Полный список слоёв', () => {
         storedListed({ Nm: true, Gbt: true });
         await renderApp(tiles, '#m=8/46/8&l=Tt/Hs');
         const switcher = await openSwitcher();
-        // и обычные, и редкие группы раскрыты, свернуть нечего
+        // both the usual and the rare groups are expanded, there is nothing to collapse
         await expect.element(switcher.getByRole('group', { name: 'Overlays' })).toBeVisible();
         await expect.element(switcher.getByRole('checkbox', { name: 'Relief shading' })).toBeChecked();
         await expect.element(switcher.getByRole('group', { name: 'Norway' })).toBeVisible();
         await expect.element(switcher.getByRole('checkbox', { name: 'Norway topo' })).toBeVisible();
         await expect.element(switcher.getByRole('group', { name: 'Topo maps' })).toBeVisible();
-        // у строки с минимальным зумом подпись — «Great Britain Topo zoom ≥ 12», а имя browser mode сравнивает целиком
+        // the label of the row with a minimum zoom is "Great Britain Topo zoom ≥ 12", and browser mode compares the
+        // full name
         await expect.element(switcher.getByRole('checkbox', { name: /^Great Britain Topo/u })).toBeVisible();
         expect(switcher.element().querySelectorAll('[aria-expanded]')).toHaveLength(0);
     });
@@ -173,7 +174,7 @@ describe('Полный список слоёв', () => {
 describe('Единый вид меню', () => {
     test('Строки списка и пункты меню одной высоты', async () => {
         await renderApp(tiles);
-        // offsetHeight — в CSS-пикселях: окно browser-теста масштабируется, и getBoundingClientRect даёт меньше
+        // offsetHeight is in CSS pixels: the window of the browser test is scaled, and getBoundingClientRect gives less
         const size = (element: Element) => [(element as HTMLElement).offsetHeight, getComputedStyle(element).fontSize];
         const switcher = await openSwitcher();
         const row = size(switcher.element().querySelector('label[data-layer]') as Element);
@@ -183,7 +184,8 @@ describe('Единый вид меню', () => {
         const dialogRow = size(dialog.element().querySelector('label') as Element);
         await dialog.getByRole('button', { name: 'Cancel' }).click();
         await expect.element(dialog).not.toBeInTheDocument();
-        // меню открывается не в том же такте, что нажатие: под нагрузкой полного прогона пункта ещё нет — сначала ждём
+        // the menu does not open in the same tick as the click: under the load of a full run the item is not there
+        // yet, so wait first
         await page.getByRole('button', { name: 'Topo layers', exact: true }).click();
         const radio = page.getByRole('menuitemradio').first();
         await expect.element(radio).toBeVisible();
@@ -194,7 +196,7 @@ describe('Единый вид меню', () => {
         const menuItem = page.getByRole('menuitem').first();
         await expect.element(menuItem).toBeVisible();
         const item = size(menuItem.element());
-        // 14 px, строка 24 px — правило единообразия меню и списков (AGENTS.md, design uniform-layer-menus)
+        // 14 px, a 24 px row: the uniformity rule for menus and lists (AGENTS.md, design uniform-layer-menus)
         expect({ row, dialogRow, radioItem, item }).toEqual({
             row: [24, '14px'],
             dialogRow: [24, '14px'],
@@ -204,8 +206,8 @@ describe('Единый вид меню', () => {
     });
 });
 
-// Круги подложек и кнопка хитмэпа — кнопки столбца с aria-pressed (у значков меню его нет): первые три — круги, за
-// ними кнопка хитмэпа и кнопка снимков по датам (design custom-bases-in-list)
+// The basemap circles and the heatmap button are column buttons with aria-pressed (the menu badges do not have it): the
+// first three are the circles, then the heatmap button and the dated imagery button (design custom-bases-in-list)
 function columnButtons() {
     const group = page.getByRole('group', { name: 'Quick layers' }).element();
     return [...group.querySelectorAll('button[aria-pressed]')];
@@ -215,7 +217,7 @@ const names = () => circles().map((button) => button.getAttribute('aria-label'))
 const pressed = () => circles().map((button) => button.getAttribute('aria-pressed'));
 const heatmapButton = () => columnButtons()[3];
 
-// меню значка у круга или кнопки: имя значка — имя группы (quick-layers.ts)
+// the badge menu of a circle or a button: the badge name is the group name (quick-layers.ts)
 async function openMenu(group: string) {
     await page.getByRole('button', { name: group, exact: true }).click();
     const menu = page.getByRole('menu', { name: group });
@@ -237,7 +239,7 @@ describe('Превью подложек справа', () => {
         await renderApp(tiles);
         await expect.poll(names).toEqual(['OpenFreeMap Outdoor', 'Google Map', 'ESRI Satellite']);
         expect(pressed()).toEqual(['true', 'false', 'false']);
-        // у каждой из трёх подложек — картинка из сборки, а не пустой круг
+        // each of the three basemaps has an image from the build, not an empty circle
         expect(circles().map((button) => button.querySelector('img')?.getAttribute('src'))).toEqual([
             expect.stringMatching(/thumbnails\/Of\.webp/),
             expect.stringMatching(/thumbnails\/G\.webp/),
@@ -279,7 +281,7 @@ describe('Превью подложек справа', () => {
         await expect.poll(() => map.loaded(), { timeout: 10_000 }).toBe(true);
         expect(circles()).toHaveLength(3);
         expect(tiles.requested.some((url) => url.includes('tile.openstreetmap.org'))).toBe(true);
-        // картинки превью — из сборки: тайлов трёх подложек столбца нет
+        // the preview images are from the build: there are no tiles of the three column basemaps
         expect(
             tiles.requested.filter((url) => /openfreemap|tracestrack|google\.com|arcgisonline\.com/u.test(url)),
         ).toEqual([]);
@@ -299,7 +301,7 @@ describe('Контраст кнопок столбца', () => {
         await renderApp(tiles);
         await expect.poll(names).toHaveLength(3);
         for (const circle of circles()) {
-            // тёмное кольцо 1.5 px и тень (design quick-circle-contrast)
+            // a dark 1.5 px ring and a shadow (design quick-circle-contrast)
             const shadow = getComputedStyle(circle).boxShadow;
             expect(shadow).toMatch(/rgba\(0, 0, 0, 0\.45\) 0px 0px 0px 1\.5px/u);
             expect(shadow).toMatch(/rgba\(0, 0, 0, 0\.35\) 0px 1px 4px/u);
@@ -317,9 +319,10 @@ describe('Контраст кнопок столбца', () => {
             expect(style.color).toBe('rgb(255, 255, 255)');
             expect(style.borderTopColor).toBe('rgb(255, 255, 255)');
             expect(style.borderTopWidth).toBe('2px');
-            // тёмно-серый фон — neutral-700 палитры Tailwind; оттенок серого Chromium пишет то 0, то none
+            // the dark gray background is neutral-700 of the Tailwind palette; Chromium writes the gray hue as 0 or as
+            // none
             expect(style.backgroundColor).toMatch(/^oklch\(0\.371 0 (0|none)\)$/u);
-            // значок поверх круга: в его середине — он сам, а не круг
+            // the badge is over the circle: at its middle is the badge itself, not the circle
             const box = badge.getBoundingClientRect();
             expect(badge.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2))).toBe(true);
         }
@@ -433,14 +436,14 @@ describe('Меню слоёв столбца: перезагрузка', () => {
         const menu = await openMenu('Topo layers');
         await menu.getByRole('menuitemradio', { name: 'OpenTopoMap' }).click();
         await expect.poll(() => mapLayerIds(first.map)).toEqual(['Otm']);
-        // снять галочку слоя, который сейчас на карте: он остаётся на карте и в меню, пока выбран
+        // uncheck the layer that is on the map now: it stays on the map and in the menu while it is selected
         const switcher = await openSwitcher();
         await switcher.getByText('Configure layers').click();
         const dialog = page.getByRole('dialog');
         await dialog.getByText('OpenTopoMap').click();
         await dialog.getByRole('button', { name: 'Ok' }).click();
         await expect.element(dialog).not.toBeInTheDocument();
-        // перезагрузка — со своим адресом прошлого захода: приложение записало в него l=Otm
+        // the reload uses the own address of the previous visit: the app wrote l=Otm into it
         const hash = location.hash;
         expect(hash).toMatch(/l=Otm(&|$)/);
         await cleanup();
@@ -448,7 +451,7 @@ describe('Меню слоёв столбца: перезагрузка', () => {
         await expect.poll(() => mapLayerIds(map)).toEqual(['Otm']);
         await page.getByRole('button', { name: 'ESRI Satellite', exact: true }).click();
         await expect.poll(() => mapLayerIds(map)).toEqual(['E']);
-        // свой адрес прошлого захода снятую галочку не возвращает
+        // the own address of the previous visit does not bring back the removed check mark
         expect(itemNames(await openMenu('Topo layers'))).not.toContain('OpenTopoMap');
     });
 });
@@ -493,13 +496,13 @@ describe('Круг помнит выбор типа', () => {
     });
 
     test('Откат не меняет память', async () => {
-        // недоступны обе подложки цепочки: OpenFreeMap → Tracestrack → OpenStreetMap
+        // both basemaps before OpenStreetMap in the chain OpenFreeMap → Tracestrack → OpenStreetMap are unavailable
         const unavailable = new URL('/__status__/503/tile.png', location.href).href;
         tiles.respond(/^https:\/\/tiles\.openfreemap\.org\/planet$/, unavailable);
         tiles.respond(/tracestrack/, unavailable);
         const { map } = await renderApp(tiles);
         await expect.poll(() => mapLayerIds(map)).toEqual(['O']);
-        // на карте OpenStreetMap — отмечен круг обычной карты
+        // OpenStreetMap is on the map, so the standard map circle is marked
         expect(names()).toEqual(['OpenFreeMap Outdoor', 'OpenStreetMap', 'ESRI Satellite']);
         expect(pressed()).toEqual(['false', 'true', 'false']);
         await page.getByRole('button', { name: 'ESRI Satellite', exact: true }).click();
@@ -514,12 +517,14 @@ describe('Круг помнит выбор типа', () => {
             new URL('/__status__/503/tile.png', location.href).href,
         );
         const { map } = await renderApp(tiles);
-        // OpenFreeMap недоступна — на карте Tracestrack, круг топокарты отмечен, но его цель — OpenFreeMap
+        // OpenFreeMap is unavailable: Tracestrack is on the map, the topo map circle is marked, but its target is
+        // OpenFreeMap
         await expect.poll(() => mapLayerIds(map)).toEqual(['Tt']);
         expect(pressed()).toEqual(['true', 'false', 'false']);
         expect(names()).toEqual(['OpenFreeMap Outdoor', 'Google Map', 'ESRI Satellite']);
         await page.getByRole('button', { name: 'OpenFreeMap Outdoor', exact: true }).click();
-        // нажатие пробует OpenFreeMap снова; Tracestrack выбором не становится ни в адресе, ни в памяти круга
+        // the click tries OpenFreeMap again; Tracestrack does not become the selection, neither in the address nor in
+        // the circle memory
         await expect.poll(() => location.hash).toContain('l=Of');
         const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}');
         expect(saved.selection.base).toBe('Of');
@@ -562,7 +567,7 @@ describe('Настройка списка слоёв', () => {
         ]);
         await userEvent.keyboard('{Escape}');
 
-        // после перезагрузки — тоже скрыт
+        // after the reload, it is hidden too
         await cleanup();
         await renderApp(tiles);
         menu = await openMenu('Topo layers');
@@ -592,8 +597,8 @@ describe('Настройка списка слоёв: кнопки столбц�
 });
 
 describe('Свои слои по URL', () => {
-    // Проверка CORS идёт настоящим fetch; сервер своего слоя — выдуманный, поэтому ответ подменяется, а всё
-    // остальное уходит в настоящий fetch (тайлы MapLibre — на фикстуру через transformRequest)
+    // The CORS check uses the real fetch; the server of the custom layer is invented, so the test replaces its answer,
+    // and all other requests go to the real fetch (MapLibre tiles go to the fixture through transformRequest)
     function stubTileServer(cors: boolean) {
         const realFetch = window.fetch.bind(window);
         vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {

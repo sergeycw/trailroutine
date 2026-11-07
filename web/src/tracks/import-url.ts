@@ -7,17 +7,17 @@ import { parseGpxText } from './parsers/gpx';
 import { decodeXml } from './parsers/text';
 import { fetchOrNull, proxied, type TrackSources } from './sources';
 
-// Импорт трека по ссылке (services/ старого клиента). Сервисы — в его порядке, без Strava, Garmin Connect и Wikiloc
-// (решение владельца, архив record-new-ui-decisions): их ссылки попадают в «любой файл» и дают unsupported format.
-// Всё, что идёт во внешний сайт, — через CORS-прокси клона.
+// Track import by link (services/ of the old client). The services go in its order, without Strava, Garmin Connect
+// and Wikiloc (the owner's decision, archive record-new-ui-decisions): their links go to "any file" and give
+// unsupported format. Everything that goes to an external site goes through the CORS proxy of the clone.
 //
-// Сервис узнаёт ссылку без сети и только потом качает (design search-track-links, «Порядок разбора ссылки»): строка
-// поиска показывает результат-трек на каждую букву, а качает только выбранный.
+// A service recognizes a link without the network and downloads only after that (design search-track-links,
+// «Порядок разбора ссылки»): the search box shows a track result on each letter, but downloads only the selected one.
 
 export interface TrackLink {
-    // название будущего трека, если сервис знает его заранее; подпись результата поиска
+    // name of the future track, if the service knows it in advance; the label of the search result
     title: string;
-    // «любой файл по http(s)»: последний вариант, поиск предлагает его, только если ссылка не ссылка на карту
+    // "any file over http(s)": the last option, search offers it only if the link is not a map link
     file: boolean;
     load(sources: TrackSources): Promise<GeoData[]> | GeoData[];
 }
@@ -30,7 +30,7 @@ async function bytesOf(response: Response) {
     return new Uint8Array(await response.arrayBuffer());
 }
 
-// Линейка Яндекс Карт: rl= — точки дельтами «lng,lat~lng,lat», без запросов в сеть
+// Yandex Maps ruler: rl= has points as deltas «lng,lat~lng,lat», without network requests
 const yandexRuler: Service = (url) => {
     const match = /yandex\..+[?&]rl=([^&]+)/u.exec(url);
     if (!match) {
@@ -64,7 +64,7 @@ const nakarteTrack: Service = (url) => {
     if (index === -1) {
         return null;
     }
-    // строка поиска показывает результат на любую строку после track://: мусор — тост, а не исключение
+    // the search box shows a result for any string after track://: garbage gives a toast, not an exception
     return link(TRACKS_FROM_LINK, () => {
         try {
             return parseTrackUrlData(url.slice(index + 'track://'.length));
@@ -74,7 +74,7 @@ const nakarteTrack: Service = (url) => {
     });
 };
 
-// Ссылка nakarte (любого адреса) с параметрами треков в #
+// nakarte link (of any address) with track parameters in #
 const nakarteUrl: Service = (url) => {
     if (!url.includes('#')) {
         return null;
@@ -108,7 +108,7 @@ const osm: Service = (url) => {
     });
 };
 
-// EPSG:3857 → широта и долгота (SphericalMercator.unproject Leaflet, R = 6 378 137 м)
+// EPSG:3857 → latitude and longitude (SphericalMercator.unproject of Leaflet, R = 6 378 137 m)
 function unprojectMercator(x: number, y: number): LatLng {
     const R = 6378137;
     const d = 180 / Math.PI;
@@ -124,7 +124,7 @@ const tracedetrail: Service = (url) => {
     return link(title, async (sources) => {
         let name = title;
         const response = await fetchOrNull(sources, proxied(sources, url));
-        // удалённый трек сервис отдаёт кодом 500 со страницей
+        // the service gives a deleted track with code 500 and a page
         if (!response || ![200, 500].includes(response.status)) {
             return [geoData(url, { error: 'NETWORK' })];
         }
@@ -198,18 +198,18 @@ const sportsTracker: Service = (url) => {
     });
 };
 
-// nameFromUrl старого клиента: последний сегмент пути без # и ?
+// nameFromUrl of the old client: the last path segment without # and ?
 export function nameFromUrl(url: string): string {
     let decoded = url;
     try {
         decoded = decodeURIComponent(url);
     } catch {
-        // оставить как есть
+        // keep it as it is
     }
     return decoded.split('#')[0].split('?')[0].replace(/\/*$/u, '').split('/').pop() ?? decoded;
 }
 
-// Любой файл по http(s): формат — по содержимому
+// Any file over http(s): the format comes from the content
 const anyFile: Service = (url) => {
     if (!/^https?:\/\/.+/u.test(url)) {
         return null;
@@ -229,7 +229,7 @@ const anyFile: Service = (url) => {
 
 const SERVICES: Service[] = [yandexRuler, nakarteTrack, nakarteUrl, osm, tracedetrail, sportsTracker, anyFile];
 
-// первый сервис, узнавший ссылку; без сети
+// the first service that recognizes the link; no network
 export function matchTrackLink(url: string): TrackLink | null {
     for (const service of SERVICES) {
         const found = service(url);

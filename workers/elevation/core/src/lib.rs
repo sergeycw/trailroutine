@@ -11,8 +11,8 @@ pub mod response;
 use format::{HEADER_LEN, Header};
 use grid::Cell;
 
-// Чтения R2 идут пачками: на один вызов Worker не больше 10 000 подзапросов и ограничено
-// число одновременных соединений.
+// R2 reads go in batches: one Worker invocation has a maximum of 10 000 subrequests and a limited
+// number of simultaneous connections.
 pub(crate) const PARALLEL_READS: usize = 16;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -32,8 +32,8 @@ impl std::fmt::Display for Error {
 
 impl std::error::Error for Error {}
 
-// Единственная точка ввода-вывода ядра: прочитать диапазон байт объекта, `None` — объекта нет.
-// Адаптеры: R2 (`worker`), файлы (`server`), память (тесты).
+// The only I/O point of the core: read a byte range of an object, `None` means there is no object.
+// Adapters: R2 (`worker`), files (`server`), memory (tests).
 #[allow(async_fn_in_trait)]
 pub trait Source {
     async fn read(&self, key: &str, offset: u64, length: u64) -> Result<Option<Vec<u8>>, Error>;
@@ -57,16 +57,17 @@ fn group(points: &[(f64, f64)]) -> BTreeMap<String, ChunkPoints> {
     degrees
 }
 
-/// Сколько чтений хранилища сделает `elevations`: заголовок каждого задетого градуса и каждый задетый
-/// кусок. Считается до чтения и без учёта кеша адаптера — по нему ограничивается цена запроса
-/// (класс B R2 на чтение, `http::MAX_READS` и бюджет чтений).
+/// The number of storage reads that `elevations` does: the header of each degree it touches and
+/// each chunk it touches. It is counted before the read and without the adapter cache; it limits
+/// the cost of the request (R2 class B per read, `http::MAX_READS` and the read budget).
 pub fn read_count(points: &[(f64, f64)]) -> usize {
     let degrees = group(points);
     degrees.len() + degrees.values().map(BTreeMap::len).sum::<usize>()
 }
 
-// Точки группируются по градусам и кускам: заголовок и каждый кусок читаются один раз на запрос,
-// куски распаковываются по одному, чтобы не держать в памяти wasm все сразу.
+// The points are grouped by degrees and chunks: the header and each chunk are read once per
+// request, the chunks are decompressed one at a time, so the wasm memory does not keep all of them
+// at once.
 pub async fn elevations<S: Source>(
     source: &S,
     points: &[(f64, f64)],

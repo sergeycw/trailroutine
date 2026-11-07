@@ -26,9 +26,9 @@ import type { Track } from './model';
 import { RenameTrackDialog } from './TrackDialogs';
 import { TrackExportItems } from './TrackExportItems';
 
-// Список треков (design add-web-tracks, «Список треков»; раскладка — макет 4a, design polish-web-ui): шапка с меню
-// списка, строки треков с меню трека; ссылка на трек — в строку поиска (design search-track-links). Тексты меню —
-// старого клиента. Действия — createTrackActions (actions.ts).
+// Track list (design add-web-tracks, «Список треков»; layout: mock-up 4a, design polish-web-ui): a header with the
+// list menu, track rows with the track menu; a track link goes into the search box (design search-track-links). The
+// menu texts are from the old client. Actions: createTrackActions (actions.ts).
 
 function TrackRow({ track, onRename }: { track: Track; onRename: (track: Track) => void }) {
     const actions = useTrackActions();
@@ -36,7 +36,7 @@ function TrackRow({ track, onRename }: { track: Track; onRename: (track: Track) 
     const profile = useElevationProfile();
     const edited = useAppStore((state) => state.routeEdit?.trackId === track.id);
     return (
-        // редактируемый трек подсвечен (класс edit строки старого клиента)
+        // the track in editing is highlighted (the edit class of a row in the old client)
         <li
             className={`-mx-1 flex min-h-6 items-center gap-1 rounded-md px-1 ${edited ? 'bg-muted' : ''}`}
             data-track={track.name}
@@ -75,7 +75,7 @@ function TrackRow({ track, onRename }: { track: Track; onRename: (track: Track) 
                     <DropdownMenuItem onClick={() => actions.reverse(track)}>Reverse</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => actions.remove(track)}>Delete</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => profile.open(track.id)}>Show elevation profile</DropdownMenuItem>
-                    {/* checkbox-пункт Base UI сам меню не закрывает (как RadioItem) */}
+                    {/* a Base UI checkbox item does not close the menu by itself (as RadioItem) */}
                     <DropdownMenuCheckboxItem
                         closeOnClick
                         checked={track.measureTicksShown}
@@ -91,13 +91,14 @@ function TrackRow({ track, onRename }: { track: Track; onRename: (track: Track) 
     );
 }
 
-// Круглая кнопка списка слева сверху (design layout-three-zones), список — выпадающей панелью под строкой (TopBar). Число
-// треков — данные, а не подпись, поэтому значком в углу кнопки; aria-label с числом — по нему ищут тесты
+// Round list button at the top left (design layout-three-zones), the list is a drop-down panel under the row (TopBar).
+// The track count is data, not a label, so it is a badge in the button corner; tests find the button by the aria-label
+// with the count
 export function TracksButton({ open, onToggle }: { open: boolean; onToggle: () => void }) {
     const count = useAppStore((state) => state.tracks.length);
     const loading = useAppStore((state) => state.loadingTracks > 0);
-    // ожидание прокладки после Finish editing: строки редактора с кнопкой прокладки уже нет (спека route-editing,
-    // «Ожидание прокладки в верхней строке»); подпись остаётся «Tracks N», ожидание — в title и aria-busy
+    // waiting for routing after Finish editing: the editor row with the routing button is gone (spec route-editing,
+    // «Ожидание прокладки в верхней строке»); the label stays «Tracks N», the wait shows in title and aria-busy
     const routing = useAppStore((state) => tracksRouting(state.tracks));
     const label = count > 0 ? `Tracks ${count}` : 'Tracks';
     return (
@@ -111,7 +112,7 @@ export function TracksButton({ open, onToggle }: { open: boolean; onToggle: () =
             aria-busy={loading || routing || undefined}
             onClick={onToggle}
         >
-            {/* загрузка по ссылке — не прокладка: свой спиннер, нитка — только ожидание маршрута (design
+            {/* loading by link is not routing: its own spinner; the thread shows only the wait for a route (design
                 route-thread-loader) */}
             {loading ? (
                 <LoaderCircleIcon className="animate-spin" aria-label="Loading tracks" />
@@ -129,8 +130,8 @@ export function TracksButton({ open, onToggle }: { open: boolean; onToggle: () =
     );
 }
 
-// Панель списка: шапка с инструментами списка (прокладка, файл, меню списка) и строки треков. «New track» — кнопка
-// верхней строки
+// List panel: a header with the list tools (routing, file, list menu) and track rows. «New track» is a button of the
+// top row
 export function TrackList() {
     const actions = useTrackActions();
     const tracks = useAppStore((state) => state.tracks);

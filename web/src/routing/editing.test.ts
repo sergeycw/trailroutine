@@ -10,8 +10,8 @@ import { createRouteEditing } from './editing';
 import { fromSegment } from './line';
 import type { Router } from './router';
 
-// Сценарии спек route-editing, routing и tracks на связи редактора со стором: стор настоящий, роутер поддельный
-// (тест сам отвечает на каждый запрос), карты нет.
+// Scenarios of the specs route-editing, routing and tracks on the connection between the editor and the store: the
+// store is real, the router is fake (the test answers each request itself), there is no map.
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 const P = (lat: number, lng: number) => ({ lat, lng });
@@ -100,7 +100,7 @@ describe('Начало и конец редактирования', () => {
         const ctx = setup();
         ctx.editing.newTrack('');
         ctx.editing.click(A);
-        // Escape дважды: конец рисования, конец редактирования
+        // Escape two times: the end of drawing, the end of editing
         ctx.editing.stopDrawing();
         expect(edit(ctx)).not.toBeNull();
         ctx.editing.stop();
@@ -147,7 +147,7 @@ describe('Действия с треком', () => {
         ctx.editing.stop();
         ctx.actions.reverse(tracks(ctx)[0]);
         ctx.editing.start(tracks(ctx)[0].id, 0);
-        // после разворота опорные точки — B и A, перетаскивание A перестраивает B–A как «Road bike»
+        // after the reverse, the waypoints are B and A, and a drag of A routes B–A again as «Road bike»
         expect(edit(ctx)?.line.waypoints).toEqual([B, A]);
         ctx.editing.moveWaypoint(1, P(41.689, 44.779));
         expect(edit(ctx)?.line.legs[0]).toMatchObject({ state: 'pending', activity: 'road-bike' });
@@ -231,7 +231,7 @@ describe('Недоступный роутер', () => {
             call.reject(new RoutingError('BRouter is not reachable', true));
         }
         await flush();
-        // оба отрезка прямые и помечены, предупреждение одно, кнопка красная
+        // both legs are straight and marked, there is one warning, the button is red
         expect(edit(ctx)?.line.legs.map((leg) => leg.state)).toEqual(['failed', 'failed']);
         expect(ctx.messages).toEqual([
             'BRouter is not running, start it with docker compose up -d. Lines stay straight until then.',
@@ -292,12 +292,12 @@ describe('Выбор активности', () => {
     });
 });
 
-// Инструменты линии (спека route-editing, design add-web-line-tools): операции списка над редактируемым отрезком
+// Line tools (spec route-editing, design add-web-line-tools): list operations on the edited segment
 describe('инструменты линии', () => {
     const D = P(41.72, 44.81);
     const E = P(41.73, 44.82);
 
-    // трек A–B–C с двумя проложенными отрезками, редактирование закончено
+    // a track A–B–C with two routed legs, editing is finished
     async function routedTrack(ctx: ReturnType<typeof setup>) {
         ctx.editing.newTrack('Walk');
         for (const point of [A, B, C]) {
@@ -374,7 +374,7 @@ describe('инструменты линии', () => {
         ctx.editing.start(track.id, 1);
         ctx.editing.startJoin('start');
         expect(ctx.store.getState().lineTool).toEqual({ kind: 'join', end: 'start' });
-        // к началу C–D приклеивается конец B первого отрезка
+        // the end B of the first segment attaches to the start of C–D
         ctx.editing.join(track.id, 0, 'end');
         const [joined] = tracks(ctx);
         expect(joined.segments).toEqual([[A, B, C, D]]);
@@ -393,7 +393,7 @@ describe('инструменты линии', () => {
         ]);
         ctx.editing.start(walk.id, 0);
         ctx.editing.startJoin('end');
-        // ближний к C конец — D: Other приклеивается началом
+        // the end nearer to C is D: Other attaches with its start
         ctx.editing.join(other.id, 0, 'start');
         const [joined, untouched] = tracks(ctx);
         expect(untouched).toBe(other);

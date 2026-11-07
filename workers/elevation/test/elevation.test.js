@@ -1,5 +1,5 @@
-// Тест собранного wasm-Worker в workerd с локальным R2: адаптер `worker` (R2 range, кеш в памяти,
-// перевод ответа ядра в Response) и CORS. Логику ядра подробно проверяют cargo-тесты.
+// A test of the built wasm Worker in workerd with a local R2: the `worker` adapter (R2 range, memory cache,
+// conversion of the core answer to a Response) and CORS. The cargo tests check the core logic in detail.
 import {env} from 'cloudflare:test';
 import {exports as workerExports} from 'cloudflare:workers';
 import {beforeAll, describe, expect, it} from 'vitest';
@@ -96,7 +96,7 @@ describe('CORS and methods', () => {
         expect(response.headers.get('Access-Control-Allow-Origin')).toBe(CLONE_ORIGIN);
     });
 
-    // свой домен после переезда (change move-to-trailroutine-domain)
+    // the own domain after the move (change move-to-trailroutine-domain)
     it('reflects the own domain trailroutine.com', async () => {
         const response = await request({body: '', origin: 'https://trailroutine.com'});
         expect(response.status).toBe(200);

@@ -1,9 +1,9 @@
 name: elevation data
 
-# Ручная перепаковка HGT 3″ viewfinderpanoramas в бакет R2 `nakarte-elevation`
-# (workers/elevation/scripts/elevation-data.sh). Заливка — через S3 API R2 токеном с правом
-# Object Read & Write на этот бакет (секреты R2_ACCESS_KEY_ID и R2_SECRET_ACCESS_KEY);
-# градусы, которые уже есть в бакете, пропускаются, поэтому оборванный прогон можно перезапустить.
+# Manual repack of the viewfinderpanoramas HGT 3″ into the R2 bucket `nakarte-elevation`
+# (workers/elevation/scripts/elevation-data.sh). The upload goes through the R2 S3 API with a token with the permission
+# Object Read & Write on this bucket (secrets R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY);
+# the script skips the degrees that are already in the bucket, so you can restart an interrupted run.
 
 on:
   workflow_dispatch:
@@ -35,7 +35,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
-      # список — через env, а не подстановкой в run: так ввод не попадает в текст скрипта
+      # the list goes through env, not through substitution in run: thus the input does not get into the script text
       - run: scripts/elevation-data.sh $ZIPS
         env:
           ZIPS: ${{ github.event.inputs.zips }}

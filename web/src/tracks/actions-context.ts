@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react';
 import type { TrackActions } from './actions';
 
-// Действия списка треков для компонентов: App создаёт их один раз со своими сетью и уведомлениями
+// Track list actions for components: App creates them once with its own network and notices
 export const TrackActionsContext = createContext<TrackActions | null>(null);
 
 export function useTrackActions(): TrackActions {

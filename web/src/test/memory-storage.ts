@@ -1,4 +1,4 @@
-// localStorage в памяти для unit-тестов в Node
+// In-memory localStorage for unit tests in Node
 export function memoryStorage(items: Record<string, string> = {}): Storage {
     const data = new Map(Object.entries(items));
     return {

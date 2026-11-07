@@ -1,18 +1,19 @@
-// Превью подложек для столбца справа (change layer-thumbnails, design «Превью — картинки в сборке»; change
-// three-quick-bases): по одному тайлу каждой из трёх подложек столбца (QUICK_BASES), половина тайла вокруг места →
-// 72 px (круг 36 CSS px на экране 2x), WebP. Место и зум у каждой подложки свои (PLACES): над одним местом топокарта и
-// обычная карта неотличимы, а без подписей превью должны различаться картинкой. Картинки лежат в
-// web/src/layers/thumbnails/<код>.webp и попадают в сборку; приложение тайлов ради превью не запрашивает.
+// Basemap thumbnails for the column on the right (change layer-thumbnails, design «Превью — картинки в сборке»; change
+// three-quick-bases): one tile of each of the three basemaps of the column (QUICK_BASES), half a tile around the
+// place → 72 px (a circle of 36 CSS px on a 2x screen), WebP. Each basemap has its own place and zoom (PLACES): over
+// one place the topo map and the regular map look the same, and without labels the thumbnails must differ by the
+// image. The images are in web/src/layers/thumbnails/<code>.webp and go into the build; the app does not request tiles
+// for them.
 //
-// Запуск из корня: PATH=/usr/local/bin:$PATH node --experimental-strip-types scripts/layer-thumbnails.mjs [код…]
-// Без кодов — все три. Нужны Chromium Playwright из web/node_modules (npm ci в web/) и сеть.
-// Страница — пустая заглушка на origin клона: провайдеры видят обычный Referer сайта.
+// Run from the root: PATH=/usr/local/bin:$PATH node --experimental-strip-types scripts/layer-thumbnails.mjs [code…]
+// Without codes, all three. It needs the Playwright Chromium from web/node_modules (npm ci in web/) and the network.
+// The page is an empty stub on the origin of the clone: the providers see the usual Referer of the site.
 //
-// Круг топокарты — векторная OpenFreeMap Outdoor (design openfreemap-default-basemap): тайл — данные, а не картинка,
-// вырезать нечего. Её рисует MapLibre из web/node_modules на той же заглушке (способ change add-vector-outdoor-style):
-// стиль из outdoorLayers и источника каталога, холст 128×128 над местом из PLACES в масштабе половины растрового тайла
-// этого зума (зум MapLibre на 1 меньше, AGENTS.md), снимок холста сжимается в те же 72 px. Подписи — английские (язык
-// каталога скрипта).
+// The topo map circle is the vector OpenFreeMap Outdoor (design openfreemap-default-basemap): the tile is data, not an
+// image, there is nothing to cut. MapLibre from web/node_modules draws it on the same stub (the method of change
+// add-vector-outdoor-style): the style from outdoorLayers and the catalog source, a 128×128 canvas over the place from
+// PLACES at the scale of half a raster tile of this zoom (the MapLibre zoom is 1 less, AGENTS.md), the canvas snapshot
+// is scaled down to the same 72 px. The labels are in English (the catalog language of the script).
 import {createRequire} from 'node:module';
 import {writeFile} from 'node:fs/promises';
 import {dirname, join} from 'node:path';
@@ -25,13 +26,14 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_DIR = join(ROOT, 'web/src/layers/thumbnails');
 const require = createRequire(join(ROOT, 'web/package.json'));
 const {chromium} = require('playwright');
-// MapLibre 6 — только ESM: страница импортирует сборку и ставит адрес воркера, как src/map/maplibre.ts приложения
+// MapLibre 6 is ESM only: the page imports the build and sets the worker URL, as src/map/maplibre.ts of the app does
 const MAPLIBRE_DIST = join(ROOT, 'web/node_modules/maplibre-gl/dist');
 
-// Места превью по типу (design three-quick-bases, кандидаты сравнивались тройками на кругах 36 px): топокарта —
-// склоны Гудаури (светлые луга, дорога, горизонтали: лес над Местиа на круге — тёмное пятно, как снимок; место
-// выбиралось для Tracestrack Topo, OpenFreeMap Outdoor снимается там же), обычная карта — центр Тбилиси (кварталы,
-// река, улицы), спутник — долина Местиа, как в первых превью
+// Thumbnail places by type (design three-quick-bases, the candidates were compared in sets of three on 36 px circles):
+// topo map — the slopes of Gudauri (light meadows, a road, contour lines: the forest above Mestia gives a dark spot on
+// the circle, similar to the satellite image; the place was selected for Tracestrack Topo, OpenFreeMap Outdoor is
+// captured at the same place), regular map — the center of Tbilisi (blocks, a river, streets), satellite — the Mestia
+// valley, as in the first thumbnails
 const PLACES = {
     Of: {lat: 42.47, lng: 44.48, zoom: 13},
     G: {lat: 41.705, lng: 44.795, zoom: 14},
@@ -45,7 +47,7 @@ function tileOf({lat, lng, zoom}) {
     const rad = (lat * Math.PI) / 180;
     const x = ((lng + 180) / 360) * n;
     const y = ((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2) * n;
-    // fx, fy — место точки внутри тайла (0…1): кадр берётся вокруг неё
+    // fx, fy: the position of the point in the tile (0…1): the frame is taken around it
     return {x: Math.floor(x), y: Math.floor(y), z: zoom, fx: x % 1, fy: y % 1};
 }
 
@@ -58,7 +60,7 @@ function quadkey({x, y, z}) {
     return key;
 }
 
-// токены шаблона MapLibre, которые встречаются у подложек каталога
+// the MapLibre template tokens that the basemaps of the catalog use
 function tileUrl(template, tile) {
     return template
         .replace('{z}', String(tile.z))
@@ -69,7 +71,7 @@ function tileUrl(template, tile) {
 }
 
 const only = new Set(process.argv.slice(2));
-// код не из столбца раньше снимался молча (все подложки каталога), теперь его картинку некому показать
+// before, the script captured a code outside the column silently (all catalog basemaps), now nothing shows its image
 const unknown = [...only].filter((code) => !QUICK_BASES.includes(code));
 if (unknown.length > 0) {
     console.error(`not in QUICK_BASES (web/src/layers/quick-layers.ts): ${unknown.join(' ')}`);
@@ -94,7 +96,7 @@ try {
     );
     await page.goto(`${ORIGIN}/__thumbnails`);
     for (const layer of bases) {
-        // новая подложка в QUICK_BASES без места — понятная ошибка, а не падение всего скрипта на tileOf(undefined)
+        // a new basemap in QUICK_BASES without a place gives a clear error, not a script failure on tileOf(undefined)
         if (!PLACES[layer.code]) {
             failed++;
             console.error(`${layer.code} ${layer.title}: no place in PLACES`);
@@ -113,7 +115,7 @@ try {
         }
         const tile = tileOf(PLACES[layer.code]);
         const url = tileUrl(layer.source.tiles[0], tile);
-        // ошибка одной подложки (нет CORS, не картинка, сеть) не останавливает остальные
+        // an error of one basemap (no CORS, not an image, network) does not stop the others
         const result = await page.evaluate(
             async ({src, fx, fy}) => {
                 try {
@@ -124,7 +126,7 @@ try {
                     const bitmap = await createImageBitmap(await response.blob());
                     const canvas = new OffscreenCanvas(72, 72);
                     const context = canvas.getContext('2d');
-                    // половина тайла вокруг точки: на круге 36 px целый тайл превратился бы в пятно цвета
+                    // half a tile around the point: on a 36 px circle a full tile would become a spot of color
                     const size = bitmap.width / 2;
                     const left = Math.min(Math.max(fx * bitmap.width - size / 2, 0), bitmap.width - size);
                     const top = Math.min(Math.max(fy * bitmap.height - size / 2, 0), bitmap.height - size);
@@ -172,7 +174,7 @@ async function vectorThumbnail(page, layer, place) {
                     interactive: false,
                     attributionControl: false,
                     pixelRatio: 1,
-                    // без него холст после кадра пустой для drawImage
+                    // without it the canvas is empty for drawImage after the frame
                     canvasContextAttributes: {preserveDrawingBuffer: true},
                 });
                 await new Promise((resolve, reject) => {

@@ -3,7 +3,8 @@ import { decodeXml } from './text';
 import { elements, nodeText, parseXml } from './xml';
 import { unzip } from './zip-entries';
 
-// KML и KMZ (parsers/kml.js старого клиента): LineString и gx:Track — отрезки, Placemark с Point — точки.
+// KML and KMZ (parsers/kml.js of the old client): LineString and gx:Track are segments,
+// a Placemark with a Point is a point.
 
 interface KmlContent {
     segments: LatLng[][];
@@ -41,7 +42,7 @@ function parseKmlContent(text: string): KmlContent | null {
         }
     }
 
-    // gx:Track — после LineString, как в старом клиенте; префикс снят parseXml
+    // gx:Track comes after LineString, as in the old client; parseXml removed the prefix
     for (const track of elements(dom, 'gx_Track')) {
         const line: LatLng[] = [];
         for (const coord of elements(track, 'gx_coord')) {
@@ -80,9 +81,10 @@ export function parseKml(bytes: Uint8Array, name: string): GeoData[] | null {
     return content && [geoData(name, content)];
 }
 
-// KMZ — ZIP с doc.kml: все .kml архива — один трек с именем файла. У старого клиента parseKmz всегда возвращал null
-// (default-импорт вендорного js-unzip через webpack — объект модуля, не конструктор), и KMZ открывался веткой ZIP
-// по треку на каждый .kml (fixtures/README.md); здесь — один трек, как задумано в старом коде.
+// KMZ is a ZIP with doc.kml: all .kml files of the archive make one track with the file name. In the old client,
+// parseKmz always returned null (the default import of the vendored js-unzip through webpack is a module object, not a
+// constructor), and KMZ opened through the ZIP branch as one track for each .kml (fixtures/README.md); here it is one
+// track, as the old code intended.
 export function parseKmz(bytes: Uint8Array, name: string): GeoData[] | null {
     const entries = unzip(bytes);
     if (!entries?.some((entry) => entry.name === 'doc.kml')) {

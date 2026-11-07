@@ -12,7 +12,7 @@ import { parseGeoFile } from './parsers';
 import { ShareError, shareBody, shareLink, storeTracks } from './share';
 import type { TrackSources } from './sources';
 
-// Действия списка треков без React: компоненты зовут их, тесты подставляют сеть, буфер обмена и уведомления.
+// Track list actions without React: components call them, tests give the network, the clipboard and notices.
 
 export type Notify = (title: string, type?: 'error' | 'success') => void;
 
@@ -21,30 +21,32 @@ export interface TrackActionsDeps {
     sources: TrackSources;
     notify: Notify;
     location: () => { origin: string; pathname: string; hash: string };
-    // запись в буфер обмена; получает промис ссылки сразу, в обработчике клика (design add-web-tracks, «Ссылка — после ответа хранилища»)
+    // clipboard write; gets the link promise at once, in the click handler (design add-web-tracks,
+    // «Ссылка — после ответа хранилища»)
     writeClipboard?: (text: Promise<string>) => Promise<void>;
-    // конец восстановления автосохранения: треки из адреса и файлов встают после восстановленных (design
+    // end of the autosave restore: tracks from the address and files go after the restored tracks (design
     // add-web-autosave, «Восстановление и треки из адреса»)
     restored?: Promise<unknown>;
-    // сохранение файла (по умолчанию ссылка download): unit-тесты подставляют свою запись
+    // file save (by default, a download link): unit tests give their own write
     save?: typeof saveFile;
-    // сколько «Save as GPX» ждёт API высот, мс; unit-тесты ставят свои миллисекунды
+    // how long «Save as GPX» waits for the elevation API, ms; unit tests set their own milliseconds
     elevationTimeout?: number;
 }
 
-// Ожидание высот для «Save as GPX» (агент, design trim-track-menus): API обычно отвечает за доли секунды, а без
-// таймаута зависший запрос оставлял бы пользователя без файла. По таймауту — GPX без высот, как при ошибке API
+// Elevation wait for «Save as GPX» (an agent decision, design trim-track-menus): the API usually responds in a fraction
+// of a second, but without a timeout a stuck request would leave the user without a file. On timeout, GPX without
+// elevations, as on an API error
 const ELEVATION_TIMEOUT_MS = 10_000;
 
-// ClipboardItem с промисом: Safari сохраняет жест пользователя на время запроса к хранилищу, Chromium ждёт промис
+// ClipboardItem with a promise: Safari keeps the user gesture during the storage request, Chromium awaits the promise
 export function writeClipboardItem(text: Promise<string>): Promise<void> {
     const blob = text.then((value) => new Blob([value], { type: 'text/plain' }));
     return navigator.clipboard.write([new ClipboardItem({ 'text/plain': blob })]);
 }
 
-// Название новой точки трека — следующий трёхзначный номер после наибольшего среди названий вида «001…» (у
-// getNewPointName старого клиента — после последнего по порядку, и после переименований номер мог повториться); после
-// 999 — пустое, как у старого
+// New track point name: the next three-digit number after the largest among names like «001…» (getNewPointName of
+// the old client takes the number after the last point in order, and after renames the number could repeat); after
+// 999, an empty name, as in the old client
 export function nextPointName(points: readonly Waypoint[]): string {
     let max = 0;
     for (const point of points) {
@@ -55,13 +57,13 @@ export function nextPointName(points: readonly Waypoint[]): string {
     return max >= 999 ? '' : String(max + 1).padStart(3, '0');
 }
 
-// Долгота клика в соседней копии мира MapLibre — в ±180 (latlng.wrap() старого клиента). Долгота в пределах не
-// трогается: арифметика wrapLng даёт ей шум в последнем знаке (44.8 → 44.799999999999955).
+// Click longitude in a neighbor world copy of MapLibre goes into ±180 (latlng.wrap() of the old client). A longitude
+// within the range stays as it is: the wrapLng arithmetic adds noise in the last digit (44.8 → 44.799999999999955).
 function wrapped(latlng: LatLng): LatLng {
     return latlng.lng >= -180 && latlng.lng <= 180 ? latlng : { lat: latlng.lat, lng: wrapLng(latlng.lng) };
 }
 
-// Copy coordinates старого клиента: SIGNED_DEGREES (toFixed(5)) от latlng.wrap()
+// Copy coordinates of the old client: SIGNED_DEGREES (toFixed(5)) from latlng.wrap()
 export function pointCoordinates(point: LatLng): string {
     const { lat, lng } = wrapped(point);
     return `${lat.toFixed(5)} ${lng.toFixed(5)}`;
@@ -82,7 +84,7 @@ export function createTrackActions({
     elevationTimeout = ELEVATION_TIMEOUT_MS,
 }: TrackActionsDeps) {
     const state = () => store.getState();
-    // треки, чей GPX ждёт API высот: повторное нажатие на «Save as GPX» второго файла не даёт
+    // tracks whose GPX waits for the elevation API: a second press on «Save as GPX» does not give a second file
     const savingGpx = new Set<string>();
 
     async function load(data: Promise<GeoData[]>, fitView = false): Promise<Track[]> {
@@ -129,7 +131,7 @@ export function createTrackActions({
             await clipboard;
             notify('Link copied', 'success');
         } catch {
-            // буфер не дался (нет разрешения, нет ClipboardItem) — ссылка окном
+            // the clipboard is not available (no permission, no ClipboardItem): the link goes to a window
             state().setCopyFallback({ title: 'Link to tracks', text });
         }
     }
@@ -145,7 +147,7 @@ export function createTrackActions({
         }
     }
 
-    // копия трека с разметкой маршрута: номера опорных точек верны и для копии (линии не упрощаются)
+    // track copy with route markup: the waypoint indexes are correct for the copy too (lines are not simplified)
     function copyOf(track: Track): GeoData {
         return geoData(track.name, {
             segments: track.segments.map((line) => line.map((p) => ({ ...p }))),
@@ -154,8 +156,8 @@ export function createTrackActions({
         });
     }
 
-    // Точка трека правится по объекту, а не номеру: номер ищется в момент действия, пропавшая точка — ничего (design
-    // add-web-line-tools, «Точки трека»)
+    // A track point is edited by object, not by index: the index is found at the time of the action, a missing point
+    // gives nothing (design add-web-line-tools, «Точки трека»)
     function updatePoint(trackId: string, point: Waypoint, change: (points: Waypoint[], index: number) => void) {
         const track = state().tracks.find((item) => item.id === trackId);
         const index = track?.points.indexOf(point) ?? -1;
@@ -168,8 +170,8 @@ export function createTrackActions({
     }
 
     return {
-        // Точки трека (спека tracks, «Добавление точек трека», «Меню точки трека»). Постановка — режим стора pointTool:
-        // клик по карте зовёт addPoint, окно названия — pointDialog.
+        // Track points (spec tracks, «Добавление точек трека», «Меню точки трека»). Adding is the store mode pointTool:
+        // a map click calls addPoint, the name window is pointDialog.
         startAddPoint(track: Track) {
             if (!track.visible) {
                 state().updateTrack(track.id, { visible: true });
@@ -178,10 +180,10 @@ export function createTrackActions({
         },
         startMovePoint: (trackId: string, point: Waypoint) => state().setPointTool({ kind: 'move', trackId, point }),
         stopPointTool: () => state().setPointTool(null),
-        // окно названия точки (Rename в меню точки)
+        // point name window (Rename in the point menu)
         startRenamePoint: (trackId: string, point: Waypoint) => state().setPointDialog({ trackId, point }),
-        // новая точка с готовым номером или названием метки поиска; окно названия открывается сразу (createNewPoint
-        // старого клиента)
+        // new point with a ready number or the name of the search placemark; the name window opens at once
+        // (createNewPoint of the old client)
         addPoint(trackId: string, latlng: LatLng, name?: string): Waypoint | null {
             const track = state().tracks.find((item) => item.id === trackId);
             if (!track) {
@@ -193,7 +195,7 @@ export function createTrackActions({
             state().setPointDialog({ trackId, point });
             return point;
         },
-        // пустое название допустимо, как у query старого клиента
+        // an empty name is allowed, as in query of the old client
         renamePoint: (trackId: string, point: Waypoint, name: string) =>
             updatePoint(trackId, point, (points, index) => {
                 points[index] = { ...point, name };
@@ -223,7 +225,8 @@ export function createTrackActions({
                     files.map(async (file) => parseGeoFile(file.name, new Uint8Array(await file.arrayBuffer()))),
                 ).then((parsed) => parsed.flat()),
             ),
-        // из строки поиска: выбор результата переводит карту, поэтому на трек (design search-track-links)
+        // from the search box: a result selection moves the map, so the view goes to the track
+        // (design search-track-links)
         openUrl: (url: string) => load(loadFromUrl(url.trim(), sources), true),
         openTrackParams: (params: TrackParams, fitView: boolean) =>
             load(
@@ -232,8 +235,8 @@ export function createTrackActions({
                 ),
                 fitView,
             ),
-        // новый трек из видимых: их отрезки и точки, название — первого видимого (старый клиент спрашивал название;
-        // здесь его можно сменить «Rename»)
+        // new track from the visible ones: their segments and points, the name of the first visible track (the old
+        // client asked for a name; here the user can change it with «Rename»)
         newTrackFromVisible: () => {
             const visible = state().tracks.filter((track) => track.visible);
             if (visible.length === 0) {
@@ -260,7 +263,7 @@ export function createTrackActions({
             }
         },
         duplicate: (track: Track) => state().addTracks([copyOf(track)]),
-        // разметка разворачивается вместе с отрезками: проложенный отрезок остаётся проложенным (спека tracks,
+        // the markup reverses together with the segments: a routed segment stays routed (spec tracks,
         // «Развернуть проложенный трек»)
         reverse: (track: Track) =>
             state().updateTrack(track.id, {
@@ -275,7 +278,7 @@ export function createTrackActions({
                     .tracks.filter((t) => !t.visible)
                     .map((t) => t.id),
             ),
-        // Shift+клик по флажку — показать только этот трек (onTrackCheckboxClicked старого клиента)
+        // Shift+click on the checkbox shows only this track (onTrackCheckboxClicked of the old client)
         setVisible: (track: Track, visible: boolean, only = false) => {
             if (!only) {
                 state().updateTrack(track.id, { visible });
@@ -286,13 +289,13 @@ export function createTrackActions({
             }
         },
         setColor: (track: Track, color: TrackColor) => state().updateTrack(track.id, { color }),
-        // отметки расстояния (switchMeasureTicksVisibility старого)
+        // distance ticks (switchMeasureTicksVisibility of the old client)
         setMeasureTicks: (track: Track, measureTicksShown: boolean) =>
             state().updateTrack(track.id, { measureTicksShown }),
-        // «Save as GPX» — всегда с высотами (владелец 2026-10-29, design trim-track-menus; спека track-files, «GPX с
-        // высотами»): пока идут запросы к API высот, крутится индикатор загрузки на кнопке Tracks и на «Share track»
-        // редактора. Ошибка API или таймаут — тот же GPX без <ele> и без сообщения: файл нужен и без сети, а о высотах
-        // в меню не пишем
+        // «Save as GPX» always has elevations (the owner 2026-10-29, design trim-track-menus; spec track-files,
+        // «GPX с высотами»): while the elevation API requests go on, a loading indicator turns on the Tracks button
+        // and on the editor «Share track». An API error or a timeout gives the same GPX without <ele> and without a
+        // message: the user needs the file without the network too, and the menu does not mention elevations
         async saveGpx(track: Track) {
             if (savingGpx.has(track.id)) {
                 return;
@@ -315,7 +318,7 @@ export function createTrackActions({
                     fetchElevations(points, { fetch: sources.fetch, url: sources.elevationsServer }, signal),
                 );
             } catch (error) {
-                // прерванный signal fetchElevations отдаёт исходной ошибкой, а не ElevationError
+                // fetchElevations gives an aborted signal as the original error, not as ElevationError
                 if (!(error instanceof ElevationError) && !signal.aborted) {
                     throw error;
                 }

@@ -1,6 +1,7 @@
-// Метка найденного места и её параметр адреса r=lat/lng/название — формат PlacemarkHashStateInterface старого клиента
-// (src/lib/leaflet.placemark/index.js): координаты toFixed(6), название через encodeURIComponent (значения адреса
-// делятся по «/», и «/» в названии кодируется). «Copy link» r= не включает (keysToExcludeOnCopyLink, tracks/share.ts).
+// The placemark of a found place and its address parameter r=lat/lng/name: the format of PlacemarkHashStateInterface
+// of the old client (src/lib/leaflet.placemark/index.js): coordinates toFixed(6), the name through encodeURIComponent
+// (the address values are split by "/", and a "/" in the name is encoded). «Copy link» does not include r=
+// (keysToExcludeOnCopyLink, tracks/share.ts).
 
 export interface Placemark {
     lat: number;
@@ -23,7 +24,7 @@ export function parsePlacemark(values: readonly string[] | undefined): Placemark
     try {
         title = decodeURIComponent(title);
     } catch {
-        // испорченная последовательность % — название как есть, метку не теряем
+        // a broken % sequence: the name stays as it is, the placemark is not lost
     }
     return { lat, lng, title };
 }

@@ -5,8 +5,9 @@ import { MAPYCZ_ATTRIBUTION, mapyczUrl, type PlaceQuery, parseMapycz } from './m
 import { PHOTON_ATTRIBUTION, parsePhoton, photonUrl } from './photon';
 import type { SearchItem, TrackLinkResult } from './result';
 
-// Один поиск строки (design add-web-search-panoramas, «Поиск по названию»): ссылка → координаты → mapy.cz через прокси →
-// photon напрямую, если mapy.cz не ответил. Отмена — signal (новый запрос отменяет прежний).
+// One search of a string (design add-web-search-panoramas, «Поиск по названию»): link → coordinates → mapy.cz through
+// the proxy → photon directly, if mapy.cz did not answer. The cancel is signal (a new request cancels the previous
+// one).
 
 export const MIN_QUERY_LENGTH = 3;
 
@@ -52,11 +53,12 @@ const outcome = (results: SearchItem[], attribution: Attribution | null): Search
 
 export const OPEN_AS_TRACK = 'Open as track';
 
-// Ссылка (design search-track-links, «Порядок разбора ссылки»): трек известного источника, за ним вид карты из той же
-// ссылки; «любой файл» — только если ссылка не трек и не ссылка на карту. Трек здесь только узнаётся, качает его выбор
+// A link (design search-track-links, «Порядок разбора ссылки»): a track of a known source, then the map view from the
+// same link; "any file" only if the link is not a track and not a map link. Here the track is only recognized, the
+// choice downloads it
 async function searchAnyLink(text: string, sources: SearchSources): Promise<SearchOutcome> {
     const track = matchTrackLink(text);
-    // у «любого файла» имя из пути мало что говорит (data, 123) — в подписи хост
+    // for "any file", the name from the path says little (data, 123), so the label has the host
     const subtitle = track?.file ? `${OPEN_AS_TRACK} · ${new URL(text).host}` : OPEN_AS_TRACK;
     const asTrack: TrackLinkResult[] = track ? [{ kind: 'track', title: track.title, subtitle, url: text }] : [];
     if (track && !track.file) {

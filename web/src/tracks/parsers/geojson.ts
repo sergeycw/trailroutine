@@ -1,9 +1,9 @@
 import { type GeoData, type GeoError, geoData, type LatLng, type Waypoint } from '../model';
 import { decode } from './text';
 
-// GeoJSON FeatureCollection (parsers/geojson.js старого клиента): Point — точки, LineString — отрезки. Отличия:
-// не JSON или без массива features — формат не наш (null), у старого — CORRUPT на любой нераспознанный файл;
-// MultiLineString — отрезками (design add-web-tracks, «Парсеры»); фича без геометрии пропускается.
+// GeoJSON FeatureCollection (parsers/geojson.js of the old client): Point gives points, LineString gives segments.
+// Differences: not JSON or no features array means not our format (null), the old client gives CORRUPT for any unknown
+// file; MultiLineString gives segments (design add-web-tracks, «Парсеры»); a feature with no geometry is skipped.
 
 interface Feature {
     geometry?: { type?: string; coordinates?: unknown } | null;

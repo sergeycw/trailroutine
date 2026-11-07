@@ -8,14 +8,15 @@ import { useAppStore } from '@/state/context';
 import type { AppState } from '@/state/store';
 import { formatLength, tracksLength } from '@/tracks/geometry';
 
-// Кнопка профиля высот снизу по центру (три зоны, design layout-three-zones): профиль по кнопке, как в MapMagic
-// (макет 4a). Стоит над нижними панелями (--bottom-inset), тосты — над ней. Подписи нет: длина и подъём — данные,
-// название — в title и скрытым текстом.
+// The elevation profile button at the bottom center (three zones, design layout-three-zones): the profile opens by a
+// button, as in MapMagic (mockup 4a). It is above the bottom panels (--bottom-inset), the toasts are above it. No
+// label: the length and the ascent are data, the name is in title and in hidden text.
 
 const hasLines = (segments: readonly (readonly unknown[])[]) => segments.some((segment) => segment.length > 1);
 
-// Активный маршрут: редактируемый трек, иначе трек с открытым профилем, — если у него есть линии (ресёрч user-flows,
-// «Раскладка: три зоны»). Правила «иначе первый видимый» больше нет: какой трек покажет кнопка, было не очевидно
+// The active route: the edited track, otherwise the track with an open profile, if it has lines (research user-flows,
+// «Раскладка: три зоны»). The rule "otherwise the first visible track" no longer exists: it was not clear which track
+// the button showed
 function profileTrackId(state: AppState): string | null {
     const candidates = [
         state.tracks.find((track) => track.id === state.routeEdit?.trackId),
@@ -28,9 +29,11 @@ function ProfileButton() {
     const profile = useElevationProfile();
     const trackId = useAppStore(profileTrackId);
     const track = useAppStore((state) => state.tracks.find((item) => item.id === trackId));
-    // открыт профиль этого трека: правится A, а открыт профиль B — кнопка A свёрнута и откроет профиль A
+    // the profile of this track is open: when A is in edit and the profile of B is open, the button of A is collapsed
+    // and opens the profile of A
     const open = useAppStore((state) => trackId !== null && state.profile?.trackId === trackId);
-    // подъём — только из уже посчитанного профиля всего трека: запрос высот ради подписи тратил бы лимит API высот
+    // the ascent comes only from the already calculated profile of the full track: a request of elevations for the
+    // label would spend the elevation API limit
     const data = useAppStore((state) =>
         state.profile?.trackId === trackId && state.profile.segment === null ? state.profileData : null,
     );
@@ -45,8 +48,8 @@ function ProfileButton() {
         return null;
     }
     return (
-        // имя — скрытое «Elevation profile» и видимые длина и подъём, а не aria-label: тот спрятал бы данные от
-        // скринридера (WCAG 2.5.3, видимый текст входит в имя)
+        // the name is the hidden "Elevation profile" and the visible length and ascent, not aria-label: aria-label
+        // would hide the data from a screen reader (WCAG 2.5.3, the visible text is part of the name)
         <button
             type="button"
             className="glass pointer-events-auto flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-full px-3.5 font-medium text-sm tabular-nums transition-colors hover:bg-white/90 [&_svg]:size-4 [&_svg]:shrink-0"
@@ -67,13 +70,13 @@ function ProfileButton() {
     );
 }
 
-// fetch — сеть дат снимков (Earth Search): browser-тесты подставляют свой, как у TopBar
+// fetch is the network for imagery dates (Earth Search): browser tests give their own, as for TopBar
 export function MapActions({ fetch }: { fetch: typeof window.fetch }) {
     const shown = useAppStore(
         (state) => profileTrackId(state) !== null || state.layers.get(state.selection.base)?.dated === true,
     );
-    // раскрытая атрибуция с линейкой масштаба слева снизу встаёт над кнопками, пока они есть (index.css): длинная
-    // атрибуция нескольких слоёв доходит до центра окна
+    // the expanded attribution with the scale bar at the bottom left goes above the buttons while they are present
+    // (index.css): a long attribution of several layers reaches the window center
     useEffect(() => {
         if (!shown) {
             return;

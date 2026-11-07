@@ -4,8 +4,9 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { engineFiles } from './vite/engine-files.ts';
 
-// Приложение на корне Pages-проекта nakarte-routing (design switch-to-web-app): сборка — весь build/, плагин engineFiles
-// докладывает туда файлы движка; /next/ старых ссылок отвечает редиректом из public/_redirects.
+// The app is at the root of the Pages project nakarte-routing (design switch-to-web-app): the build is all of build/,
+// the plugin engineFiles adds the engine files there; /next/ of old links answers with a redirect from
+// public/_redirects.
 export default defineConfig({
     base: '/',
     plugins: [react(), tailwindcss(), engineFiles()],
@@ -14,19 +15,21 @@ export default defineConfig({
     },
     build: {
         outDir: '../build',
-        // каталог вне корня проекта Vite без флага не чистит
+        // Vite does not clean a directory outside the project root without the flag
         emptyOutDir: true,
-        // карты исходников для стека в Sentry: рядом с файлами, но без ссылки sourceMappingURL в бандле. Деплой загружает
-        // их в Sentry и удаляет до публикации (design add-error-tracking, «Карты исходников»)
+        // source maps for the stack in Sentry: next to the files, but without the sourceMappingURL link in the bundle.
+        // The deploy uploads them to Sentry and deletes them before the publication (design add-error-tracking,
+        // «Карты исходников»)
         sourcemap: 'hidden',
-        // maplibre-gl ≈ 1.1 МБ (≈ 290 КБ gzip) отдельным чанком: react-maplibre грузит его динамическим import()
+        // maplibre-gl ≈ 1.1 MB (≈ 290 KB gzip) as a separate chunk: react-maplibre loads it with a dynamic import()
         chunkSizeWarningLimit: 1200,
-        // лицензии зависимостей бандла одним файлом /licenses.md: BSD-3 (MapLibre, maplibre-contour) требует копирайт и
-        // текст лицензии при распространении в собранном виде, а минификатор комментарии лицензий отбрасывает
-        // (design add-contour-lines, «Риски»). Имя в корне вместо .vite/license.md по умолчанию — короткий адрес на проде
+        // the licenses of the bundle dependencies in one file /licenses.md: BSD-3 (MapLibre, maplibre-contour) requires
+        // the copyright and the license text for distribution in built form, and the minifier drops the license
+        // comments (design add-contour-lines, «Risks»). A name in the root, not the default .vite/license.md, gives a
+        // short address in production
         license: { fileName: 'licenses.md' },
-        // стенд движка выкатывается рядом с приложением (/engine-bench.html) для проверок на проде
-        // (design spike-engine-in-worker); ссылок на него нет, рантайм CheerpJ грузится только при открытии
+        // the engine bench deploys next to the app (/engine-bench.html) for checks in production
+        // (design spike-engine-in-worker); no links go to it, the CheerpJ runtime loads only when you open it
         rolldownOptions: {
             input: {
                 index: fileURLToPath(new URL('./index.html', import.meta.url)),
@@ -34,9 +37,9 @@ export default defineConfig({
             },
         },
     },
-    // 8767–8768 — стенд движка experiments/wasm/serve.mjs, 8787–8789 — Worker'ы
-    // /tiles/ (тайлы BRouter в режиме clone) — nakarte-tiles-worker;
-    // /brouter-wasm/ отдаёт плагин engineFiles
+    // 8767–8768 — the engine bench experiments/wasm/serve.mjs, 8787–8789 — the Workers
+    // /tiles/ (BRouter tiles in the clone mode) — nakarte-tiles-worker;
+    // the plugin engineFiles serves /brouter-wasm/
     server: { port: 8769, strictPort: true, proxy: { '/tiles/': 'http://localhost:8788' } },
     preview: { port: 4173, strictPort: true },
 });

@@ -1,22 +1,22 @@
 import type { LatLng } from '@/tracks/model';
 import { legPath, type RouteLine } from './line';
 
-// Ус у поворота (design snap-waypoint-to-turn, спека route-editing, «Опорная точка у поворота»): опорная точка
-// поставлена чуть дальше перекрёстка, маршрут доходит до неё и возвращается тем же путём. Каждый отрезок
-// прокладывается отдельно, и ус виден только на стыке двух: parseRoute его не замечает. Здесь он ищется по геометрии,
-// а опорная точка переезжает в поворот. Общие узлы ответов не годятся: упрощение выкидывает перекрёсток из отрезка,
-// который проходит его прямо.
+// A spur at a turn (design snap-waypoint-to-turn, spec route-editing, «Опорная точка у поворота»): the waypoint is
+// placed a little past the crossroads, and the route goes to it and comes back the same way. Each leg is routed
+// separately, and the spur is visible only at the joint of two legs: parseRoute does not see it. Here the code finds it
+// by geometry, and the waypoint moves to the turn. Shared nodes of the responses do not work: the simplification drops
+// the crossroads from the leg that goes straight through it.
 
-// Ус короче — промах клика (палец ±10–20 px на зуме 15–16 ≈ 10–35 м), длиннее — намеренный заход туда и обратно
+// A shorter spur is a click miss (a finger ±10–20 px at zoom 15–16 ≈ 10–35 m), a longer one is an intended out-and-back
 export const SPUR_LIMIT = 30;
-// Пути считаются одной дорогой ближе этого: упрощение отрезка отходит от дороги не дальше ≈ 2.4 м
+// Paths nearer than this count as one road: the leg simplification moves away from the road by not more than ≈ 2.4 m
 const TOLERANCE = 3;
 const STEP = 1;
-// Сколько пути от опорной точки смотреть: ус до порога и запас, чтобы точки уса сравнивались с целым участком
+// Path length to examine from the waypoint: the spur limit plus a margin, so spur points compare with a whole part
 const REACH = SPUR_LIMIT + 10;
-// Маршрут, который возвращается, уходит из опорной точки в ту же сторону, что пришёл: угол между путями меньше 45°.
-// Без этого маршрут насквозь (угол ≈ 180°) с изломом в паре метров от точки тоже считался бы усом: в первые метры
-// любые два пути из одной точки лежат в TOLERANCE друг от друга.
+// A route that comes back leaves the waypoint in the same direction as it came: the angle between the paths is less
+// than 45°. Without this check, a through route (angle ≈ 180°) with a bend a few meters from the point would also count
+// as a spur: in the first meters, any two paths from one point lie within TOLERANCE of each other.
 const SAME_SIDE = Math.cos(Math.PI / 4);
 
 const EARTH_RADIUS = 6371000;
@@ -27,11 +27,11 @@ interface XY {
     y: number;
 }
 
-// Путь от опорной точки в локальных метрах вокруг неё (ус — десятки метров, плоского приближения хватает)
+// The path from the waypoint in local meters around it (a spur is tens of meters, a flat approximation is enough)
 interface Path {
     points: readonly LatLng[];
     xy: XY[];
-    // длина пути от опорной точки до каждой вершины
+    // path length from the waypoint to each vertex
     arc: number[];
 }
 
@@ -48,7 +48,7 @@ function makePath(points: readonly LatLng[], origin: LatLng): Path {
     return { points, xy, arc };
 }
 
-// Ближайшая точка участка пути до REACH: номер звена и расстояние
+// The nearest point of the path part up to REACH: the link index and the distance
 function nearest(p: XY, path: Path): { link: number; dist: number } {
     let best = { link: 0, dist: Number.POSITIVE_INFINITY };
     for (let i = 0; i < path.xy.length - 1 && path.arc[i] <= REACH; i++) {
@@ -77,8 +77,8 @@ function pointAt(path: Path, s: number): XY {
     return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
 }
 
-// Сколько метров path от опорной точки лежит на other. Infinity — пути не расходятся до конца path или до REACH:
-// это возврат по всему отрезку или длинный заход, а не ус.
+// How many meters of path from the waypoint lie on other. Infinity: the paths do not part before the end of path or
+// before REACH: this is a return along the whole leg or a long detour, not a spur.
 function overlap(path: Path, other: Path): number {
     const length = path.arc[path.arc.length - 1];
     let covered = 0;
@@ -94,15 +94,15 @@ function overlap(path: Path, other: Path): number {
     return Number.POSITIVE_INFINITY;
 }
 
-// Поворот: самая дальняя от опорной точки вершина обоих путей внутри перекрытия, лежащая на другом пути. Обычно это
-// узел перекрёстка: в одном из путей он есть всегда, там маршрут меняет направление.
+// The turn: the vertex of both paths that is farthest from the waypoint inside the overlap and lies on the other path.
+// Usually this is the crossroads node: one of the paths always has it, there the route changes direction.
 function turnOf(a: Path, b: Path, overlapA: number, overlapB: number): { point: LatLng; arc: number } | null {
     let turn: { point: LatLng; arc: number } | null = null;
     for (const [path, other, covered] of [
         [a, b, overlapA],
         [b, a, overlapB],
     ] as const) {
-        // последняя вершина — дальняя опорная точка отрезка, она не поворот
+        // the last vertex is the far waypoint of the leg, it is not a turn
         for (let i = 1; i < path.points.length - 1 && path.arc[i] <= covered; i++) {
             if ((!turn || path.arc[i] > turn.arc) && nearest(path.xy[i], other).dist <= TOLERANCE) {
                 turn = { point: path.points[i], arc: path.arc[i] };
@@ -112,7 +112,7 @@ function turnOf(a: Path, b: Path, overlapA: number, overlapB: number): { point: 
     return turn;
 }
 
-// Пути уходят из опорной точки в одну сторону: направления на точки в TOLERANCE от неё
+// The paths leave the waypoint in one direction: directions to the points at TOLERANCE from it
 function sameSide(a: Path, b: Path): boolean {
     const pa = pointAt(a, TOLERANCE);
     const pb = pointAt(b, TOLERANCE);
@@ -121,8 +121,8 @@ function sameSide(a: Path, b: Path): boolean {
     return la > 0 && lb > 0 && (pa.x * pb.x + pa.y * pb.y) / (la * lb) > SAME_SIDE;
 }
 
-// Точки пути дальше проекции поворота на него, без дальней опорной точки и без точек ближе TOLERANCE к повороту:
-// копия перекрёстка в другом отрезке после упрощения лежит рядом с ним и дала бы зубец
+// Path points past the turn projection on the path, without the far waypoint and points nearer than TOLERANCE to the
+// turn: after simplification, the crossroads copy in the other leg lies near the turn and would give a tooth
 function beyond(path: Path, turn: LatLng, origin: LatLng): LatLng[] {
     const [t] = makePath([turn], origin).xy;
     let first = nearest(t, path).link + 1;
@@ -132,8 +132,8 @@ function beyond(path: Path, turn: LatLng, origin: LatLng): LatLng[] {
     return path.points.slice(first, -1);
 }
 
-// Линия, где опорная точка index переехала в поворот, а ус убран из обоих соседних отрезков; null — уса нет. Только
-// у точки между двумя проложенными отрезками: прямой и ожидающий отрезок геометрии маршрута не несут.
+// The line where the waypoint index moved to the turn and the spur is removed from both neighbor legs; null: there is
+// no spur. Only for a point between two routed legs: a straight leg and a pending leg do not carry route geometry.
 export function trimSpur(line: RouteLine, index: number): RouteLine | null {
     const before = line.legs[index - 1];
     const after = line.legs[index];

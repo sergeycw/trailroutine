@@ -1,7 +1,7 @@
 use elevation_core::format::{CHUNKS, HEADER_LEN, Header, NO_VALUE, TILE_SIZE, decode_chunk};
 use elevation_repack::{HGT_SIZE, HGT1_SIZE, RepackError, degree_name, repack_hgt};
 
-// Значение узла по строке и столбцу HGT (строки с севера), уникальное в пределах градуса.
+// The node value by the HGT row and column (rows from the north), unique in the degree.
 fn hgt_value(row: usize, col: usize) -> i16 {
     if (row, col) == (7, 9) {
         return NO_VALUE;

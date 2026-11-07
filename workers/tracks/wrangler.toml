@@ -1,37 +1,38 @@
 name = "nakarte-tracks"
 main = "src/index.js"
 compatibility_date = "2025-09-01"
-# Version URL (<версия>-<worker>.nakarte-routing.workers.dev) выключены для всех версий: старая версия
-# со старыми лимитами обходила бы лимиты новой (requirement «Только основной адрес Worker'а», worker-limits).
+# Version URLs (<version>-<worker>.nakarte-routing.workers.dev) are off for all versions: an old version
+# with old limits would bypass the limits of the new one (requirement «Только основной адрес Worker'а», worker-limits).
 preview_urls = false
 
-# Workers Logs: история запросов и console.log в дашборде Cloudflare, хранятся 7 дней. В Workers Paid
-# включено 20 млн событий в месяц, дальше $0.60 за миллион (цены меняются с 2026-12-01); при росте
-# трафика понизить head_sampling_rate (доля записываемых запросов, по умолчанию 1).
+# Workers Logs: the request history and console.log in the Cloudflare dashboard, kept for 7 days. Workers Paid
+# includes 20 million events per month, after that $0.60 per million (the prices change from 2026-12-01); if the
+# traffic grows, decrease head_sampling_rate (the fraction of logged requests, default 1).
 [observability]
 enabled = true
 
-# Потолок на один вызов: наблюдённый максимум CPU — 2 мс, на запрос одно-два обращения к R2.
+# The limit for one invocation: the observed CPU maximum is 2 ms, one or two R2 operations per request.
 [limits]
 cpu_ms = 500
 subrequests = 10
 
 [vars]
-# сайт клона, dev-сервер приложения web/ (8769) и vite preview (4173)
+# the site of the clone, the dev server of the web/ app (8769) and vite preview (4173)
 ALLOWED_ORIGINS = "https://trailroutine.com,https://nakarte-routing.pages.dev,http://localhost:8769,http://localhost:4173"
 
 [[r2_buckets]]
 binding = "TRACKS"
 bucket_name = "nakarte-tracks"
 
-# Частота с одного IP (CF-Connecting-IP) за 60 с; namespace_id уникален в аккаунте (1002–1008 — клон, 1001 освобождён).
+# The rate from one IP (CF-Connecting-IP) per 60 s; namespace_id is unique in the account (1002–1008 are the clone,
+# 1001 is free).
 [[ratelimits]]
 name = "RATE_LIMITER"
 namespace_id = "1003"
 simple = { limit = 60, period = 60 }
 
-# Записи (POST) с одного IP за 60 с — отдельно от общего счётчика: запись бессрочная и копит хранение,
-# а чтения ссылок не должны упираться в этот лимит (change limit-track-writes).
+# Writes (POST) from one IP per 60 s, separate from the common counter: a write has no expiry and adds to the
+# storage, and link reads must not hit this limit (change limit-track-writes).
 [[ratelimits]]
 name = "WRITE_RATE_LIMITER"
 namespace_id = "1006"

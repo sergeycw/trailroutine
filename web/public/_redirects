@@ -1,5 +1,5 @@
-# Старый адрес приложения (до change switch-to-web-app оно жило на /next/): тот же путь от корня. Фрагмент (#m=…&nktl=…)
-# на сервер не уходит, браузер переносит его через редирект сам. 302, а не 301: 301 браузер кеширует навсегда, и /next/
-# нельзя было бы снова занять. Правила проверяют vite/redirects.test.ts и e2e web-client.
+# Old address of the app (before change switch-to-web-app the app was on /next/): the same path from the root. The
+# fragment (#m=…&nktl=…) does not go to the server, the browser keeps it through the redirect. 302, not 301: the browser
+# caches a 301 forever, and /next/ could not be used again. vite/redirects.test.ts and e2e web-client check the rules.
 /next / 302
 /next/* /:splat 302

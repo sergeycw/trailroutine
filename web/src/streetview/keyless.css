@@ -1,28 +1,30 @@
-/* biome-ignore-all lint/complexity/noImportantStyles: правила перебивают инлайновые стили Google */
+/* biome-ignore-all lint/complexity/noImportantStyles: the rules override the inline styles of Google */
 /*
-Maps JavaScript API без ключа (как на nakarte.me) переходит в режим «For development purposes only»:
-холст панорамы с инлайновым filter: invert(1), водяной знак посередине и окно «This page can't load
-Google Maps correctly». Правила повторяют то, что делает боевой app.css nakarte.me (в репозитории
-автора их нет, сборка помечена -dirty), и включаются только классом google-street-view-keyless:
-с настоящим ключом Google негатив не рисует, и вторая инверсия испортила бы панораму.
-Это обход ограничений Google для режима без ключа; решение владельца — для личного некоммерческого
-клона (openspec/changes/archive/*-hide-street-view-dev-overlay/design.md). Селекторы завязаны на
-вёрстку Google и могут сломаться с её обновлением.
-Копия src/lib/leaflet.control.panoramas/lib/google/keyless.css старого клиента для нового приложения
-(design add-web-search-panoramas, «Maps JavaScript API и ключ»); правка одной — правка обеих, пока жив старый клиент.
+Maps JavaScript API without a key (as on nakarte.me) goes into the mode «For development purposes only»:
+the panorama canvas with an inline filter: invert(1), a watermark in the middle and the window
+«This page can't load Google Maps correctly». The rules repeat what the production app.css of nakarte.me
+does (the repository of the author does not have them, the build is marked -dirty). Only the class
+google-street-view-keyless turns them on: with a real key Google does not draw the negative, and a second
+inversion would spoil the panorama.
+This is a bypass of the Google limits for the mode without a key. The owner decided this for a personal
+non-commercial clone (openspec/changes/archive/*-hide-street-view-dev-overlay/design.md). The selectors
+depend on the Google markup and can break when Google updates it.
+A copy of src/lib/leaflet.control.panoramas/lib/google/keyless.css of the old client for the new app
+(design add-web-search-panoramas, «Maps JavaScript API и ключ»); a change of one is a change of both while the
+old client lives.
 */
 
-/* вторая инверсия на корне сцены гасит инверсию холста */
+/* a second inversion on the scene root cancels the inversion of the canvas */
 .google-street-view-keyless div[aria-label="Street View"] {
     filter: invert(1) !important;
 }
 
-/* водяной знак: div с инлайновыми z-index: 1000 и font-size: 20px внутри gm-style */
+/* the watermark: a div with inline z-index: 1000 and font-size: 20px inside gm-style */
 .google-street-view-keyless .gm-style div[style*="z-index: 1000"][style*="font-size: 20px"] {
     display: none !important;
 }
 
-/* окно «This page can't load Google Maps correctly» — следующий за gm-style элемент контейнера */
+/* the window «This page can't load Google Maps correctly»: the element of the container after gm-style */
 .google-street-view-keyless > div.gm-style + div {
     display: none !important;
 }

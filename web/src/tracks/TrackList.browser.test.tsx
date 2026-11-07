@@ -10,8 +10,8 @@ import { TRACK_COLORS } from './model';
 import { saveNktk } from './nktk';
 import { TRACK_LINES, TRACK_POINTS } from './style';
 
-// Список треков в App на настоящей карте; тайлы — фикстура, хранилище и прокси — заглушка fetch.
-// Названия тестов — сценарии спеки tracks.
+// Track list in App on a real map; tiles are a fixture, the storage and the proxy are a fetch stub.
+// Test names are scenarios of the spec tracks.
 
 let tiles: FixtureTiles;
 
@@ -25,7 +25,7 @@ afterEach(() => {
     expect(tiles.external, 'запросы мимо localhost и тайлов').toEqual([]);
 });
 
-// 1° по экватору — 111 194.93 м (R = 6 371 000 м): два отрезка общей длиной ≈ 12 345 м
+// 1° along the equator is 111 194.93 m (R = 6 371 000 m): two segments with a total length of ≈ 12 345 m
 const LNG_FOR_METERS = (meters: number) => meters / ((6371000 * Math.PI) / 180);
 const TWO_SEGMENTS = saveNktk({
     name: 'Equator',
@@ -56,7 +56,7 @@ function track(name: string, fields: Partial<Parameters<typeof saveNktk>[0]> = {
     });
 }
 
-// данные GeoJSON-источника треков (источники есть в стиле всегда, src/tracks/style.ts)
+// data of the GeoJSON source of tracks (the style always has the sources, src/tracks/style.ts)
 function sourceData<T extends FeatureCollection>(map: MaplibreMap, id: string): T['features'] {
     const source = map.getSource(id);
     if (!source) {
@@ -65,7 +65,7 @@ function sourceData<T extends FeatureCollection>(map: MaplibreMap, id: string): 
     return (source.serialize() as { data: T }).data.features;
 }
 
-// фичи линий треков: по одной на отрезок трека (без разметки маршрута)
+// features of track lines: one for each track segment (without route markup)
 function lines(map: MaplibreMap) {
     return sourceData<FeatureCollection<LineString>>(map, TRACK_LINES);
 }
@@ -96,7 +96,7 @@ describe('Список треков поверх карты', () => {
         await expect.element(row.getByRole('button', { name: 'Equator' })).toBeVisible();
         await expect.element(row.getByTestId('track-length')).toHaveTextContent('12.3 km');
         await expect.element(row.getByRole('checkbox', { name: 'Show Equator' })).toBeChecked();
-        // по фиче на отрезок
+        // one feature for each segment
         await expect.poll(() => lines(map)).toHaveLength(2);
     });
 
@@ -120,7 +120,7 @@ describe('Список треков поверх карты', () => {
         await expect.element(page.getByRole('list', { name: 'Tracks' })).not.toBeInTheDocument();
         await button.click();
         await expect.element(rows()).toHaveLength(1);
-        // нажатие на карту (холст MapLibre) закрывает список, трек остаётся на карте
+        // a press on the map (the MapLibre canvas) closes the list, the track stays on the map
         map.getCanvas().dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
         await expect.element(page.getByRole('list', { name: 'Tracks' })).not.toBeInTheDocument();
         await expect.element(button).toHaveAttribute('aria-expanded', 'false');
@@ -159,11 +159,11 @@ describe('Треки на карте', () => {
     });
 });
 describe('Любой цвет трека', () => {
-    // по линии на трек, в порядке списка
+    // one line for each track, in the list order
     const color = (map: MaplibreMap, index: number) => lines(map)[index]?.properties?.color;
     const hex = () => page.getByRole('textbox', { name: 'Hex color' });
 
-    // синтетический указатель на полосе оттенка: доля ширины слева направо
+    // synthetic pointer on the hue bar: a fraction of the width from left to right
     function pointer(type: string, element: Element, x: number, pointerType = 'mouse') {
         const rect = element.getBoundingClientRect();
         element.dispatchEvent(
@@ -199,7 +199,7 @@ describe('Любой цвет трека', () => {
         pointer('pointerdown', hue, 0.5, pointerType);
         pointer('pointermove', hue, 0.1, pointerType);
         await expect.element(page.getByRole('slider', { name: 'Hue' })).toHaveAttribute('aria-valuenow', '36');
-        // пока указатель не отпущен, трек прежнего цвета: карта успела бы перекраситься за кадр-другой
+        // while the pointer is not released, the track keeps the old color: the map would repaint in a frame or two
         await new Promise((resolve) => setTimeout(resolve, 200));
         expect(color(map, 0)).toBe(TRACK_COLORS[0]);
         pointer('pointerup', hue, 0.1, pointerType);
@@ -253,7 +253,7 @@ describe('Любой цвет трека', () => {
         await expect.element(hex()).not.toBeInTheDocument();
         await page.getByRole('button', { name: 'Color of B' }).click();
         await expect.element(page.getByRole('button', { name: 'Recent color #14b8a6' })).toBeVisible();
-        // одна строка из шести: свой цвет первым, за ним пять первых готовых
+        // one row of six: the custom color first, then the first five preset colors
         const swatches = page.getByRole('dialog').getByRole('button', { name: /^(Recent color|Color \d)/ });
         expect(swatches.elements().map((button) => button.ariaLabel)).toEqual([
             'Recent color #14b8a6',
@@ -268,7 +268,7 @@ describe('Любой цвет трека', () => {
     });
 
     test('Выбранный готовый цвет в строке', async () => {
-        // старая запись из шести недавних: читаются три свежих
+        // an old record of six recent colors: the three newest are read
         localStorage.setItem(
             'nakarte-web:recent-colors',
             JSON.stringify(['#111111', '#222222', '#333333', '#444444', '#555555', '#666666']),
@@ -307,7 +307,7 @@ describe('Действия с треком', () => {
         await input.fill('New name');
         await page.getByRole('button', { name: 'Ok' }).click();
         await expect.element(page.getByRole('button', { name: 'New name' })).toBeVisible();
-        // пустое название трек не меняет
+        // an empty name does not change the track
         await trackMenu('New name', 'Rename');
         await input.fill('  ');
         await page.getByRole('button', { name: 'Ok' }).click();
@@ -359,13 +359,13 @@ describe('Действия со списком', () => {
         );
         await listMenu('Create new track from all visible tracks');
         await expect.element(rows()).toHaveLength(4);
-        // A, B и два отрезка нового трека
+        // A, B and the two segments of the new track
         await expect.poll(() => lines(map)).toHaveLength(4);
         await expect.poll(() => points(map)).toHaveLength(2);
     });
 
-    // кнопка New — в верхней строке, поля ссылки списка она не видит: название из него, как у старого клиента, ушло
-    // (design polish-web-ui, «Макет 4a»)
+    // the New button is in the top row, it does not see the link field of the list: the name from that field, as in
+    // the old client, is gone (design polish-web-ui, «Макет 4a»)
     test('новый трек: New track и сразу рисование', async () => {
         await renderApp(tiles);
         await page.getByRole('button', { name: 'New track' }).click();
@@ -404,7 +404,7 @@ describe('Импорт', () => {
                 return new Response(gpx);
             },
         });
-        // ссылка — в строку поиска (design search-track-links)
+        // the link goes into the search box (design search-track-links)
         await page.getByRole('combobox', { name: 'Search' }).fill('https://example.test/files/route.gpx');
         await expect.element(page.getByRole('option').getByText('route.gpx')).toBeVisible();
         await userEvent.keyboard('{Enter}');
@@ -431,7 +431,7 @@ describe('Вид ожидания прокладки', () => {
         await page.getByRole('combobox', { name: 'Search' }).fill('https://example.test/files/route.gpx');
         await expect.element(page.getByRole('option').getByText('route.gpx')).toBeVisible();
         await userEvent.keyboard('{Enter}');
-        // пока файл грузится — спиннер, а не нитка прокладки
+        // while the file loads, a spinner shows, not the routing thread
         await expect.element(tracksButton().getByLabelText('Loading tracks')).toBeInTheDocument();
         expect(tracksButton().element().querySelector('[data-testid="route-thread"]')).toBeNull();
         release();
@@ -468,7 +468,7 @@ describe('Ссылка на треки после ответа хранилищ�
         });
         await listMenu('Copy link for all tracks');
         await expect.poll(() => storage.posts).toHaveLength(1);
-        // запрос записи ушёл, ссылки ещё нет: хранилище не ответило
+        // the write request is sent, there is no link yet: the storage did not respond
         expect(linkPromise).not.toBeNull();
         await new Promise((resolve) => setTimeout(resolve, 50));
         expect(clipboardText).toBeNull();

@@ -3,17 +3,17 @@ import type { LatLng } from '@/tracks/model';
 import type { End } from './editor';
 import { type Leg, legPath, type RouteLine, STRAIGHT } from './line';
 
-// Инструменты линии без карты и стора (design add-web-line-tools, «Операции — функции над линией редактора»): Cut,
-// Join, Shortcut, разворот отрезка. Работают над неизменяемой RouteLine, поэтому разметка маршрута (какие отрезки
-// проложены и с какой активностью) переживает операцию сама: трек хранит её как номера опорных точек, и
-// fromSegment/toSegment пересчитывают их. Справочник — splitTrackSegment, joinTrackSegments, getShortCutNodes в
+// Line tools without a map and a store (design add-web-line-tools, «Операции — функции над линией редактора»): Cut,
+// Join, Shortcut, segment reverse. They work on an immutable RouteLine, so the route markup (which legs are routed and
+// with which activity) survives the operation by itself: the track keeps it as waypoint indexes, and
+// fromSegment/toSegment calculate them again. Reference: splitTrackSegment, joinTrackSegments, getShortCutNodes in
 // src/lib/leaflet.control.track-list/track-list.js.
 
-// Место на линии: опорная точка или точка рядом с отрезком leg — она проецируется на ближайшее звено этого отрезка
+// A place on the line: a waypoint or a point near the leg leg; it is projected onto the nearest link of this leg
 export type LinePlace = { waypoint: number } | { leg: number; latlng: LatLng };
 
-// Ближайшая к p точка звена a–b и квадрат расстояния до неё — в градусах с поправкой долготы на широту: для выбора
-// звена и точки на нём этого хватает, точность в метрах не нужна
+// The point of the link a–b nearest to p and the squared distance to it, in degrees with a longitude correction for
+// latitude: this is enough to choose a link and a point on it, meter precision is not necessary
 export function closestOnSegment(p: LatLng, a: LatLng, b: LatLng): { point: LatLng; sqDist: number } {
     const k = Math.cos((p.lat * Math.PI) / 180);
     const dx = (b.lng - a.lng) * k;
@@ -25,7 +25,7 @@ export function closestOnSegment(p: LatLng, a: LatLng, b: LatLng): { point: LatL
     return { point, sqDist: ((p.lng - point.lng) * k) ** 2 + (p.lat - point.lat) ** 2 };
 }
 
-// Ближайшее к latlng звено отрезка leg: номер звена в legPath и проекция на него
+// The link of the leg leg nearest to latlng: the link index in legPath and the projection onto it
 export function nearestLink(line: RouteLine, leg: number, latlng: LatLng): { link: number; point: LatLng } {
     const path = legPath(line, leg);
     let link = 0;
@@ -42,17 +42,17 @@ export function nearestLink(line: RouteLine, leg: number, latlng: LatLng): { lin
     return { link, point };
 }
 
-// Новая опорная точка point на звене link отрезка leg. Проложенный отрезок делится по звену, обе половины проложены той
-// же активностью, — геометрия не меняется. Прямой и непроложенный — две копии. Ожидающий — две копии с тем же номером
-// запроса: концы у них новые, и редактор заменяет их новыми запросами (renewPending в editor.ts), а операции списка
-// делают непроложенными.
+// A new waypoint point on the link link of the leg leg. A routed leg is split at the link, both halves are routed with
+// the same activity, and the geometry does not change. A straight leg and an unrouted leg give two copies. A pending
+// leg gives two copies with the same request number: their ends are new, the editor replaces them with new requests
+// (renewPending in editor.ts), and list operations make them unrouted.
 function splitAt(line: RouteLine, leg: number, link: number, point: LatLng): { line: RouteLine; index: number } {
     const { waypoints, legs } = line;
     const source = legs[leg];
     let left: Leg = source;
     let right: Leg = source;
     if (source.state === 'routed') {
-        // звено path[link]–path[link + 1]; внутренние точки маршрута — path[1..n−2]
+        // the link path[link]–path[link + 1]; the inner route points are path[1..n−2]
         const path = legPath(line, leg);
         left = { ...source, points: path.slice(1, link + 1) };
         right = { ...source, points: path.slice(link + 1, -1) };
@@ -67,8 +67,8 @@ function splitAt(line: RouteLine, leg: number, link: number, point: LatLng): { l
     };
 }
 
-// Опорная точка на линии там, где нажали: на ближайшем звене отрезка leg, а не в ближайшей точке линии (design,
-// «Опорная точка — в месте клика на линии»). null — такого отрезка нет.
+// A waypoint on the line where the user pressed: on the nearest link of the leg leg, not at the nearest line point
+// (design, «Опорная точка — в месте клика на линии»). null: there is no such leg.
 export function splitLeg(line: RouteLine, leg: number, latlng: LatLng): { line: RouteLine; index: number } | null {
     if (!line.legs[leg]) {
         return null;
@@ -77,7 +77,7 @@ export function splitLeg(line: RouteLine, leg: number, latlng: LatLng): { line: 
     return splitAt(line, leg, link, point);
 }
 
-// Опорная точка из места: место на отрезке становится новой опорной точкой
+// A waypoint from a place: a place on a leg becomes a new waypoint
 function waypointAt(line: RouteLine, place: LinePlace): { line: RouteLine; index: number } | null {
     if ('waypoint' in place) {
         return line.waypoints[place.waypoint] ? { line, index: place.waypoint } : null;
@@ -89,8 +89,8 @@ function slice(line: RouteLine, from: number, to: number): RouteLine {
     return { waypoints: line.waypoints.slice(from, to + 1), legs: line.legs.slice(from, to) };
 }
 
-// Cut: две линии, общая точка — конец первой и начало второй. В крайней опорной точке резать нечего — null
-// (меню старого клиента Cut у крайних узлов не показывает).
+// Cut: two lines, the shared point is the end of the first line and the start of the second line. At an end waypoint
+// there is nothing to cut: null (the menu of the old client does not show Cut at end nodes).
 export function cutLine(line: RouteLine, place: LinePlace): [RouteLine, RouteLine] | null {
     const split = waypointAt(line, place);
     if (!split || split.index <= 0 || split.index >= split.line.waypoints.length - 1) {
@@ -111,8 +111,8 @@ export function reverseLine(line: RouteLine): RouteLine {
     };
 }
 
-// Join: к концу end линии приклеивается other своим концом otherEnd, стык — прямой отрезок (joinTrackSegments
-// старого клиента)
+// Join: other attaches with its end otherEnd to the end end of the line, the joint is a straight leg (joinTrackSegments
+// of the old client)
 export function joinLines(line: RouteLine, end: End, other: RouteLine, otherEnd: End): RouteLine {
     if (end === 'end') {
         const tail = otherEnd === 'start' ? other : reverseLine(other);
@@ -128,11 +128,12 @@ export function joinLines(line: RouteLine, end: End, other: RouteLine, otherEnd:
     };
 }
 
-// Положение места среди всех точек линии подряд (toSegment): у точки номер f — ключ 2f, у места на звене между точками
-// f и f + 1 — 2f + 1. Между двумя местами удалять есть что, если между их ключами лежит хоть один чётный.
+// The position of a place among all line points in sequence (toSegment): a point with index f has the key 2f, a place
+// on the link between points f and f + 1 has 2f + 1. There is something to remove between two places if at least one
+// even key lies between their keys.
 interface Located {
     key: number;
-    // опорная точка или место на отрезке: звено и проекция
+    // a waypoint or a place on a leg: link and projection
     waypoint?: number;
     leg?: number;
     link?: number;
@@ -140,7 +141,7 @@ interface Located {
 }
 
 function locate(line: RouteLine, place: LinePlace): Located | null {
-    // номер первой точки каждого отрезка среди всех точек линии
+    // the index of the first point of each leg among all line points
     const target = 'waypoint' in place ? place.waypoint : place.leg;
     let flat = 0;
     for (let i = 0; i < target; i++) {
@@ -165,14 +166,14 @@ function ordered(line: RouteLine, from: LinePlace, to: LinePlace): [Located, Loc
         return null;
     }
     const [first, second] = a.key <= b.key ? [a, b] : [b, a];
-    // хоть одна точка линии строго между местами: чётный ключ в (first.key, second.key)
+    // at least one line point strictly between the places: an even key in (first.key, second.key)
     const firstEven = first.key % 2 === 0 ? first.key + 2 : first.key + 1;
     return firstEven < second.key ? [first, second] : null;
 }
 
-// Shortcut: участок между двумя местами линии — один прямой отрезок. null — удалять нечего (getShortCutNodes:
-// lastNodeToDelete < firstNodeToDelete). Сначала дальнее место становится опорной точкой, потом ближнее: номера
-// ближнего от этого не сдвигаются.
+// Shortcut: the part between two line places becomes one straight leg. null: nothing to remove (getShortCutNodes:
+// lastNodeToDelete < firstNodeToDelete). First the far place becomes a waypoint, then the near place: this does not
+// shift the indexes of the near place.
 export function shortcutLine(line: RouteLine, from: LinePlace, to: LinePlace): RouteLine | null {
     const range = ordered(line, from, to);
     if (!range) {
@@ -203,7 +204,8 @@ export function shortcutLine(line: RouteLine, from: LinePlace, to: LinePlace): R
     };
 }
 
-// Участок, который Shortcut удалит, — для подсветки: от первого места до второго по линии. null — удалять нечего.
+// The part that Shortcut removes, for the highlight: from the first place to the second place along the line. null:
+// nothing to remove.
 export function shortcutRemoved(line: RouteLine, from: LinePlace, to: LinePlace): LatLng[] | null {
     const range = ordered(line, from, to);
     if (!range) {
@@ -232,7 +234,7 @@ export function shortcutRemoved(line: RouteLine, from: LinePlace, to: LinePlace)
     return points;
 }
 
-// точка места на линии: опорная точка или проекция на ближайшее звено
+// the point of a place on the line: a waypoint or a projection onto the nearest link
 export function placePoint(line: RouteLine, place: LinePlace): LatLng | null {
     if ('waypoint' in place) {
         return line.waypoints[place.waypoint] ?? null;
@@ -240,8 +242,8 @@ export function placePoint(line: RouteLine, place: LinePlace): LatLng | null {
     return line.legs[place.leg] ? nearestLink(line, place.leg, place.latlng).point : null;
 }
 
-// Откуда идёт выбор на карте: конец линии у Join, место на ней у Shortcut. От неё тянется линия выбора и у неё стоит
-// подсказка (ToolHintOnMap)
+// Where the map choice starts: the line end for Join, a place on the line for Shortcut. The choice line goes from this
+// point, and the hint stands at it (ToolHintOnMap)
 export function toolOrigin(line: RouteLine, tool: LineTool): LatLng | null {
     if (tool.kind === 'join') {
         return (tool.end === 'end' ? line.waypoints.at(-1) : line.waypoints[0]) ?? null;

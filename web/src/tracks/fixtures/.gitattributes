@@ -1,2 +1,2 @@
-# фикстуры — байты как есть: Ozi пишет CRLF, а core.autocrlf=input превратил бы его в LF
+# fixtures are bytes as they are: Ozi writes CRLF, and core.autocrlf=input would change it to LF
 * -text

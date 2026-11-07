@@ -1,13 +1,13 @@
-// Ключ Tracestrack (спека cors-proxy, «Ключ Tracestrack»): прокси подставляет секрет TRACESTRACK_KEY только в растровые
-// тайлы topo_<язык> и topo__ и не отдаёт его клиенту. Tracestrack — заглушка из vitest.config.js, отвечает эхом запроса. Названия
-// тестов — сценарии спеки.
+// The Tracestrack key (spec cors-proxy, «Ключ Tracestrack»): the proxy adds the secret TRACESTRACK_KEY only to the
+// raster tiles topo_<language> and topo__ and does not give it to the client. Tracestrack is a stub from
+// vitest.config.js that echoes the request. The test titles are the scenarios of the spec.
 import {exports as workerExports} from 'cloudflare:workers';
 import {describe, expect, it} from 'vitest';
 
 import worker from '../src/index.js';
 
 const ORIGIN = 'https://nakarte-routing.pages.dev';
-// то же значение — привязка TRACESTRACK_KEY в vitest.config.js
+// the TRACESTRACK_KEY binding in vitest.config.js has the same value
 const KEY = 'test-tracestrack-key';
 const TILE = '/https/tile.tracestrack.com/topo_en/10/618/377.webp';
 
@@ -60,13 +60,13 @@ describe('Ключ Tracestrack', () => {
 
     it.each([
         '/https/tile.tracestrack.com/topo_ru/10/618/377.png',
-        // языка нет в списке Tracestrack
+        // the language is not in the Tracestrack list
         '/https/tile.tracestrack.com/topo_ka/10/618/377.webp',
         '/https/tile.tracestrack.com/topo_/10/618/377.webp',
         '/https/tile.tracestrack.com/topo__/10/618/377.png',
         '/https/tile.tracestrack.com/v/10/618/377.pbf',
         '/https/api.tracestrack.com/v1/elevation',
-        // ключ уходит только по https на стандартный порт
+        // the key goes only over https to the standard port
         '/http/tile.tracestrack.com/topo__/10/618/377.webp',
         '/https/tile.tracestrack.com:8443/topo__/10/618/377.webp',
     ])('Другой адрес Tracestrack: %s', async (path) => {
@@ -134,7 +134,7 @@ describe('Ключ Tracestrack', () => {
 
 describe('Частота запросов к Worker\'ам с одного IP', () => {
     it('Тайлы Tracestrack — тайлы слоя', async () => {
-        // лимиты в vitest.config.js: хосты слоёв — 3, остальные — 2 запроса за 60 с
+        // the limits in vitest.config.js: layer hosts get 3, other hosts get 2 requests per 60 s
         const fromIp = {headers: {'CF-Connecting-IP': '192.0.2.10'}};
         for (let i = 0; i < 3; i++) {
             expect((await request(TILE, fromIp)).status).toBe(200);

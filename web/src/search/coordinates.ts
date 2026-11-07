@@ -1,9 +1,9 @@
 import { PLACE_ZOOM, type SearchResponse } from './result';
 
-// Разбор координат в строке поиска — порт CoordinatesProvider старого клиента
-// (src/lib/leaflet.control.search/providers/coordinates.js) без изменений поведения: нормализация ввода, форматы
-// D, DM, DMS с полушариями и D со знаком, два варианта порядка, если полушарий нет. Случаи — karma-тест
-// test/test_search_coordinates.js, перенесённый в coordinates.test.ts.
+// Parsing of coordinates in the search bar: a port of CoordinatesProvider of the old client
+// (src/lib/leaflet.control.search/providers/coordinates.js) without behavior changes: input normalization, the
+// formats D, DM, DMS with hemispheres and D with a sign, two order variants if there are no hemispheres. The cases are
+// the karma test test/test_search_coordinates.js, moved to coordinates.test.ts.
 
 const reInteger = '\\d+';
 const reFractional = '\\d+(?:\\.\\d+)?';
@@ -58,11 +58,11 @@ function parseHemispheres(
 
 const letters = (latIsSouth: boolean, lonIsWest: boolean) => [latIsSouth ? 'S' : 'N', lonIsWest ? 'W' : 'E'];
 
-// Широта или долгота как градусы, минуты и секунды (минут и секунд может не быть)
+// Latitude or longitude as degrees, minutes and seconds (minutes and seconds can be missing)
 type Parts = [deg: number, min?: number, sec?: number];
 
-// Проверки isValid старого: минуты DMS — целые до 59, минуты DM — дробные меньше 60, секунды меньше 60; на 90° и 180° —
-// без минут и секунд
+// The isValid checks of the old client: DMS minutes are integers up to 59, DM minutes are fractional and less than 60,
+// seconds are less than 60; at 90° and 180°, without minutes and seconds
 function validParts([deg, min, sec]: Parts, maxDeg: number): boolean {
     if (deg < 0 || deg > maxDeg) {
         return false;
@@ -97,7 +97,7 @@ function sameParts(a: Parts, b: Parts): boolean {
     return a.length === b.length && a.every((value, i) => value === b[i]);
 }
 
-// Формат с полушариями: DMS (3 числа на координату), DM (2), D (1). У D полушария обязательны.
+// The format with hemispheres: DMS (3 numbers per coordinate), DM (2), D (1). D requires hemispheres.
 function parseWithHemispheres(s: string, size: 1 | 2 | 3): Parsed[] | null {
     const numbers = [reInteger, reInteger, reFractional].slice(3 - size);
     const coordinate = numbers.map((re) => `(${re})`).join(' ');
@@ -157,7 +157,7 @@ function parseSigned(s: string): Parsed[] | null {
     if (!m) {
         return null;
     }
-    // Number.parseFloat('-0') — -0; подпись старого — `${-0}°` = `0°`
+    // Number.parseFloat('-0') is -0; the label of the old client is `${-0}°` = `0°`
     const [d1, d2] = m.slice(1).map(Number.parseFloat);
     const valid = (lat: number, lng: number) => lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
     const results: Parsed[] = [];
@@ -170,28 +170,30 @@ function parseSigned(s: string): Parsed[] | null {
     return results.length ? results : null;
 }
 
-// Регулярки normalizeInput старого. symbols — все символы Unicode, кроме букв и [0-9,.-] (скрипт автора
-// gist.github.com/wladich/3d15edc8fcd8b735ac883ef60fe10bfe), плюс вручную «oO» латиницей и «оО» кириллицей (знак градуса)
+// The regular expressions of normalizeInput of the old client. symbols are all Unicode characters except letters and
+// [0-9,.-] (the script of the author gist.github.com/wladich/3d15edc8fcd8b735ac883ef60fe10bfe), plus by hand «oO» in
+// Latin script and «оО» in Cyrillic script (the degree sign)
 const SYMBOLS =
-    // biome-ignore lint/suspicious/noControlCharactersInRegex: диапазоны Unicode целиком, включая управляющие символы
-    // biome-ignore lint/suspicious/noMisleadingCharacterClass: диапазоны, а не буква с комбинируемым знаком
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: whole Unicode ranges, control characters included
+    // biome-ignore lint/suspicious/noMisleadingCharacterClass: ranges, not a letter with a combining mark
     /[OoОо\u0000-\u002b\u002f\u003a-\u0040\u005b-\u0060\u007b-\u00bf\u00d7\u00f7\u01bb\u01c0-\u01cc\u0294\u02b9-\u036f\u0375\u03f6\u0482-\u0489\u0559-\u055f\u0589-\u109f\u10fb\u10fc\u1100-\u139f\u1400-\u1c7f\u1cc0-\u1cff\u1d2f-\u1d6a\u1dc0-\u1dff\u1f88-\u1f8f\u1f98-\u1f9f\u1fa8-\u1faf\u1fbc-\u1fc1\u1fcc-\u1fcf\u1ffc-\u2131\u213a-\u214d\u214f-\u2182\u2185-\u2bff\u2ce5-\u2cea\u2cef-\u2cf1\u2cf9-\u2cff\u2d30-\ua63f\ua66e-\ua67f\ua69e-\ua721\ua788-\ua78a\ua78f\ua7f7-\ua7f9\ua7fb-\uab2f\uab5b-\uab5f\uabc0-\uffff]/gu;
 const NORTH = /[Nn]|[СсCc] *[Шш]?/gu;
 const SOUTH = /[Ss]|[Юю] *[Шш]?/gu;
 const WEST = /[Ww]|[Зз] *[Дд]?/gu;
-// второе «Ее» — кириллица
+// the second «Ее» is Cyrillic
 const EAST = /[EeЕе]|[ВвB] *[Дд]?/gu;
 
 export function normalizeCoordinates(input: string): string {
-    // NFKC переводит верхние и нижние индексы в обычные символы
+    // NFKC converts superscripts and subscripts to usual characters
     let s = ` ${input.normalize('NFKC')} `;
     s = s.replace(SYMBOLS, ' ');
-    // точки и запятые не между цифрами — разделители
+    // dots and commas that are not between digits are separators
     s = s.replace(/[,.](?=\D)/gu, ' ');
     s = s.replace(/(\D)[,.]/gu, '$1 ');
-    // есть точка — она десятичный разделитель, запятые — разделители; иначе запятая — десятичный разделитель
+    // if there is a dot, it is the decimal separator, and commas are separators; otherwise a comma is the decimal
+    // separator
     s = s.includes('.') ? s.replace(/,/gu, ' ') : s.replace(/,/gu, '.');
-    // минус только в начале числа
+    // a minus only at the start of a number
     s = s.replace(/-(?=\D)/gu, ' ');
     s = s.replace(/([^ ])-/gu, '$1 ');
     s = s.replace(NORTH, ' N ');
@@ -201,7 +203,7 @@ export function normalizeCoordinates(input: string): string {
     return s.replace(/ +/gu, ' ').trim();
 }
 
-// Строка похожа на координаты: не меньше двух полей, все — числа или полушария, хотя бы одно число
+// The string looks like coordinates: at least two fields, all are numbers or hemispheres, at least one number
 export function isCoordinatesQuery(query: string): boolean {
     const fields = normalizeCoordinates(query).split(' ');
     const field = new RegExp(`^((${reHemisphere})|(${reSignedFractional}))$`, 'u');

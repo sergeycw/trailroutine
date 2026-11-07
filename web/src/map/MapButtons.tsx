@@ -7,13 +7,14 @@ import { useStreetView } from '@/streetview/context';
 import { ControlPortal } from './control-portal';
 import { forgetPosition, savePosition } from './locate';
 
-// Кнопки карты справа под быстрыми слоями (три зоны, design layout-three-zones и layer-thumbnails): Street View, зум
-// капсулой, геолокация MapLibre; линейка масштаба и атрибуция — слева снизу (design map-chrome). Свои контролы —
-// ControlPortal (control-portal.tsx). Вид контролов — круглое стекло, правила в index.css.
+// The map buttons on the right under the quick layers (three zones, design layout-three-zones and layer-thumbnails):
+// Street View, zoom as a capsule, MapLibre geolocation; the scale bar and the attribution are at the bottom left
+// (design map-chrome). Custom controls use ControlPortal (control-portal.tsx). The controls look like round glass, the
+// rules are in index.css.
 
-// Зум: кнопки с разметкой и классами NavigationControl MapLibre (иконки — из его CSS, тесты ищут
-// .maplibregl-ctrl-zoom-in), капсулой без номера зума (design layout-three-zones); зум нужен только, чтобы гасить кнопки
-// на пределах. Компаса нет: поворот карты выключен (BaseMap)
+// Zoom: buttons with the markup and the classes of the MapLibre NavigationControl (the icons come from its CSS, the
+// tests look for .maplibregl-ctrl-zoom-in), as a capsule without the zoom number (design layout-three-zones); the zoom
+// is necessary only to disable the buttons at the limits. There is no compass: the map rotation is off (BaseMap)
 function ZoomControl() {
     const { current } = useMap();
     const map = current?.getMap();
@@ -55,13 +56,15 @@ function ZoomControl() {
     );
 }
 
-// Режим Street View (кнопка и Alt+P старого контрола панорам; code, а не key: на macOS Alt меняет символ)
+// Street View mode (the button and Alt+P of the old panorama control; code, not key: on macOS Alt changes the
+// character)
 function StreetViewControl() {
     const streetView = useStreetView();
     const enabled = useAppStore((state) => state.streetView.enabled);
     useEffect(() => {
         const onKey = (event: KeyboardEvent) => {
-            // в поле ввода Option+P на macOS — символ «π», а не Street View (поле названия в редакторе, Rename)
+            // in an input field, Option+P on macOS is the character «π», not Street View (the name field in the
+            // editor, Rename)
             const target = event.target instanceof HTMLElement ? event.target : null;
             if (target && (target.isContentEditable || ['INPUT', 'TEXTAREA'].includes(target.tagName))) {
                 return;
@@ -78,7 +81,8 @@ function StreetViewControl() {
         <ControlPortal className="maplibregl-ctrl-group">
             <button
                 type="button"
-                // CSS MapLibre вне @layer задаёт кнопкам группы display: block и прозрачный фон: flex и фон нажатой — с !
+                // the MapLibre CSS outside @layer sets display: block and a transparent background on the group
+                // buttons: flex and the pressed background need !
                 className={cn(
                     'flex! items-center justify-center [&_svg]:size-[18px]',
                     enabled && 'bg-primary! text-primary-foreground',
@@ -94,7 +98,7 @@ function StreetViewControl() {
     );
 }
 
-// Тексты ошибок — locationErrorMessage старого клиента (src/App.js)
+// The error texts are locationErrorMessage of the old client (src/App.js)
 export function geolocationErrorMessage(code: number, message: string): string {
     switch (code) {
         case 0:
@@ -108,9 +112,10 @@ export function geolocationErrorMessage(code: number, message: string): string {
     }
 }
 
-// Неактивная кнопка геолокации (запрещено раньше или нет API) клика не получает, а подсказка «Location not available»
-// видна только при наведении — на телефоне её не увидеть (спека web-client, «Геолокация недоступна»). Пока кнопка
-// disabled, она прозрачна для указателя, и нажатие ловит контейнер контрола: тост с причиной
+// A disabled geolocation button (access denied before, or no API) gets no click, and the tooltip «Location not
+// available» shows only on hover, which is not possible on a phone (spec web-client, «Геолокация недоступна»). While
+// the button is disabled, it lets the pointer through, and the control container catches the click: a toast with the
+// reason
 function useDisabledGeolocateToast(notify: (title: string) => void) {
     const { current } = useMap();
     const map = current?.getMap();
@@ -120,7 +125,8 @@ function useDisabledGeolocateToast(notify: (title: string) => void) {
         if (!button || !group) {
             return;
         }
-        // подсказку «Location not available» держит кнопка — пока она прозрачна для указателя, та же подсказка у группы
+        // the button holds the tooltip «Location not available»; while the button lets the pointer through, the group
+        // has the same tooltip
         const sync = () => {
             button.style.pointerEvents = button.disabled ? 'none' : '';
             group.title = button.disabled ? button.title : '';
@@ -141,11 +147,12 @@ function useDisabledGeolocateToast(notify: (title: string) => void) {
     }, [map, notify]);
 }
 
-// Атрибуция — кнопка (i) и на компьютере: при старте раскрыта, любое движение карты пользователем её сворачивает (гайд
-// OSMF https://osmfoundation.org/wiki/Attribution, «Fading or collapsing»; design map-chrome). Сам MapLibre с compact
-// сворачивает её только на drag, а колесо, щипок и кнопки зума — тоже движение. Свернуть — то же, что делает его
-// _updateCompactMinimize: снять класс maplibregl-compact-show. Программные переходы (вид из адреса, fitBounds треков,
-// геолокация при заходе) originalEvent не несут и атрибуцию не сворачивают
+// The attribution is an (i) button on a computer too: it is expanded at the start, and any map move by the user
+// collapses it (OSMF guide https://osmfoundation.org/wiki/Attribution, «Fading or collapsing»; design map-chrome).
+// MapLibre with compact collapses it only on drag, but the wheel, a pinch and the zoom buttons are moves too. To
+// collapse, do the same as its _updateCompactMinimize: remove the class maplibregl-compact-show. Programmatic moves
+// (the view from the address, fitBounds of tracks, geolocation at the visit) do not carry originalEvent and do not
+// collapse the attribution
 function useCollapseAttributionOnMove() {
     const { current } = useMap();
     const map = current?.getMap();
@@ -182,9 +189,9 @@ export function MapButtons({ notify, storage }: MapButtonsProps) {
             <GeolocateControl
                 position="top-right"
                 trackUserLocation
-                // у MapLibre таймаут 6 с — на телефоне первый фикс GPS дольше; у старого таймаута не было
+                // MapLibre has a 6 s timeout: on a phone the first GPS fix takes longer; the old one had no timeout
                 positionOptions={{ enableHighAccuracy: true, timeout: 30_000, maximumAge: 0 }}
-                // maxAutoZoom 17 старого клиента — в зуме MapLibre
+                // maxAutoZoom 17 of the old client, in MapLibre zoom
                 fitBoundsOptions={{ maxZoom: 16 }}
                 onGeolocate={(event) =>
                     savePosition(storage, { lat: event.coords.latitude, lng: event.coords.longitude })
@@ -196,9 +203,10 @@ export function MapButtons({ notify, storage }: MapButtonsProps) {
                     notify(geolocationErrorMessage(event.code, event.message));
                 }}
             />
-            {/* атрибуция и линейка масштаба слева снизу: снизу по центру — кнопка профиля (MapActions); MapLibre ставит
-                каждый следующий нижний контрол выше — линейка над атрибуцией. maxWidth 80 (у MapLibre 100): свёрнутый
-                столбец помещается слева от кнопки профиля на телефоне (design map-chrome) */}
+            {/* the attribution and the scale bar at the bottom left: at the bottom center is the profile button
+                (MapActions); MapLibre puts each next bottom control higher, so the scale bar is above the attribution.
+                maxWidth 80 (MapLibre has 100): the collapsed column fits to the left of the profile button on a phone
+                (design map-chrome) */}
             <AttributionControl position="bottom-left" compact />
             <ScaleControl position="bottom-left" unit="metric" maxWidth={80} />
         </>

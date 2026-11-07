@@ -25,7 +25,7 @@ describe('Настройки старого клиента', () => {
                 { code: 'F', isCustom: false, enabled: true },
                 { code: 'Wp', isCustom: false, enabled: true, hotkey: 'W' },
                 { code: 'Co', isCustom: false, enabled: false, hotkey: null },
-                // хоткеи старого клиента не переносятся: в новом приложении их нет
+                // the hotkeys of the old client do not move: the new app does not have them
                 { code: 'Otm', isCustom: false, enabled: true, hotkey: 'T' },
                 { code: OLD_CUSTOM, isCustom: true, enabled: true, hotkey: '5' },
             ],
@@ -36,7 +36,7 @@ describe('Настройки старого клиента', () => {
         expect(settings).not.toHaveProperty('hotkeys');
         expect(settings.custom).toEqual([OLD_CUSTOM]);
         expect(isListed(layer('Co'), settings)).toBe(false);
-        // старый ключ не трогается: старый клиент живёт на том же origin
+        // the old key stays untouched: the old client lives on the same origin
         expect(storage.getItem(LEGACY_STORAGE_KEY)).toBe(JSON.stringify(legacy));
     });
 
@@ -129,7 +129,7 @@ describe('Круг помнит выбор типа', () => {
                 [STORAGE_KEY]: JSON.stringify({ version: 1, listed: {}, custom: [], selection: null, quickLayers }),
             });
         expect(loadSettings(stored({ Tt: 'Otm', E: 'I' }), catalog).quickLayers).toEqual({ Of: 'Otm', E: 'I' });
-        // новая память важнее старой
+        // the new memory has priority over the old one
         expect(loadSettings(stored({ Tt: 'Otm', Of: 'Co' }), catalog).quickLayers).toEqual({ Of: 'Co' });
     });
 });
@@ -141,11 +141,12 @@ describe('Настройка списка слоёв', () => {
             memoryStorage({
                 [STORAGE_KEY]: JSON.stringify({ version: 1, listed, custom: [], selection: null, ...extra }),
             });
-        // запись без groupDefaults писала галочки разом: «снят» у слоя группы без isDefault — прежнее умолчание
+        // a record without groupDefaults wrote all check marks at once: "unchecked" for a group layer without
+        // isDefault is the previous default
         expect(loadSettings(stored({}), catalog).listed).toEqual({ Co: false, Gbt: false, Nm: true });
-        // с groupDefaults «снят» — выбор пользователя
+        // with groupDefaults, "unchecked" is the user choice
         expect(loadSettings(stored({ groupDefaults: true }), catalog).listed).toEqual(listed);
-        // настройки старого клиента писали галочки всех слоёв — тот же разбор
+        // the settings of the old client wrote the check marks of all layers: the same parsing
         const legacy = memoryStorage({
             [LEGACY_STORAGE_KEY]: JSON.stringify({
                 layers: [

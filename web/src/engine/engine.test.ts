@@ -2,8 +2,8 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import type { EngineBackend } from './backends';
 import { createEngine, EngineStartError, EngineTimeoutError } from './engine';
 
-// Сценарии спеки browser-routing-engine на поддельном движке: настоящий рантайм CheerpJ живёт на CDN,
-// а тесты в сеть не ходят. Настоящий движок проверяется стендом engine-bench.html.
+// Scenarios of the spec browser-routing-engine on a fake engine: the real CheerpJ runtime lives on a CDN, and the tests
+// do not go to the network. The bench engine-bench.html checks the real engine.
 
 interface FakeCall {
     query: string;
@@ -11,7 +11,7 @@ interface FakeCall {
     reject: (error: Error) => void;
 }
 
-// Бэкенд, которому тест сам отвечает: расчёт «идёт», пока тест не вызовет resolve или reject.
+// A backend that the test answers itself: a calculation «runs» until the test calls resolve or reject.
 function fakeBackend(name: EngineBackend['name'], options: { failStart?: boolean } = {}) {
     const calls: FakeCall[] = [];
     const counters = { starts: 0, disposed: 0 };
@@ -26,7 +26,7 @@ function fakeBackend(name: EngineBackend['name'], options: { failStart?: boolean
         route(query) {
             return new Promise((resolve, reject) => calls.push({ query, resolve, reject }));
         },
-        // как workerBackend: завершение отклоняет начатые расчёты сразу, синхронно
+        // as workerBackend does: dispose rejects started calculations immediately, synchronously
         dispose() {
             counters.disposed++;
             for (const call of calls) {
@@ -37,7 +37,7 @@ function fakeBackend(name: EngineBackend['name'], options: { failStart?: boolean
     return { backend, calls, counters };
 }
 
-// дать отработать микрозадачам очереди
+// let the queue microtasks run
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe('Очередь запросов', () => {
@@ -46,7 +46,7 @@ describe('Очередь запросов', () => {
         const engine = createEngine([() => fake.backend]);
         const results = Promise.allSettled(['a', 'b', 'c'].map((q) => engine.route(q)));
         await flush();
-        // в движке всегда один запрос
+        // the engine always has one request
         expect(fake.calls.map((c) => c.query)).toEqual(['a']);
         fake.calls[0].resolve('A');
         await flush();
@@ -54,7 +54,7 @@ describe('Очередь запросов', () => {
         fake.calls[1].reject(new Error('no route found'));
         await flush();
         fake.calls[2].resolve('C');
-        // ошибка одного запроса не мешает следующим, каждый ответ — своему запросу
+        // an error of one request does not affect the next ones, each response goes to its own request
         expect(await results).toEqual([
             { status: 'fulfilled', value: 'A' },
             { status: 'rejected', reason: new Error('no route found') },
@@ -74,7 +74,7 @@ describe('Очередь запросов', () => {
         await expect(cancelled).rejects.toMatchObject({ name: 'AbortError' });
         fake.calls[0].resolve('A');
         await flush();
-        // отменённый запрос в движок не попал
+        // the cancelled request did not go to the engine
         expect(fake.calls.map((c) => c.query)).toEqual(['a', 'c']);
         fake.calls[1].resolve('C');
         await expect(first).resolves.toBe('A');
@@ -89,10 +89,10 @@ describe('Очередь запросов', () => {
         const next = engine.route('b');
         await flush();
         controller.abort();
-        // отказ — сразу, не дожидаясь движка
+        // the rejection comes immediately, without a wait for the engine
         await expect(running).rejects.toMatchObject({ name: 'AbortError' });
         await flush();
-        // следующий ждёт, пока движок закончит текущий расчёт
+        // the next request waits until the engine ends the current calculation
         expect(fake.calls.map((c) => c.query)).toEqual(['a']);
         fake.calls[0].resolve('A');
         await flush();
@@ -132,7 +132,7 @@ describe('Один движок на страницу', () => {
         ]);
         await expect(engine.route('a')).rejects.toBeInstanceOf(EngineStartError);
         expect(engine.status()).toBe('failed');
-        // следующий запрос маршрута повторяет запуск
+        // the next route request retries the start
         fail = false;
         const next = engine.route('b');
         await flush();
@@ -159,7 +159,7 @@ describe('Расчёт маршрута вне главного потока', (
         const engine = createEngine([() => worker.backend, () => main.backend]);
         const result = engine.route('a');
         await flush();
-        // воркер выброшен, маршрут считается на главном потоке в той же попытке
+        // the worker is discarded, the route is calculated on the main thread in the same attempt
         expect(worker.counters.disposed).toBe(1);
         expect(engine.backend()).toBe('main-thread');
         main.calls[0].resolve('A');
@@ -176,7 +176,7 @@ describe('Расчёт маршрута вне главного потока', (
     });
 });
 
-// спека clone-monitoring, «Ошибки в браузере пользователей»: отказ каждого бэкенда уходит в трекер через onBackendError
+// spec clone-monitoring, «Ошибки в браузере пользователей»: each backend failure goes to the tracker by onBackendError
 describe('Ошибки в браузере пользователей', () => {
     test('Движок не запустился', async () => {
         const onBackendError = vi.fn();
@@ -202,13 +202,13 @@ describe('Ошибки в браузере пользователей', () => {
         await flush();
         fake.calls[0].reject(new Error('no route found'));
         await expect(result).rejects.toThrow('no route found');
-        // успешный запуск и отказ маршрута — не ошибки трекера
+        // a successful start and a route failure are not tracker errors
         expect(onBackendError).not.toHaveBeenCalled();
     });
 });
 
 describe('Таймаут расчёта', () => {
-    // короткий таймаут вместо 60 с: поддельный бэкенд «считает», пока тест не ответит
+    // a short timeout instead of 60 s: the fake backend «calculates» until the test answers
     const TIMEOUT = 30;
     const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -227,11 +227,11 @@ describe('Таймаут расчёта', () => {
         const result = engine.route('a');
         await flush();
         engine.subscribe(() => seen.push(engine.status()));
-        // dispose настоящего воркера отклоняет зависший расчёт синхронно — отказ всё равно об истечении времени
+        // a real worker dispose rejects the hung calculation synchronously, the rejection is still about the timeout
         await expect(result).rejects.toThrow(EngineTimeoutError);
         await expect(result).rejects.toThrow(/^BRouter engine did not answer in \d+ s$/);
         expect(fakes[0].counters.disposed).toBe(1);
-        // движок сброшен и сразу прогревается заново: следующий клик не ждёт холодный старт
+        // the engine is reset and warms up again immediately: the next click does not wait for a cold start
         await flush();
         expect(seen).toEqual(['idle', 'loading', 'ready']);
         expect(fakes).toHaveLength(2);
@@ -279,7 +279,7 @@ describe('Таймаут расчёта', () => {
         const queued = [engine.route('b'), engine.route('c')];
         await expect(hung).rejects.toBeInstanceOf(EngineTimeoutError);
         await flush();
-        // b считает уже новый движок; ожидание в очереди за зависшим в таймаут не входит
+        // a new engine already calculates b; the queue wait behind the hung calculation is not part of the timeout
         expect(fakes[1].calls.map((c) => c.query)).toEqual(['b']);
         await wait(TIMEOUT / 2);
         fakes[1].calls[0].resolve('B');
@@ -309,13 +309,14 @@ describe('Таймаут расчёта', () => {
         await expect(hung).rejects.toBeInstanceOf(EngineStartError);
         await expect(hung).rejects.toThrow('BRouter engine stopped responding');
         expect(engine.status()).toBe('failed');
-        // запрос в очереди и новые — отказ сразу, в движок не уходят, движок заново не запускается
+        // the queued request and new ones fail immediately, do not go to the engine, and the engine does not restart
         await expect(queued).rejects.toBeInstanceOf(EngineStartError);
         await expect(engine.route('c')).rejects.toBeInstanceOf(EngineStartError);
         await expect(engine.start()).rejects.toBeInstanceOf(EngineStartError);
         expect(mains).toHaveLength(1);
         expect(mains[0].calls.map((c) => c.query)).toEqual(['a']);
-        // расчёт всё-таки закончился: движок снова готов, без перезапуска; поздний ответ первому запросу не уходит
+        // the calculation ended after all: the engine is ready again, without a restart; the late response does not go
+        // to the first request
         mains[0].calls[0].resolve('late');
         await flush();
         expect(engine.status()).toBe('ready');

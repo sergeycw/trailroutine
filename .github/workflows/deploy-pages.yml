@@ -9,24 +9,24 @@ concurrency:
   group: deploy-pages
   cancel-in-progress: true
 
-# Секреты Cloudflare — только в env шагов с wrangler: установка зависимостей, тесты и сборка идут без них
-# (requirement «Секреты только у шагов публикации», clone-deploy). Версия wrangler точная: npx не тянет
-# новую 4.x на каждом деплое; обновлять здесь.
+# The Cloudflare secrets are only in the env of the steps with wrangler: the dependency install, the tests and the build
+# run without them (requirement «Секреты только у шагов публикации», clone-deploy). The wrangler version is exact: npx
+# does not get a new 4.x on each deploy; update it here.
 env:
   WRANGLER: wrangler@4.148.0
-  # sentry-cli для карт исходников (design add-error-tracking): точная версия по той же причине
+  # sentry-cli for the source maps (design add-error-tracking): an exact version for the same reason
   SENTRY_CLI: '@sentry/cli@3.8.2'
 
 permissions:
   contents: read
-  # gh run list в job changes: ищет последний успешный деплой
+  # gh run list in job changes: finds the last successful deploy
   actions: read
 
 jobs:
-  # Что выкатывать: сервисы, чьи файлы менялись с последнего успешного прогона этого workflow.
-  # База — успешный прогон, а не github.event.before: прогон, отменённый новым push
-  # (cancel-in-progress), или упавший не выкатил свои изменения, и следующий подхватит их.
-  # Ручной запуск, правка этого файла или неизвестная база — выкатывается всё.
+  # What to deploy: the services whose files changed since the last successful run of this workflow.
+  # The base is the successful run, not github.event.before: a run that a new push cancelled
+  # (cancel-in-progress), or a run that failed, did not deploy its changes, and the next run takes them.
+  # A manual run, a change of this file or an unknown base deploys everything.
   changes:
     if: github.repository == 'sergeycw/trailroutine'
     runs-on: ubuntu-latest
@@ -62,7 +62,7 @@ jobs:
             echo "tracks=$(has '^workers/tracks/')"
             echo "elevation=$(has '^workers/elevation/')"
             echo "guard=$(has '^workers/guard/')"
-            # сайт: всё, кроме Worker'ов, документов и других workflow — приложение web/, functions/, файлы движка
+            # site: all, except the Workers, documents and other workflows: the app web/, functions/, engine files
             echo "pages=$(echo "$changed" | grep -vE '^(workers/(cors-proxy|tracks|elevation|guard)/|docs/|openspec/|\.github/)|\.md$' | grep -q . && echo true || echo false)"
           } | tee -a "$GITHUB_OUTPUT"
 
@@ -129,15 +129,15 @@ jobs:
           cache: npm
           cache-dependency-path: workers/elevation/package-lock.json
       - run: npm ci
-      # npm test собирает wasm и гоняет его в workerd; wrangler deploy собирает его заново
-      # командой [build] из wrangler.toml
+      # npm test builds the wasm and runs it in workerd; wrangler deploy builds it again
+      # with the command [build] from wrangler.toml
       - run: npm test
       - run: npx --yes $WRANGLER deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-  # Счётчик частоты Pages Functions (service binding GUARD); снаружи закрыт, деплоится до Pages.
+  # Rate counter of the Pages Functions (service binding GUARD); closed from outside, deploys before Pages.
   guard:
     needs: changes
     if: needs.changes.outputs.guard == 'true'
@@ -159,9 +159,9 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-  # Pages после Worker'ов: при смене контракта новый клиент не должен ходить в старый сервис,
-  # а привязка GUARD — указывать на несуществующий Worker.
-  # Упал деплой Worker'а — Pages не выкатываются; пропущенные Worker'ы не мешают.
+  # Pages after the Workers: on a contract change the new client must not go to the old service,
+  # and the binding GUARD must not point to a Worker that does not exist.
+  # If a Worker deploy fails, Pages do not deploy; skipped Workers do not block it.
   pages:
     needs: [changes, cors-proxy, tracks, elevation, guard]
     if: ${{ !cancelled() && !failure() && needs.changes.outputs.pages == 'true' }}
@@ -175,7 +175,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      # тесты Pages Functions (functions/tiles, functions/brouter-wasm) лежат в workers/tiles
+      # the tests of the Pages Functions (functions/tiles, functions/brouter-wasm) are in workers/tiles
       - name: test pages functions
         working-directory: workers/tiles
         run: |
@@ -185,9 +185,10 @@ jobs:
         run: |
           docker create --name brouter ghcr.io/abrensch/brouter:nightly
           BROUTER_CONTAINER=brouter sh experiments/wasm/cheerpj/build.sh
-      # Приложение web/ — в корень build/ (openspec/specs/web-client, design switch-to-web-app); файлы движка из
-      # experiments/wasm/cheerpj/ туда же кладёт его сборка (плагин engineFiles). Vitest и e2e — как в check-web.yml (линт
-      # и типы там же, на PR), e2e — по той сборке, что публикуется; упали — Pages не публикуются.
+      # The app web/ goes to the root of build/ (openspec/specs/web-client, design switch-to-web-app); its build puts
+      # the engine files from experiments/wasm/cheerpj/ there too (plugin engineFiles). Vitest and e2e as in
+      # check-web.yml (lint and types are also there, on the PR), e2e on the build that goes to publication; if they
+      # fail, Pages do not publish.
       - name: web install
         working-directory: web
         run: |
@@ -196,11 +197,12 @@ jobs:
       - name: web test
         working-directory: web
         run: npm test
-      # Ключ Maps JavaScript API для окна Street View — только этому шагу (установка зависимостей и тесты идут без него;
-      # спека clone-deploy, «Ключ Google только шагу сборки»). Без секрета — пустой ключ, режим без ключа; с секретом ключ
-      # окажется в бандле, защищают его ограничения по referrer и API в Google Cloud.
-      # DSN Sentry — тоже только этому шагу (спека clone-deploy, «Секреты Sentry только своим шагам»): DSN виден в бандле,
-      # секрет — выключатель трекера; без него сборка к Sentry не обращается
+      # The Maps JavaScript API key for the Street View window goes only to this step (the dependency install and the
+      # tests run without it; spec clone-deploy, «Ключ Google только шагу сборки»). Without the secret the key is empty,
+      # the mode without a key; with the secret the key is in the bundle, and the referrer and API restrictions in
+      # Google Cloud protect it.
+      # The Sentry DSN also goes only to this step (spec clone-deploy, «Секреты Sentry только своим шагам»): the DSN is
+      # visible in the bundle, the secret is the switch of the tracker; without it the build does not go to Sentry
       - name: web build
         working-directory: web
         run: npm run build
@@ -209,16 +211,17 @@ jobs:
           VITE_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
       - name: check engine files are in the build
         run: test -f build/brouter-wasm/lib/brouter.jar && test -f build/brouter-wasm/profiles/lookups.dat
-      # Debug ID связывает файл бандла с его картой в Sentry. Внедряется до e2e — e2e проверяют ровно то, что выкатится;
-      # токен не нужен. Только build/assets: файлы движка в brouter-wasm без карт
+      # The Debug ID links a bundle file to its map in Sentry. The step injects it before e2e, so e2e check exactly what
+      # deploys; it does not need a token. Only build/assets: the engine files in brouter-wasm have no maps
       - name: inject sentry debug ids
         run: npx --yes $SENTRY_CLI sourcemaps inject build/assets
       - name: web e2e
         working-directory: web
         run: npm run e2e
-      # Токен Sentry — только этому шагу: плагин Vite загружал бы карты из сборки, где исполняется код зависимостей
-      # (design add-error-tracking, «Карты исходников»). Без токена загрузка пропускается; упавшая загрузка (сбой Sentry,
-      # нет SENTRY_ORG) деплой не останавливает — стек в Sentry тогда без исходников, а сайт выкатывается
+      # The Sentry token goes only to this step: a Vite plugin would upload the maps from the build, where the
+      # dependency code runs (design add-error-tracking, «Карты исходников»). Without the token the step skips the
+      # upload; a failed upload (Sentry failure, no SENTRY_ORG) does not stop the deploy: the stack in Sentry has no
+      # sources then, but the site deploys
       - name: upload source maps to sentry
         continue-on-error: true
         run: |
@@ -231,13 +234,13 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ vars.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
-      # карты в Pages не попадают в любом случае (спека clone-deploy, «Карты исходников не публикуются»)
+      # the maps do not go to Pages in any case (spec clone-deploy, «Карты исходников не публикуются»)
       - name: remove source maps from the build
         run: |
           find build -name '*.map' -delete
           test -z "$(find build -name '*.map')"
-      # Адрес *.nakarte.me в бандле — обращение к инфраструктуре автора: деплой стоп
-      # (требование «Бандл без адресов автора» в openspec/specs/clone-deploy). В PR то же проверяет check-web.yml.
+      # A *.nakarte.me host in the bundle is a call to the author infrastructure: the deploy stops
+      # (requirement «Бандл без адресов автора» in openspec/specs/clone-deploy). On a PR check-web.yml checks the same.
       - name: check no author hosts in the build
         run: node scripts/check-no-author-hosts.mjs build
       - run: npx --yes $WRANGLER pages deploy build --project-name nakarte-routing --branch master
@@ -245,14 +248,14 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-  # Каждый старый деплой отвечает по https://<хеш>.nakarte-routing.pages.dev со своими функциями,
-  # то есть без новых лимитов: оставляем только текущий (requirement «Только текущий деплой Pages»,
-  # clone-deploy). Отдельный job: сбой чистки не помечает деплой упавшим. Текущий — canonical_deployment
-  # проекта с коммитом этого прогона; не совпал — ничего не удаляем. curl, а не wrangler pages deployment delete: тот может
-  # спросить подтверждение.
-  # !cancelled() обязателен: без функции статуса GitHub неявно добавляет success(), а пропуск Worker'а
-  # тянется по цепочке через pages, и prune пропускался в каждом прогоне без Worker'ов
-  # (архив fix-prune-after-skipped-workers).
+  # Each old deploy answers on https://<hash>.nakarte-routing.pages.dev with its own functions,
+  # that is without the new limits: keep only the current one (requirement «Только текущий деплой Pages»,
+  # clone-deploy). A separate job: a cleanup failure does not mark the deploy as failed. The current one is the
+  # canonical_deployment of the project with the commit of this run; if it does not match, delete nothing. curl, not
+  # wrangler pages deployment delete: that command can ask for a confirmation.
+  # !cancelled() is mandatory: without a status function GitHub adds success() implicitly, a skipped Worker
+  # goes along the chain through pages, and prune was skipped in each run without Workers
+  # (archive fix-prune-after-skipped-workers).
   prune:
     needs: pages
     if: ${{ !cancelled() && needs.pages.result == 'success' }}
@@ -268,13 +271,13 @@ jobs:
           project=$(call "$api")
           current=$(echo "$project" | jq -r '.result.canonical_deployment.id // empty')
           commit=$(echo "$project" | jq -r '.result.canonical_deployment.deployment_trigger.metadata.commit_hash // empty')
-          # текущий деплой обязан быть только что опубликованным, иначе удалили бы новый вместо старых
+          # the current deploy must be the one just published, else the job would delete the new one, not the old ones
           if [ -z "$current" ] || [ "$commit" != "$GITHUB_SHA" ]; then
             echo "current deployment ${current:-unknown} is from ${commit:-unknown}, not $GITHUB_SHA: nothing deleted"
             exit 1
           fi
           echo "current deployment: $current"
-          # сначала весь список, потом удаление: удаление по ходу сдвигало бы страницы
+          # first the full list, then the deletion: a deletion during the listing would shift the pages
           pages=$(call "$api/deployments?per_page=25" | jq -r '.result_info.total_pages')
           ids=""
           for page in $(seq 1 "$pages"); do
@@ -288,7 +291,7 @@ jobs:
           done
           echo "deleted $deleted old deployments"
 
-  # Проверка прода после деплоя хотя бы одного сервиса; тот же workflow идёт раз в день сам.
+  # Production check after the deploy of at least one service; the same workflow also runs once a day.
   smoke:
     needs: [changes, cors-proxy, tracks, elevation, guard, pages]
     if: >-

@@ -1,13 +1,14 @@
 name: tracestrack check
 
-# Раз в день проверяет, что прокси отдаёт тайл Tracestrack Topo — подложки, выбранной пользователем, и запасной при сбое
-# OpenFreeMap (design openfreemap-default-basemap) — с ключом из секрета TRACESTRACK_KEY Worker'а nakarte-cors-proxy
-# (design add-outdoor-basemap).
-# 503 — ключ ещё не заведён: предупреждение, прогон зелёный (шаг владельца: npx wrangler@4 secret put TRACESTRACK_KEY
-# из workers/cors-proxy). Остальное — красный прогон и письмо: 403 — ключ отклонён или кончилась бесплатная квота
-# (100 тыс. тайлов в месяц), 429 — лимит частоты. Пока ключ не работает, приложение показывает OpenStreetMap с тостом.
-# По расписанию Actions запускаются только из ветки по умолчанию; после 60 дней без коммитов GitHub
-# отключает расписание.
+# Once a day checks that the proxy serves a Tracestrack Topo tile (the basemap that the user selects, and the fallback
+# when OpenFreeMap fails, design openfreemap-default-basemap) with the key from the secret TRACESTRACK_KEY of the
+# Worker nakarte-cors-proxy (design add-outdoor-basemap).
+# 503 — the key is not set yet: a warning, the run is green (owner step: npx wrangler@4 secret put TRACESTRACK_KEY
+# from workers/cors-proxy). All else — a red run and an email: 403 — the key is rejected or the free quota is used up
+# (100 thousand tiles per month), 429 — the rate limit. While the key does not work, the app shows OpenStreetMap with
+# a toast.
+# Actions run on a schedule only from the default branch; after 60 days without commits GitHub
+# disables the schedule.
 
 on:
   schedule:
@@ -22,7 +23,7 @@ jobs:
     steps:
       - name: Tracestrack tile through the proxy
         run: |
-          # тайл Тбилиси z12, один кредит квоты; Origin — клон, иначе прокси ответит 403
+          # tile of Tbilisi z12, one credit of the quota; Origin is the clone, else the proxy answers 403
           url="https://nakarte-cors-proxy.nakarte-routing.workers.dev/https/tile.tracestrack.com/topo_en/12/2557/1514.webp"
           for _ in 1 2 3; do
             if curl -sS --max-time 30 -o body.txt -D headers.txt -H 'Origin: https://trailroutine.com' "$url"; then
@@ -42,7 +43,7 @@ jobs:
             exit 0
           fi
           if [ "$status" != 200 ] || [[ "$type" != image/* ]]; then
-            # тело не печатается: лог Actions публичный, а в тексте ошибки мог бы оказаться ключ
+            # the step does not print the body: the Actions log is public, and the error text could contain the key
             echo "::error::proxy does not serve Tracestrack tiles (status $status, $type)"
             exit 1
           fi

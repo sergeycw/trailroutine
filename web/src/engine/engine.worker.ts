@@ -1,10 +1,10 @@
-// Воркер движка. Классический, не module: загрузчик CheerpJ объявляет cheerpjInit глобальной функцией
-// и подключается только importScripts (документация CheerpJ, «Migration from CheerpJ 2»: CheerpJWorker
-// убран, в воркере — importScripts). Vite в dev отдаёт воркер почти как есть: import в классическом
-// воркере падает с «Cannot use import statement outside a module», а после `import type` Vite оставляет
-// `export {}` («Unexpected token 'export'»). Поэтому импортов нет совсем, типы сообщений — глобальные
-// (protocol.d.ts), а обвязка CheerpJ повторяет loadRouter из cheerpj-router.ts: правка одной — правка обеих.
-// tsconfig собирает приложение с lib DOM, а не WebWorker, поэтому глобалы воркера объявлены вручную.
+// The engine worker. Classic, not a module: the CheerpJ loader declares cheerpjInit as a global function
+// and connects only through importScripts (CheerpJ documentation, «Migration from CheerpJ 2»: CheerpJWorker
+// is removed, a worker uses importScripts). Vite in dev serves the worker almost as is: an import in a classic
+// worker fails with «Cannot use import statement outside a module», and after `import type` Vite keeps
+// `export {}` («Unexpected token 'export'»). So there are no imports at all, the message types are global
+// (protocol.d.ts), and the CheerpJ wrapper repeats loadRouter from cheerpj-router.ts: change one, change both.
+// tsconfig builds the app with lib DOM, not WebWorker, so the worker globals are declared manually.
 declare function importScripts(...urls: string[]): void;
 declare function postMessage(message: EngineProtocol.FromWorker): void;
 declare function cheerpjInit(options: { version: number; status: string }): Promise<void>;
@@ -23,7 +23,7 @@ async function javaErrorMessage(error: unknown): Promise<string> {
             return String(message);
         }
     } catch {
-        // не исключение Java
+        // not a Java exception
     }
     return error instanceof Error ? error.message : String(error);
 }

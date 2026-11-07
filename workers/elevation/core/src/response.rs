@@ -1,5 +1,5 @@
-// Автор пишет `round(v * 100)` (округление от нуля, `math.Round`) и ставит точку перед двумя
-// последними цифрами. `format!("{:.2}")` округляет иначе, поэтому вручную.
+// The author writes `round(v * 100)` (rounding away from zero, `math.Round`) and puts a point
+// before the last two digits. `format!("{:.2}")` rounds differently, thus the code rounds manually.
 pub fn format_elevation(elevation: Option<f64>) -> String {
     let Some(elevation) = elevation else {
         return "NULL".to_string();

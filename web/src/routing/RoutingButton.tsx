@@ -20,26 +20,26 @@ import { tracksRouting } from './line';
 import { RouteThread } from './RouteThread';
 import { routerDownHint, routerDownStatus } from './router';
 
-// Кнопка и меню прокладки в строке списка треков, после «New track», как у старого клиента (спека routing, «Меню
-// активностей»): активна при выбранной активности, красная при недоступном роутере, с ниткой ожидания, пока движок
-// загружается (спека routing, «Движок загружается на кнопке прокладки») и пока отрезок ждёт ответа (спека route-editing,
-// «Ожидание прокладки в верхней строке»): оба — «прокладка ещё не готова», один знак (design route-thread-loader).
-// Открытие меню перепроверяет живость роутера.
+// The routing button and menu in the track list row, after «New track», as in the old client (spec routing,
+// «Меню активностей»): active when an activity is selected, red when the router is unreachable, with a wait thread
+// while the engine loads (spec routing, «Движок загружается на кнопке прокладки») and while a leg waits for a response
+// (spec route-editing, «Ожидание прокладки в верхней строке»): both mean «routing is not ready yet», one sign (design
+// route-thread-loader). Opening the menu checks again that the router is alive.
 
 const OFF = 'off';
 
-// labeled — с названием активности (редактор в верхней строке, макет 4a): «Hiking ▾»; уже 640 px —
-// только иконка, активность — в title: место в строке отдано названию трека (design editor-name-share)
+// labeled: with the activity name (the editor in the top row, mock-up 4a): «Hiking ▾»; below 640 px it is only an icon,
+// and the activity is in title: the row gives the space to the track name (design editor-name-share)
 export function RoutingButton({ labeled = false }: { labeled?: boolean }) {
     const editing = useRouteEditing();
     const activityId = useAppStore((state) => state.routingActivity);
     const reachable = useAppStore((state) => state.routerReachable);
     const engineStatus = useSyncExternalStore(editing.subscribeEngine, editing.engineStatus);
-    // ожидание — у отрезка, а не у активности: запрос, отправленный до выбора Off, всё ещё идёт
+    // the wait belongs to the leg, not to the activity: a request sent before the choice of Off still runs
     const routing = useAppStore((state) => tracksRouting(state.tracks));
     const activity = getActivity(activityId);
     const loading = activity !== null && engineStatus === 'loading';
-    // движок, упавший на прогреве, — тоже «роутер недоступен», не дожидаясь первого маршрута
+    // an engine that failed during the warm-up is also «router unreachable», without a wait for the first route
     const down = activity !== null && (!reachable || engineStatus === 'failed');
 
     let title = 'Routing is off: lines are straight';
@@ -50,10 +50,10 @@ export function RoutingButton({ labeled = false }: { labeled?: boolean }) {
     } else if (activity) {
         title = `Routing: ${activity.title}`;
     }
-    // недоступность и загрузка движка важнее: пока движок грузится, запрос ждёт в его очереди (design
-    // editor-routing-indicator)
+    // engine unavailability and engine loading come first: while the engine loads, the request waits in its queue
+    // (design editor-routing-indicator)
     if (routing && !down && !loading) {
-        // Off при живом запросе: отрезок, отправленный до выбора Off, всё равно проложится
+        // Off with a live request: a leg sent before the choice of Off still gets routed
         title = activity ? `${title}. Calculating route` : 'Routing is off. Calculating route';
     }
 
@@ -110,7 +110,7 @@ export function RoutingButton({ labeled = false }: { labeled?: boolean }) {
                         ))}
                     </DropdownMenuRadioGroup>
                 </DropdownMenuGroup>
-                {/* хоткеи Undo и Redo — в title их кнопок, пункта о них в меню нет (design editor-row-cleanup) */}
+                {/* Undo and Redo hotkeys: in the button titles, not in the menu (design editor-row-cleanup) */}
                 {down && (
                     <>
                         <DropdownMenuSeparator />

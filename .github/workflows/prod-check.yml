@@ -1,8 +1,8 @@
 name: prod check
 
-# Синтетическая проверка своих сервисов клона на проде (scripts/prod-check.sh): раз в день и после
-# каждого деплоя (job smoke в deploy-pages.yml). Падение = GitHub шлёт письмо; что сломалось —
-# в логе шага, строки FAIL. После 60 дней без коммитов GitHub отключает расписание.
+# Synthetic check of the own services of the clone in production (scripts/prod-check.sh): once a day and after
+# each deploy (job smoke in deploy-pages.yml). A failure = GitHub sends an email; what broke is
+# in the step log, lines FAIL. After 60 days without commits GitHub disables the schedule.
 
 on:
   schedule:
@@ -10,8 +10,8 @@ on:
   workflow_dispatch:
   workflow_call:
     inputs:
-      # пауза перед проверкой, с: первые десятки секунд после публикации Pages отвечает 500 и на статике,
-      # и в функциях (деплои 2026-10-29 и 2026-10-30, AGENTS.md, «Подвохи клона»)
+      # pause before the check, s: in the first tens of seconds after a publication Pages answers 500 on the static
+      # files and in the functions (deploys 2026-10-29 and 2026-10-30, AGENTS.md, «Подвохи клона»)
       settle_seconds:
         type: number
         default: 0

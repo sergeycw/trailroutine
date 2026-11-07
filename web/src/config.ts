@@ -1,7 +1,7 @@
-// Одно место адресов сервисов нового приложения. Значения — как у старого клиента
-// (src/config.js + src/config-target/clone.js): те же Worker'ы на *.nakarte-routing.workers.dev,
-// клон отличается только движком прокладки. Режим — режим Vite: `vite build --mode clone` для деплоя,
-// остальные режимы — локальный серверный BRouter (docker-compose.yml).
+// The one place for the service addresses of the new app. The values are as in the old client
+// (src/config.js + src/config-target/clone.js): the same Workers on *.nakarte-routing.workers.dev,
+// and the clone is different only in the routing engine. The mode is the Vite mode: `vite build --mode clone`
+// for the deploy, the other modes use the local server BRouter (docker-compose.yml).
 const CORS_PROXY_URL = 'https://nakarte-cors-proxy.nakarte-routing.workers.dev/';
 const ELEVATION_SERVER_URL = 'https://nakarte-elevation.nakarte-routing.workers.dev/';
 
@@ -12,35 +12,37 @@ export interface Config {
     defaultZoom: number;
     corsProxyUrl: string;
     elevationsServer: string;
-    // атрибуция данных сервиса высот: условия viewfinderpanoramas.org требуют ссылку на источник (elevationsAttribution
-    // старого клиента, src/config.js)
+    // the data attribution of the elevation service: the terms of viewfinderpanoramas.org require a link to the source
+    // (elevationsAttribution of the old client, src/config.js)
     elevationsAttribution: { text: string; url: string };
     tracksStorageServer: string;
     routingEngine: RoutingEngine;
     routingEngineRuntimeUrl: string;
     routingServer: string;
     routingTilesPath: string;
-    // ключ Maps JavaScript API для окна Street View; пустой — режим без ключа (design add-web-search-panoramas, «Maps
-    // JavaScript API и ключ»). В деплое — секрет GOOGLE_MAPS_API_KEY, тот же, что у старого клиента
+    // the Maps JavaScript API key for the Street View window; empty means the mode without a key (design
+    // add-web-search-panoramas, «Maps JavaScript API и ключ»). The deploy uses the secret GOOGLE_MAPS_API_KEY, the
+    // same as the old client
     googleMapsApiKey: string;
-    // адрес проекта Sentry (DSN) трекера ошибок; пустой — трекер выключен (design add-error-tracking, «Где хранится
-    // DSN»). DSN не секрет, он виден в бандле; в деплое — секрет SENTRY_DSN ради выключателя: без него сборка к Sentry
-    // не обращается
+    // the address of the Sentry project (DSN) of the error tracker; empty means the tracker is off (design
+    // add-error-tracking, «Где хранится DSN»). The DSN is not a secret, it is visible in the bundle. The deploy uses
+    // the secret SENTRY_DSN as a switch: without it, the build does not send anything to Sentry
     sentryDsn: string;
-    // адрес сайта после переезда (change move-to-trailroutine-domain): сюда старый адрес переводит людей
+    // the site address after the move (change move-to-trailroutine-domain): the old address sends people here
     siteOrigin: string;
-    // хосты, с которых приложение переводит людей на siteOrigin вместе с данными браузера (move/move-out.ts).
-    // Только точное имя: деплои <хеш>.nakarte-routing.pages.dev и будущий стенд не переезжают
+    // the hosts from which the app sends people to siteOrigin together with the browser data (move/move-out.ts).
+    // Only the exact name: the deploys <hash>.nakarte-routing.pages.dev and a future staging site do not move
     movedFromHosts: readonly string[];
 }
 
 export function makeConfig(mode: string, googleMapsApiKey = '', sentryDsn = ''): Config {
     const clone = mode === 'clone';
     return {
-        // начальный вид без параметров в адресе — село Омало в Тушети (владелец 2026-10-29, design default-view-omalo;
-        // координаты — статья Omalo в Википедии, 42°22′44″N 45°37′48″E); раньше — вид старого клиента над Украиной.
-        // Зум — в единицах MapLibre: у него мир на z0 512 px, у Leaflet 256 px, поэтому тот же масштаб на 1 меньше
-        // (Leaflet z13 = MapLibre 12, m=13 в адресе). Разбор m= из старых ссылок обязан вычитать 1.
+        // the initial view without parameters in the address is the village Omalo in Tusheti (owner 2026-10-29,
+        // design default-view-omalo; the coordinates are from the Wikipedia article Omalo, 42°22′44″N 45°37′48″E);
+        // before, it was the view of the old client above Ukraine. The zoom is in MapLibre units: its world at z0 is
+        // 512 px, in Leaflet 256 px, so the same scale is 1 less (Leaflet z13 = MapLibre 12, m=13 in the address).
+        // The parse of m= from old links must subtract 1.
         defaultLocation: [42.37889, 45.63],
         defaultZoom: 12,
         corsProxyUrl: CORS_PROXY_URL,
@@ -51,10 +53,11 @@ export function makeConfig(mode: string, googleMapsApiKey = '', sentryDsn = ''):
         },
         tracksStorageServer: 'https://nakarte-tracks.nakarte-routing.workers.dev',
         routingEngine: clone ? 'browser' : 'server',
-        // загрузчик CheerpJ той же версии, что у старого клиента: лицензия Community работает только с этим CDN
+        // the CheerpJ loader of the same version as in the old client: the Community license works only with this CDN
         routingEngineRuntimeUrl: 'https://cjrtnc.leaningtech.com/4.3/loader.js',
         routingServer: 'http://localhost:17777',
-        // клон читает тайлы BRouter с того же origin (functions/tiles), локальный dev — со стенда движка
+        // the clone reads the BRouter tiles from the same origin (functions/tiles), the local dev from the engine
+        // test bench
         routingTilesPath: clone ? '/tiles/' : '/brouter-wasm/segments4/',
         googleMapsApiKey,
         sentryDsn,
@@ -63,7 +66,8 @@ export function makeConfig(mode: string, googleMapsApiKey = '', sentryDsn = ''):
     };
 }
 
-// import.meta.env есть только в сборке Vite; e2e импортирует модуль в Node ради makeConfig, и без ?. импорт падал бы
+// import.meta.env exists only in the Vite build; e2e imports the module in Node for makeConfig, and without ?. the
+// import would fail
 export const config = makeConfig(
     import.meta.env?.MODE ?? '',
     import.meta.env?.VITE_GOOGLE_MAPS_API_KEY ?? '',

@@ -6,23 +6,26 @@ import { nearTo } from '@/routing/MapEditor';
 import { useAppStore, useAppStoreApi } from '@/state/context';
 import { useTrackActions } from '@/tracks/actions-context';
 
-// Метка найденного места на карте (design add-web-search-panoramas, «Метка»): булавка и название. Клик по карте мимо
-// метки её снимает (MapEditor.onClick). Клик по метке при постановке точки трека ставит точку с названием метки
-// (suggestedPoint старого клиента), при рисовании — опорную точку; тогда родные события элемента гасятся здесь, до
-// карты (обработчик React опоздал бы: React слушает корень приложения, а карта — свой контейнер внутри него).
+// The placemark of a found place on the map (design add-web-search-panoramas, «Метка»): a pin and a name. A map click
+// outside the placemark removes it (MapEditor.onClick). A click on the placemark while a track point is placed puts the
+// point with the placemark name (suggestedPoint of the old client), and while a line is drawn, a waypoint; in these
+// cases the native events of the element stop here, before the map (a React handler would be too late: React listens
+// on the app root, and the map on its own container inside it).
 export function PlacemarkOnMap() {
     const placemark = useAppStore((state) => state.placemark);
     const store = useAppStoreApi();
     const actions = useTrackActions();
     const editing = useRouteEditing();
-    // родные слушатели на элемент метки: ref-колбэк с очисткой (React 19), элемент появляется вместе с меткой
+    // native listeners on the placemark element: a ref callback with cleanup (React 19), the element appears together
+    // with the placemark
     const attach = useCallback(
         (node: HTMLDivElement | null) => {
             if (!node) {
                 return;
             }
-            // метка обслуживает только постановку точки трека и рисование; в остальных режимах клик уходит карте, как
-            // у старого клиента (клик по метке — клик карты): снимает метку, ищет панораму, переносит точку
+            // the placemark serves only the placement of a track point and drawing; in other modes the click goes to
+            // the map, as in the old client (a click on the placemark is a map click): it removes the placemark,
+            // searches a panorama, moves a point
             const ours = () => {
                 const state = store.getState();
                 return state.pointTool?.kind === 'add' || Boolean(state.routeEdit?.drawing);
@@ -44,7 +47,7 @@ export function PlacemarkOnMap() {
                 if (state.pointTool?.kind === 'add') {
                     actions.addPoint(state.pointTool.trackId, latlng, mark.title);
                 } else if (edit?.drawing) {
-                    // ближняя к линии копия мира, как у клика по карте
+                    // the world copy nearest to the line, as for a map click
                     const anchor = edit.drawing === 'end' ? edit.line.waypoints.at(-1) : edit.line.waypoints[0];
                     editing.click(nearTo(latlng, anchor));
                 }

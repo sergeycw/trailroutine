@@ -6,8 +6,8 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { copyEngineFiles, engineFilesMiddleware, parseRange } from './engine-files.ts';
 
-// CheerpJ узнаёт размер файла из Content-Range ответа на Range: bytes=0-0 и без 206 файла не видит,
-// поэтому dev-сервер обязан отвечать как functions/brouter-wasm на проде.
+// CheerpJ gets the file size from the Content-Range of the answer to Range: bytes=0-0 and without 206 does not see
+// the file, so the dev server must answer as functions/brouter-wasm does in production.
 describe('Файлы движка в dev-сервере', () => {
     let root: string;
     let server: Server;

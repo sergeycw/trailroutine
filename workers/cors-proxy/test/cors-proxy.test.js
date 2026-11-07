@@ -1,5 +1,5 @@
-// Прокси в workerd: CORS по списку origin, протокол адресов авторского прокси, переписывание
-// редиректов. Апстрим — заглушка `outboundService` из vitest.config.js, сеть не нужна.
+// The proxy in workerd: CORS by the origin list, the address protocol of the proxy of the author, the rewrite of
+// redirects. The upstream is the `outboundService` stub from vitest.config.js, the network is not necessary.
 import {exports as workerExports} from 'cloudflare:workers';
 import {describe, expect, it} from 'vitest';
 
@@ -20,7 +20,7 @@ describe('origin check', () => {
         expect((await request('/https/example.com/', {origin: null})).status).toBe(403);
     });
 
-    // свой домен после переезда (change move-to-trailroutine-domain)
+    // the own domain after the move (change move-to-trailroutine-domain)
     it('accepts the own domain trailroutine.com', async () => {
         const response = await request('/https/example.com/', {origin: 'https://trailroutine.com'});
         expect(response.status).toBe(200);
@@ -36,14 +36,14 @@ describe('origin check', () => {
         expect(response.headers.get('Access-Control-Allow-Origin')).toBe(CLONE_ORIGIN);
     });
 
-    // dev-сервер приложения web/ и vite preview ходят в живой прокси (спека cors-proxy, «Разрешённые origin клона»)
+    // the dev server of the web/ app and vite preview use the live proxy (spec cors-proxy, «Разрешённые origin клона»)
     it.each(['http://localhost:8769', 'http://localhost:4173'])('accepts the local app origin %s', async (origin) => {
         const response = await request('/https/example.com/', {origin});
         expect(response.status).toBe(200);
         expect(response.headers.get('Access-Control-Allow-Origin')).toBe(origin);
     });
 
-    // dev-серверы старого клиента и karma ушли вместе с ним (change retire-old-client-services)
+    // the dev servers of the old client and karma were removed together with it (change retire-old-client-services)
     it.each(['http://localhost:9876', 'http://localhost:8765', 'http://localhost:8766'])(
         'rejects the old client origin %s',
         async (origin) => {
@@ -157,7 +157,7 @@ describe('own hosts', () => {
 });
 
 describe('rate limit', () => {
-    // в vitest.config.js лимиты понижены: хосты слоёв — 3, остальные — 2 запроса за 60 с
+    // vitest.config.js lowers the limits: layer hosts get 3, other hosts get 2 requests per 60 s
     const LAYER_TILE = '/https/maptiles.website.yandexcloud.net/12/2557/1514.png';
     function fromIp(ip, options = {}, path = LAYER_TILE) {
         return request(path, {...options, headers: {'CF-Connecting-IP': ip, ...options.headers}});

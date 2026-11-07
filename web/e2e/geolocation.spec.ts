@@ -1,8 +1,8 @@
 import { expect, test } from './fixtures.ts';
 
-// Геолокация в собранном клоне с настоящим Geolocation API Chromium (спека web-client, «Где я»): Playwright выдаёт
-// разрешение и положение контекста. Ошибку настоящего браузера MapLibre копирует в событие перебором полей (for…in по
-// GeolocationPositionError) — тест проверяет, что код ошибки доходит до тоста.
+// Geolocation in the built clone with the real Chromium Geolocation API (spec web-client, «Где я»): Playwright gives
+// the permission and the position of the context. MapLibre copies the error of the real browser into the event field by
+// field (for…in over GeolocationPositionError): the test checks that the error code gets to the toast.
 const VIEW = './#m=10/41/44&l=O';
 
 test('Положение получено', async ({ page, context }) => {
@@ -16,7 +16,7 @@ test('Положение получено', async ({ page, context }) => {
 });
 
 test('Геолокация запрещена', async ({ page, context }) => {
-    // без разрешения состояние — prompt, кнопка активна; headless Chromium на запрос отвечает отказом (код 1)
+    // without a permission the state is prompt, the button is active; headless Chromium denies the request (code 1)
     await context.clearPermissions();
     await page.goto(VIEW);
     await page.getByRole('button', { name: 'Find my location' }).click();

@@ -24,8 +24,9 @@ import { type FixtureTiles, fixtureTiles } from '@/test/tiles';
 import { saveNktk } from './nktk';
 import { TRACK_POINTS } from './style';
 
-// Точки трека в App на настоящей карте MapLibre (спека tracks, «Добавление точек трека», «Меню точки трека»): клики —
-// синтетические события на холсте по map.project, буфер обмена — проп writeClipboard. Названия тестов — сценарии спеки.
+// Track points in App on a real MapLibre map (spec tracks, «Добавление точек трека», «Меню точки трека»):
+// clicks are synthetic events on the canvas by map.project, the clipboard is the writeClipboard prop.
+// Test names are spec scenarios.
 
 let tiles: FixtureTiles;
 
@@ -39,9 +40,9 @@ afterEach(async () => {
     expect(tiles.external, 'запросы мимо localhost и тайлов').toEqual([]);
 });
 
-// подложка — растровый OpenStreetMap: тесту она не важна, а векторная по умолчанию (OpenFreeMap) с фикстурой —
-// настоящим тайлом z12 — рисуется во всех тайлах экрана и под общей нагрузкой браузерных тестов не укладывалась в
-// таймауты (change openfreemap-default-basemap)
+// the basemap is raster OpenStreetMap: it does not matter to the test, and the default vector basemap (OpenFreeMap)
+// with the fixture (a real z12 tile) is drawn in all tiles of the screen and did not fit in the timeouts under the
+// total load of the browser tests (change openfreemap-default-basemap)
 const VIEW = '#m=15/41.69/44.785&l=O';
 const SPOT = P(41.6912345, 44.7812345);
 const ELSEWHERE = P(41.688, 44.789);
@@ -65,7 +66,7 @@ async function trackMenu(name: string, item: string) {
     await page.getByRole('menuitem', { name: item, exact: true }).click();
 }
 
-// ввести название в окне новой точки и подтвердить
+// type a name in the new point window and confirm it
 async function confirmName(map: MaplibreMap, name: string) {
     await expect.element(nameField()).toBeVisible();
     await nameField().fill(name);

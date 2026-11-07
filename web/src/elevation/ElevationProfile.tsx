@@ -11,11 +11,13 @@ import { kilometers, meters, profileSections } from './format';
 import { ProfileGraph } from './ProfileGraph';
 import { type ProfileStats, profileStats, SLOPE_CLASSES, SLOPE_STEPS } from './profile';
 
-// Панель профиля высот (design add-web-elevation-profile, «Где живёт профиль»): на всю ширину снизу, высота —
-// PROFILE_HEIGHT; кнопка профиля, атрибуция и тосты встают над ней по --bottom-inset (App).
-// Сверху — название, сводка в одну строку (на узком экране прокручивается) и закрытие, ниже — график.
+// The elevation profile panel (design add-web-elevation-profile, «Где живёт профиль»): full width at the bottom, the
+// height is PROFILE_HEIGHT; the profile button, the attribution and the toasts go above it by --bottom-inset (App).
+// At the top: the name, the summary in one line (it scrolls on a narrow screen) and the close control; below: the
+// graph.
 
-// в низком окне (телефон в альбомной) — не больше трети окна: иначе над профилем не помещается столбец кнопок справа
+// in a low window (a phone in landscape), not more than a third of the window: otherwise the button column on the
+// right does not fit above the profile
 export const PROFILE_HEIGHT = 'min(12rem, 35dvh)';
 
 interface StatItem {
@@ -66,7 +68,7 @@ function Stats({ data }: { data: ProfileData }) {
         note = 'Some elevation data missing';
     }
     return (
-        // телефон — строкой с прокруткой, компьютер — столбцом «подпись — значение» слева от графика (макет 4a)
+        // phone: a line with scroll; computer: a column of «label — value» on the left of the graph (mock-up 4a)
         <div className="flex min-w-0 flex-nowrap items-baseline gap-x-3 overflow-x-auto whitespace-nowrap text-xs sm:flex-col sm:gap-y-1 sm:overflow-visible">
             {selection && <span className="font-medium text-amber-700">Selection</span>}
             <dl className="flex items-baseline gap-x-3 sm:grid sm:grid-cols-[auto_auto_auto_auto] sm:gap-y-0.5">
@@ -88,8 +90,9 @@ function Stats({ data }: { data: ProfileData }) {
     );
 }
 
-// Легенда ступеней крутизны (design slope-profile, «Легенда — шкала в строке атрибуции»): плашки подряд, пороги между
-// ними — короче подписи у каждой ступени; словами ступени — в aria-label и title
+// The legend of the slope steps (design slope-profile, «Легенда — шкала в строке атрибуции»): swatches in a row with
+// the thresholds between them, which is shorter than a label at each step; the steps in words are in aria-label and
+// title
 const SLOPE_RANGES = [
     `under ${SLOPE_STEPS[0]}%`,
     ...SLOPE_STEPS.slice(1).map((step, i) => `${SLOPE_STEPS[i]}–${step}%`),
@@ -132,14 +135,15 @@ export function ElevationProfile() {
     return (
         <Card
             size="sm"
-            // плотнее прочего стекла: график и цифры читаются поверх пёстрой карты
+            // more opaque than the other glass: the graph and the numbers stay readable above a colorful map
             className="pointer-events-auto absolute inset-x-3 bottom-3 z-10 gap-1 px-3 py-2 [--glass:oklch(1_0_0/0.9)] sm:flex-row sm:gap-4"
             style={{ height: PROFILE_HEIGHT }}
             data-testid="elevation-profile"
             role="region"
             aria-label="Elevation profile"
         >
-            {/* на узком экране сводка — второй строкой под названием, на широком — столбцом слева от графика */}
+            {/* on a narrow screen the summary is a second line below the name, on a wide screen a column on the left
+                of the graph */}
             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 sm:w-80 sm:shrink-0 sm:flex-col sm:flex-nowrap sm:items-stretch">
                 <div className="flex min-w-0 flex-1 items-center gap-x-2 sm:flex-none">
                     <span
@@ -152,9 +156,10 @@ export function ElevationProfile() {
                     {updating && (
                         <LoaderCircleIcon className="size-3.5 shrink-0 animate-spin" aria-label="Loading elevation" />
                     )}
-                    {/* своего закрытия у панели нет: закрывает кнопка профиля над ней (MapActions), она есть всегда,
-                        пока профиль открыт. Крестик убран по отзыву пользователя (владелец 2026-10-30): на широком
-                        экране он висел посреди панели, а открывают профиль стрелкой вверх на той же кнопке */}
+                    {/* the panel has no close button of its own: the profile button above it (MapActions) closes
+                        it, and this button is always there while the profile is open. The cross is removed after
+                        user feedback (owner 2026-10-30): on a wide screen it was in the middle of the panel, and the
+                        user opens the profile with the up arrow on the same button */}
                 </div>
                 <div className="order-last min-w-0 basis-full sm:order-none sm:basis-auto">
                     {data && <Stats data={data} />}
@@ -185,12 +190,12 @@ export function ElevationProfile() {
                     )}
                 </div>
                 <div className="flex items-center gap-2">
-                    {/* легенда — пока на графике есть заливка: без данных высот участков нет */}
+                    {/* the legend shows while the graph has a fill: without elevation data there are no sections */}
                     {data?.values && profileSections(data).length > 0 && <SlopeLegend />}
                     <a
                         className="ml-auto truncate text-[10px] text-muted-foreground leading-none hover:underline"
                         href={config.elevationsAttribution.url}
-                        // на телефоне подпись обрезается рядом с легендой
+                        // on a phone the label is cut next to the legend
                         title={`Elevation data: ${config.elevationsAttribution.text}`}
                         target="_blank"
                         rel="noreferrer"

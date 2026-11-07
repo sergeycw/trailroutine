@@ -3,8 +3,8 @@ import { describe, expect, test } from 'vitest';
 import oldLinks from '../state/fixtures/old-links.txt?raw';
 import { keepBreadcrumb, scrubEvent } from './scrub';
 
-// Спека clone-monitoring, «Отчёт без места и треков пользователя». Ссылки — настоящие старые ссылки nakarte.me с видом
-// карты и треками (фикстура hash.test.ts) и ссылки нового приложения с теми же параметрами.
+// Spec clone-monitoring, «Отчёт без места и треков пользователя». The links are real old links of nakarte.me with a
+// map view and tracks (the fixture of hash.test.ts) and links of the new app with the same parameters.
 
 const PAGE = 'https://nakarte-routing.pages.dev/';
 const links = [
@@ -38,7 +38,7 @@ describe('Отчёт без места и треков пользователя'
             expect(text, url).not.toMatch(/[#?]|43\.27|42\.49|nktk|nktl|m=/);
             expect(event.request?.url).toBe(`${new URL(url).origin}/`);
             expect(event.request?.headers).toEqual({ 'User-Agent': 'Chrome' });
-            // путь скрипта остаётся — по нему Sentry находит карту исходников
+            // the script path stays: Sentry finds the source map by it
             expect(event.exception?.values?.[0].stacktrace?.frames?.[1].filename).toBe(`${PAGE}assets/index.js`);
             expect(event.exception?.values?.[0].value).toBe(
                 `fetch failed: https://nakarte-elevation.nakarte-routing.workers.dev at ${new URL(url).origin}`,
@@ -53,7 +53,8 @@ describe('Отчёт без места и треков пользователя'
     });
 
     test('селектор клика без подписей элементов', () => {
-        // кнопка меню трека в списке: aria-label и title несут название трека, SDK пишет их в селектор
+        // the track menu button in the list: aria-label and title contain the track name, and the SDK writes them
+        // to the selector
         const node = (tagName: string, attributes: Record<string, string>, parentElement: unknown = null) => ({
             tagName,
             parentElement,
@@ -66,7 +67,7 @@ describe('Отчёт без места и треков пользователя'
             const kept = keepBreadcrumb({ category, message: sdkMessage }, { event: { target: button } });
             expect(kept?.message).toBe('div[data-testid="track-list"] > button');
         }
-        // цели нет — нет и селектора
+        // no target, so no selector
         expect(keepBreadcrumb({ category: 'ui.click', message: sdkMessage })?.message).toBeUndefined();
     });
 

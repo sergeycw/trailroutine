@@ -1,16 +1,16 @@
 import { TRACK_COLORS, type TrackColor } from './model';
 
-// Свой цвет трека (design track-color-picker): разбор hex, HSV пикера, ближайший цвет палитры для старых читателей
-// ссылки. Без карты и React.
+// Custom track color (design track-color-picker): hex parsing, picker HSV, the nearest palette color for old readers
+// of the link. No map and no React.
 
 export interface Hsv {
-    // оттенок 0–360, насыщенность и яркость 0–100
+    // hue 0–360, saturation and value 0–100
     h: number;
     s: number;
     v: number;
 }
 
-// '#rgb', '#rrggbb', с решёткой или без, любой регистр → '#rrggbb' строчными; иначе null
+// '#rgb', '#rrggbb', with or without the hash sign, any case → lowercase '#rrggbb'; otherwise null
 export function parseHex(text: string): string | null {
     const match = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(text.trim());
     if (!match) {
@@ -23,13 +23,13 @@ export function parseHex(text: string): string | null {
     return `#${[...digits].map((digit) => digit + digit).join('')}`;
 }
 
-// Свой цвет, совпавший с цветом палитры, хранится номером: у одного цвета одна запись
+// A custom color that matches a palette color is stored as an index: one color has one record
 export function normalizeColor(hex: string): TrackColor {
     const index = (TRACK_COLORS as readonly string[]).indexOf(hex);
     return index >= 0 ? index : hex;
 }
 
-// Цвет из ссылки, файла или записи: номер в пределах палитры или hex; иначе null
+// Color from a link, a file or a record: an index within the palette or hex; otherwise null
 export function parseTrackColor(value: unknown): TrackColor | null {
     if (typeof value === 'number') {
         return Number.isInteger(value) && value >= 0 && value < TRACK_COLORS.length ? value : null;
@@ -54,7 +54,7 @@ function channels(hex: string): [number, number, number] {
     return [(rgb >> 16) & 0xff, (rgb >> 8) & 0xff, rgb & 0xff];
 }
 
-// Номер ближайшего цвета палитры по евклидову расстоянию в RGB: его пишет поле color строки nktk рядом со своим цветом
+// Nearest palette color index by Euclidean distance in RGB: the nktk color field keeps it next to the custom color
 export function nearestPaletteIndex(hex: string): number {
     const [r, g, b] = channels(hex);
     let best = 0;

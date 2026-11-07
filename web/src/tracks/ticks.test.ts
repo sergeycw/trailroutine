@@ -3,7 +3,8 @@ import { distance } from './geometry';
 import type { LatLng, Track } from './model';
 import { minTickInterval, segmentTicks, tickLabel, tickStep, ticksData } from './ticks';
 
-// Отрезок на восток от 41.69, 44.78 длиной meters по большому кругу (вдоль параллели — с точностью до сантиметров)
+// A segment to the east from 41.69, 44.78, meters long on a great circle (along the parallel, accurate to
+// centimeters)
 function eastward(meters: number, points = 2): LatLng[] {
     const start = { lat: 41.69, lng: 44.78 };
     const perDegree = distance(start, { lat: 41.69, lng: 45.78 });
@@ -18,7 +19,7 @@ const labels = (points: LatLng[], minInterval: number) =>
 
 describe('шаг отметок', () => {
     it('15 мм экрана в метрах: формула старого клиента', () => {
-        // z14 MapLibre = z15 старого: 2 × 20003931 / (256 × 2^15) м на пиксель, 15 мм при 96 dpi
+        // z14 MapLibre = z15 of the old client: 2 × 20003931 / (256 × 2^15) m per pixel, 15 mm at 96 dpi
         const metersPerPixel = (2 * 20003931) / (512 * 2 ** 14);
         expect(minTickInterval(14, 0)).toBeCloseTo((0.015 / (0.0254 / 96)) * metersPerPixel, 6);
         expect(minTickInterval(14, 60)).toBeCloseTo(minTickInterval(14, 0) / 2, 6);
@@ -60,7 +61,7 @@ describe('Отметки расстояния', () => {
         const [tick] = segmentTicks(eastward(1000), 400);
         expect(tick.distance).toBe(500);
         expect(tick.lat).toBeCloseTo(41.69, 9);
-        // линия на восток — подпись повёрнута на 90°, на север — горизонтально
+        // a line to the east: the label is rotated by 90°; to the north: horizontal
         expect(tick.rotate).toBeCloseTo(90, 6);
         const north = segmentTicks(
             [
@@ -70,7 +71,7 @@ describe('Отметки расстояния', () => {
             400,
         );
         expect(north[0].rotate).toBeCloseTo(0, 6);
-        // на запад — тоже читается снизу вверх, не вверх ногами
+        // to the west: it also reads from bottom to top, not upside down
         const west = segmentTicks(
             [
                 { lat: 41.69, lng: 44.79 },

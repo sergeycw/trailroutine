@@ -19,7 +19,7 @@ function fakeWindow(hash: string) {
         },
         addEventListener: (_type: 'hashchange', listener: () => void) => listeners.add(listener),
         removeEventListener: (_type: 'hashchange', listener: () => void) => listeners.delete(listener),
-        // пользователь поменял адрес руками
+        // the user changed the address by hand
         navigate(next: string) {
             win.location.hash = `#${next}`;
             for (const listener of listeners) {
@@ -96,11 +96,11 @@ describe('старт', () => {
         const storage = memoryStorage();
         const first = start('', storage);
         first.store.getState().toggleOverlay('Hs');
-        // откат по всей цепочке: OpenFreeMap → Tracestrack → OSM
+        // fallback along the whole chain: OpenFreeMap → Tracestrack → OSM
         first.store.getState().fallBackBase('Of');
         first.store.getState().fallBackBase('Tt');
         expect(first.store.getState().selection.base).toBe('O');
-        // в адресе — выбор, а не подложка отката
+        // the address has the selection, not the fallback basemap
         expect(first.win.location.hash).toBe('#m=8/49.73868/33.45886&l=Of/Hs');
         first.unbind();
         expect(start('', storage).store.getState().selection).toEqual({ base: 'Of', overlays: ['Hs'] });

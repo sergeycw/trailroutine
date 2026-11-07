@@ -1,8 +1,9 @@
-//! Основной адаптер: Cloudflare Worker (`workers-rs`) поверх R2-бакета `DEM` (`nakarte-elevation`).
+//! Main adapter: a Cloudflare Worker (`workers-rs`) over the R2 bucket `DEM` (`nakarte-elevation`).
 //!
-//! Cache API здесь бесполезен: на `*.workers.dev` он не работает, а своего домена у клона нет.
-//! Поэтому заголовки и сжатые куски кешируются в памяти изолята (`ByteCache`), изолят живёт
-//! между запросами и отдаёт горячие районы без походов в R2.
+//! The Cache API has no use here: it does not work on `*.workers.dev`, and the clone has no own
+//! domain. Thus the headers and the compressed chunks are cached in the isolate memory
+//! (`ByteCache`), the isolate lives between requests and gives frequently used areas without
+//! requests to R2.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -11,7 +12,7 @@ use elevation_core::request::MAX_BODY_BYTES;
 use elevation_core::{Error as CoreError, Source, http};
 use worker::{Bucket, Context, Env, RateLimiter, Request, Response, Result, console_error, event};
 
-// Изолят ограничен 128 МБ вместе с wasm; 32 МБ — сотни сжатых кусков (≈ 40–100 КБ каждый).
+// The isolate limit is 128 MB with wasm; 32 MB is hundreds of compressed chunks (≈ 40–100 KB each).
 const CACHE_BYTES: usize = 32 * 1024 * 1024;
 
 #[derive(Default)]
@@ -91,8 +92,8 @@ impl Source for R2Source {
     }
 }
 
-// Частота запросов API с одного IP: привязка `API_RATE_LIMITER` из wrangler.toml.
-// Без CF-Connecting-IP (локальный wrangler dev, тесты) не ограничиваем.
+// The API request rate from one IP: the `API_RATE_LIMITER` binding from wrangler.toml.
+// Without CF-Connecting-IP (local wrangler dev, tests) there is no limit.
 async fn over_limit(
     request: &Request,
     env: &Env,
@@ -112,9 +113,10 @@ async fn over_limit(
         .success)
 }
 
-// Бюджет чтений R2 с одного IP: единица — вызов `limit()` привязки `API_READS_RATE_LIMITER`
-// (`http::READS_PER_UNIT` чтений). Без CF-Connecting-IP (локальный wrangler dev, тесты) не ограничиваем;
-// сбой привязки тоже не ограничивает — ценой бюджета, а не отказом API.
+// The R2 read budget from one IP: a unit is one `limit()` call of the `API_READS_RATE_LIMITER`
+// binding (`http::READS_PER_UNIT` reads). Without CF-Connecting-IP (local wrangler dev, tests)
+// there is no limit; a binding failure also gives no limit: the cost is the budget, not a refusal
+// of the API.
 struct ReadsBudget {
     limiter: Option<(RateLimiter, String)>,
 }
@@ -147,7 +149,7 @@ async fn fetch(mut request: Request, env: Env, _ctx: Context) -> Result<Response
         header(&request, "Content-Length").and_then(|value| value.parse().ok());
     let method = request.method().to_string();
     let path = request.path();
-    // Заведомо большое тело не читаем: ядро ответит `413` по `Content-Length`.
+    // Do not read a body that is too large for sure: the core answers `413` by `Content-Length`.
     let body = match (method.as_str(), content_length) {
         ("POST", Some(length)) if length > MAX_BODY_BYTES as u64 => Vec::new(),
         ("POST", _) => request.bytes().await?,
@@ -167,7 +169,7 @@ async fn fetch(mut request: Request, env: Env, _ctx: Context) -> Result<Response
     };
     let allowed_origins = http::parse_origins(&allowed_origins);
     let response = if over_limit(&request, &env, &core_request, &allowed_origins).await? {
-        // over_limit тратит счётчик только запросам с разрешённым Origin: он здесь всегда есть
+        // over_limit counts only requests with an allowed Origin: thus Origin is always here
         http::too_many_requests(core_request.origin.unwrap_or_default())
     } else {
         let source = R2Source {
@@ -186,7 +188,7 @@ async fn fetch(mut request: Request, env: Env, _ctx: Context) -> Result<Response
     if let Some(error) = &response.error {
         console_error!("elevation error: {error}");
     }
-    // Ответ с пустым телом создаётся без тела: `new Response("", {status: 204})` в JS бросает.
+    // An empty body gives a response with no body: `new Response("", {status: 204})` throws in JS.
     let mut result = if response.body.is_empty() {
         Response::empty()?
     } else {

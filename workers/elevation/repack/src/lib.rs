@@ -1,10 +1,10 @@
-//! HGT 3″ (viewfinderpanoramas, 1201×1201 `i16` big-endian, строки с севера, nodata `-32768`)
-//! → объект градуса из `elevation_core::format`. Нарезка на куски повторяет `splitDem` из
-//! `cmd/make_data` Go-сервера автора.
+//! HGT 3″ (viewfinderpanoramas, 1201×1201 `i16` big-endian, rows from the north, nodata `-32768`)
+//! → a degree object from `elevation_core::format`. The split into chunks repeats `splitDem` from
+//! `cmd/make_data` of the Go server of the author.
 //!
-//! В нескольких zip `dem3/` viewfinderpanoramas лежат тайлы 1″ (3601×3601, например `N63E008` в
-//! поясе P). Узлы 3″ — ровно каждый третий узел 1″ (3600 = 3 × 1200), поэтому такие тайлы
-//! прореживаются до 1201×1201 без интерполяции.
+//! Several viewfinderpanoramas `dem3/` zips contain 1″ tiles (3601×3601, for example `N63E008` in
+//! zone P). The 3″ nodes are exactly each third 1″ node (3600 = 3 × 1200), thus such tiles
+//! are thinned to 1201×1201 without interpolation.
 
 use elevation_core::format::{CHUNKS, SPLIT, TILE_SIZE, encode_degree};
 
@@ -35,8 +35,8 @@ impl std::fmt::Display for RepackError {
 
 impl std::error::Error for RepackError {}
 
-// `N43E042.hgt` (регистр любой, с путём) → `N43E042`. Имя файла — единственный источник
-// координат градуса: в HGT нет заголовка.
+// `N43E042.hgt` (any case, with a path) → `N43E042`. The file name is the only source of the
+// degree coordinates: HGT has no header.
 pub fn degree_name(file_name: &str) -> Result<String, RepackError> {
     let bad = || RepackError::BadName(file_name.to_string());
     let base = file_name
@@ -86,8 +86,8 @@ pub fn split_hgt(hgt: &[u8]) -> Result<Vec<Vec<i16>>, RepackError> {
     Ok(chunks)
 }
 
-// `only` — номера кусков, которые попадут в объект; остальные пишутся нулевой длины.
-// Нужен для прореженных фикстур контрактного теста.
+// `only` is the chunk numbers that go into the object; the other chunks get zero length.
+// It is necessary for the thinned fixtures of the contract test.
 pub fn repack_hgt(hgt: &[u8], only: Option<&[usize]>, level: i32) -> Result<Vec<u8>, RepackError> {
     let chunks: Vec<Option<Vec<i16>>> = split_hgt(hgt)?
         .into_iter()

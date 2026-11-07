@@ -3,13 +3,13 @@ import type { StreetViewApi, StreetViewHandlers, StreetViewViewer } from './api'
 import type { PanoView } from './hash';
 import './keyless.css';
 
-// Street View на Maps JavaScript API (design add-web-search-panoramas, «Maps JavaScript API и ключ»): провайдер google
-// старого клиента (src/lib/leaflet.control.panoramas/lib/google/index.js). API грузится скриптом один раз на страницу и
-// только по требованию; адрес — как у старого (v=3&key=), плюс документированный callback. Пустой ключ — режим без ключа,
-// правила keyless.css включаются классом контейнера окна.
+// Street View on the Maps JavaScript API (design add-web-search-panoramas, «Maps JavaScript API и ключ»): the google
+// provider of the old client (src/lib/leaflet.control.panoramas/lib/google/index.js). A script loads the API one time
+// per page and only on demand. The address is as in the old client (v=3&key=), plus the documented callback. An
+// empty key means the mode without a key: a class of the window container turns on the rules of keyless.css.
 
-// Своя часть типов API вместо @types/google.maps: нужны пять методов (справка Street View, 2026-10-09). У StreetViewPov
-// нет zoom — зум окна через getZoom/setZoom (старый клиент читал pov.zoom).
+// Our own part of the API types instead of @types/google.maps: the code needs five methods (Street View reference,
+// 2026-10-09). StreetViewPov has no zoom: the window zoom uses getZoom/setZoom (the old client read pov.zoom).
 interface GLatLng {
     lat(): number;
     lng(): number;
@@ -39,7 +39,7 @@ interface GMaps {
     event: { trigger(target: unknown, event: string): void; clearInstanceListeners(target: unknown): void };
 }
 
-// глобальные имена API: window.google и колбэк загрузки
+// global names of the API: window.google and the load callback
 type GoogleWindow = Window & { google?: { maps?: GMaps } } & Record<string, unknown>;
 
 export const GOOGLE_MAPS_API = 'https://maps.googleapis.com/maps/api/js';
@@ -52,12 +52,12 @@ export function googleMapsUrl(key: string): string {
 export class StreetViewUnavailable extends Error {}
 
 let loading: Promise<GMaps> | null = null;
-// скрипт, который не загрузился и не упал за это время, считается упавшим: иначе тоста не будет никогда
+// a script that does not load and does not fail in this time counts as failed: otherwise the toast never comes
 const LOAD_TIMEOUT_MS = 20_000;
-// поиск панорамы без ответа — ошибка API, а не «панорамы нет»
+// a panorama search without an answer is an API error, not "no panorama"
 const SEARCH_TIMEOUT_MS = 10_000;
 
-// Скрипт API один на страницу. Ошибка загрузки сбрасывает промис: следующий клик пробует снова.
+// One API script per page. A load error resets the promise: the next click tries again.
 export function loadGoogleMaps(key: string, doc?: Document, win?: GoogleWindow): Promise<GMaps> {
     const w = win ?? (window as unknown as GoogleWindow);
     if (w.google?.maps?.StreetViewPanorama) {
@@ -92,9 +92,10 @@ export function loadGoogleMaps(key: string, doc?: Document, win?: GoogleWindow):
     return loading;
 }
 
-// Окно Google одно на страницу (как у старого клиента): уничтожить StreetViewPanorama API не даёт, а новое окно на
-// каждое включение режима копило бы WebGL-сцены (лимит контекстов браузера общий с картой). Окно живёт в своём div,
-// который переходит в контейнер очередной панели; owner — чья панель сейчас владеет окном.
+// One Google window per page (as in the old client): the API cannot destroy a StreetViewPanorama, and a new window
+// for each turn-on of the mode would collect WebGL scenes (the map shares the browser limit of contexts). The
+// window lives in its own div, which moves into the container of the next panel. owner is the panel that owns the
+// window now.
 interface SharedViewer {
     element: HTMLElement;
     panorama: GPanorama;
@@ -104,7 +105,7 @@ interface SharedViewer {
 
 let shared: SharedViewer | null = null;
 
-// для тестов загрузчика: забыть загруженный скрипт и окно
+// for the loader tests: forget the loaded script and the window
 export function resetGoogleMapsLoader() {
     loading = null;
     shared = null;
@@ -136,8 +137,9 @@ export function googleStreetView(key: string): StreetViewApi {
                     () => reject(new StreetViewUnavailable('Street View search timed out')),
                     SEARCH_TIMEOUT_MS,
                 );
-                // форма с колбэком: она отдаёт статус явно, а что делает промис на ZERO_RESULTS, справка не говорит;
-                // его отказ гасится, чтобы не было «Uncaught (in promise)»
+                // the form with a callback: it gives the status explicitly, and the reference does not tell what
+                // the promise does on ZERO_RESULTS. The code catches the promise rejection to prevent
+                // "Uncaught (in promise)"
                 const returned = service.getPanorama(
                     { location: at, radius, preference: maps.StreetViewPreference.NEAREST },
                     (data, status) => {
@@ -176,8 +178,8 @@ export function googleStreetView(key: string): StreetViewApi {
             const viewer = shared;
             const owner = {};
             viewer.owner = owner;
-            // правила режима без ключа — только с пустым ключом (markKeylessContainer старого); класс — на прямом
-            // родителе .gm-style, как у старого
+            // the rules of the mode without a key apply only with an empty key (markKeylessContainer of the old
+            // client); the class is on the direct parent of .gm-style, as in the old client
             viewer.element.classList.toggle('google-street-view-keyless', !key);
             container.append(viewer.element);
             viewer.report = () => {
@@ -202,7 +204,7 @@ export function googleStreetView(key: string): StreetViewApi {
                         maps.event.trigger(viewer.panorama, 'resize');
                     }
                 },
-                // окно остаётся для следующей панели: спрятано, без слушателя, вне документа
+                // the window stays for the next panel: hidden, without a listener, outside the document
                 destroy() {
                     if (!mine()) {
                         return;

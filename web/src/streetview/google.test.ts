@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { googleMapsUrl, googleStreetView, loadGoogleMaps, resetGoogleMapsLoader } from './google';
 
-// Загрузчик и обёртка Maps JavaScript API на поддельных document, window и google.maps (unit, Node): в Google тесты не
-// ходят, настоящую вёрстку окна проверяет только прод.
+// The loader and the wrapper of the Maps JavaScript API on fake document, window and google.maps (unit, Node): the
+// tests do not go to Google. Only production checks the real markup of the window.
 
 afterEach(() => {
     resetGoogleMapsLoader();
@@ -183,7 +183,7 @@ describe('Street View на Google', () => {
         expect(FakePanorama.created - created).toBe(1);
         const element = (secondContainer.append as ReturnType<typeof vi.fn>).mock.calls[0][0];
         expect(element.classList.contains('google-street-view-keyless')).toBe(false);
-        // устаревший владелец (StrictMode, выключенный режим) окно не прячет и не двигает
+        // a stale owner (StrictMode, the mode is off) does not hide or move the window
         first.destroy();
         first.show({ lat: 1, lng: 1, heading: 0, pitch: 0, zoom: 1 });
         expect(element.remove).not.toHaveBeenCalled();
@@ -208,7 +208,7 @@ describe('Street View на Google', () => {
     });
 });
 
-// div окна: только то, что трогает google.ts
+// the div of the window: only what google.ts touches
 function fakeElement() {
     const classes = new Set<string>();
     return {

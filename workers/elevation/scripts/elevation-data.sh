@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
-# Конвейер данных высот: zip с HGT 3″ viewfinderpanoramas → `elevation-repack` → R2.
+# Elevation data pipeline: zips with HGT 3″ viewfinderpanoramas → `elevation-repack` → R2.
 #
-#   scripts/elevation-data.sh dem3/K38 dem3/L32   # отдельные zip (путь на viewfinderpanoramas.org без .zip)
-#   scripts/elevation-data.sh all                 # все zip со страницы покрытия
+#   scripts/elevation-data.sh dem3/K38 dem3/L32   # separate zips (path on viewfinderpanoramas.org without .zip)
+#   scripts/elevation-data.sh all                 # all zips from the coverage page
 #
-# Запускать из workers/elevation после `cargo build --release -p elevation-repack`.
-# По умолчанию (R2_MODE=--local) пишет в локальный R2 wrangler для `wrangler dev`.
-# R2_MODE=--remote пишет в бакет Cloudflare через S3 API R2: нужны R2_ACCESS_KEY_ID,
-# R2_SECRET_ACCESS_KEY (токен R2 с Object Read & Write на бакет) и R2_ENDPOINT
-# (https://<account id>.r2.cloudflarestorage.com). Градусы, которые уже лежат в бакете,
-# пропускаются, так что прерванный прогон можно просто перезапустить; FORCE=1 перезаливает всё.
+# Run from workers/elevation after `cargo build --release -p elevation-repack`.
+# By default (R2_MODE=--local) writes to the local wrangler R2 for `wrangler dev`.
+# R2_MODE=--remote writes to the Cloudflare bucket through the R2 S3 API: it needs R2_ACCESS_KEY_ID,
+# R2_SECRET_ACCESS_KEY (an R2 token with Object Read & Write on the bucket) and R2_ENDPOINT
+# (https://<account id>.r2.cloudflarestorage.com). The script skips degrees that are already in the
+# bucket, thus you can restart an interrupted run; FORCE=1 uploads all degrees again.
 #
-# Подвохи:
-# - `wrangler r2 bulk put --remote` идёт через API Cloudflare (~1200 запросов за 5 минут) и на
-#   деле давал ~0.4 объекта в секунду — 27 тыс. градусов не влезали в лимит job. Поэтому S3;
-# - viewfinderpanoramas отдаёт ~1.5 МБ/с на соединение, поэтому zip готовятся пачками по
-#   PARALLEL штук параллельно, а дедупликация и заливка идут по порядку списка;
-# - один HGT встречается в нескольких zip; первый по списку выигрывает, повторы считаются как
-#   same|different, итог — в конце (и в $GITHUB_STEP_SUMMARY);
-# - диск: в каждый момент на нём одна пачка zip и её объекты.
+# Pitfalls:
+# - `wrangler r2 bulk put --remote` goes through the Cloudflare API (~1200 requests per 5 minutes) and
+#   in practice gave ~0.4 objects per second: 27 thousand degrees did not fit in the job limit. Thus S3;
+# - viewfinderpanoramas gives ~1.5 MB/s per connection, thus the zips are prepared in batches of
+#   PARALLEL items in parallel, and the deduplication and the upload go in the order of the list;
+# - one HGT occurs in several zips; the first in the list wins, repeats are counted as
+#   same|different, the total is at the end (and in $GITHUB_STEP_SUMMARY);
+# - disk: at each moment it holds one batch of zips and its objects.
 set -euo pipefail
 
 COVERAGE_URL='https://viewfinderpanoramas.org/Coverage%20map%20viewfinderpanoramas_org3.htm'
@@ -26,8 +26,8 @@ BUCKET="${BUCKET:-nakarte-elevation}"
 R2_MODE="${R2_MODE:---local}"
 REPACK="${REPACK:-$PWD/target/release/elevation-repack}"
 PARALLEL="${PARALLEL:-8}"
-# zstd-19 на 4 ядрах раннера — 2–3 часа на весь мир, уровень 9 в ~9 раз быстрее при объёме
-# больше на ~8% (замер на K38), поэтому по умолчанию 9
+# zstd-19 on 4 cores of the runner takes 2–3 hours for the whole world, level 9 is ~9 times faster with
+# ~8% more size (measured on K38), thus the default is 9
 LEVEL="${LEVEL:-9}"
 FORCE="${FORCE:-0}"
 
@@ -38,21 +38,21 @@ fi
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
-# Учёт градусов — файлами-маркерами: поиск по спискам из 27 тыс. строк на каждый объект слишком медленный.
+# Degree tracking uses marker files: a search in lists of 27 thousand lines for each object is too slow.
 seen="$work/seen"
 existing="$work/existing"
 mkdir -p "$seen" "$existing"
 
 if [ "$R2_MODE" = --remote ]; then
-    # ключи из секретов GitHub часто приходят с переводом строки после копирования из дашборда,
-    # а aws CLI тогда собирает битый заголовок Authorization
+    # keys from GitHub secrets often come with a line break after a copy from the dashboard,
+    # and then aws CLI makes a broken Authorization header
     AWS_ACCESS_KEY_ID=$(printf '%s' "$R2_ACCESS_KEY_ID" | tr -d '[:space:]')
     AWS_SECRET_ACCESS_KEY=$(printf '%s' "$R2_SECRET_ACCESS_KEY" | tr -d '[:space:]')
     export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
     export AWS_DEFAULT_REGION=auto AWS_CONFIG_FILE="$work/aws-config"
     printf '[default]\ns3 =\n  max_concurrent_requests = 32\n' >"$AWS_CONFIG_FILE"
     if [ "$FORCE" != 1 ]; then
-        # не `aws s3 ls`: на пустом префиксе он выходит с кодом 1, а s3api — нет
+        # not `aws s3 ls`: on an empty prefix it exits with code 1, but s3api does not
         aws s3api list-objects-v2 --bucket "$BUCKET" --prefix dem3/ --endpoint-url "$R2_ENDPOINT" \
             --query 'Contents[].Key' --output text >"$work/listing.txt"
         { tr '\t' '\n' <"$work/listing.txt" | grep '^dem3/' || true; } | sed 's#^dem3/##' >"$work/existing.txt"
@@ -68,7 +68,7 @@ else
     zips="$*"
 fi
 
-# Скачать, распаковать и перепаковать один zip в $2/dem3; вызывается параллельно из xargs.
+# Download, unpack and repack one zip into $2/dem3; xargs calls it in parallel.
 prepare() {
     local zip="$1" dir="$2"
     mkdir -p "$dir/hgt"
@@ -91,7 +91,7 @@ skipped_existing=0
 duplicates_same=0
 duplicates_different=""
 
-# Отобрать из каталога пачки новые градусы в $work/upload, по порядку zip.
+# Select the new degrees from the batch directory into $work/upload, in the order of the zips.
 collect() {
     local zip="$1" dir="$2"
     if [ ! -d "$dir/dem3" ]; then

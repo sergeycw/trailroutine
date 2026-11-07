@@ -1,9 +1,9 @@
-// Сообщения между engine.ts и воркером движка — глобальные типы, а не модуль: воркер классический, и
-// даже `import type` заставляет Vite в dev дописать в него `export {}` (engine.worker.ts).
-// Запросы маршрута идут по одному (очередь в engine.ts); id — чтобы ответ не перепутался с чужим.
+// Messages between engine.ts and the engine worker are global types, not a module: the worker is classic, and
+// even `import type` makes Vite in dev add `export {}` to it (engine.worker.ts).
+// Route requests go one at a time (the queue in engine.ts); the id keeps the responses of different requests apart.
 declare namespace EngineProtocol {
-    // Пути движка. `/app/` CheerpJ — корень origin страницы (не каталог /next/): `/app/brouter-wasm/lib/x.jar`
-    // читается как GET /brouter-wasm/lib/x.jar Range-запросами (AGENTS.md, «Движок в браузере (CheerpJ)»).
+    // Engine paths. CheerpJ `/app/` is the page origin root (not the directory /next/): `/app/brouter-wasm/lib/x.jar`
+    // is read as GET /brouter-wasm/lib/x.jar with Range requests (AGENTS.md, «Движок в браузере (CheerpJ)»).
     interface Paths {
         runtimeUrl: string;
         classpath: string;

@@ -4,11 +4,12 @@ import type { LatLng, Track } from '@/tracks/model';
 import { type ElevationSource, errorReason, fetchElevations } from './api';
 import { sampleSegments } from './profile';
 
-// Профиль высот без React (design add-web-elevation-profile, «Профиль следует за треком»): по цели из стора (трек или
-// его отрезок) строит выборку, запрашивает высоты и пишет результат в стор. Профиль следует за треком: изменение
-// track.segments (стор меняет массив при любой правке геометрии) перестраивает его, когда изменений нет delay мс и в
-// линиях профиля нет ожидающих отрезков; удаление трека — закрывает, профиль отрезка закрывается и при смене числа
-// отрезков (номер мог уйти на другой отрезок).
+// The elevation profile without React (design add-web-elevation-profile, «Профиль следует за треком»): for the
+// target from the store (a track or its segment), it builds the samples, requests the elevations and writes the
+// result to the store. The profile follows the track: a change of track.segments (the store changes the array on
+// each geometry edit) builds the profile again when there are no changes for delay ms and the profile lines have no
+// pending segments. A delete of the track closes the profile. A segment profile also closes when the number of
+// segments changes (the index can now point to a different segment).
 
 type Notify = (title: string, type?: 'error' | 'success') => void;
 
@@ -16,7 +17,7 @@ export interface ElevationProfileDeps {
     store: AppStore;
     source: ElevationSource;
     notify: Notify;
-    // пауза перед перестроением после изменения трека, мс
+    // the pause before the profile builds again after a track change, ms
     delay?: number;
 }
 
@@ -40,9 +41,9 @@ function hasPending(track: Track, target: ProfileTarget): boolean {
 
 export function createElevationProfile({ store, source, notify, delay = 1000 }: ElevationProfileDeps) {
     const state = () => store.getState();
-    // по каким линиям построен текущий профиль: у профиля трека — массив отрезков, у профиля отрезка — сам отрезок
-    // (редактор пишет новый массив отрезков на любую правку, но сохраняет ссылки на нетронутые отрезки). Изменение —
-    // повод перестроить.
+    // the lines from which the code built the current profile: for a track profile, the array of segments; for a
+    // segment profile, the segment itself (the editor writes a new array of segments on each edit, but keeps the
+    // references to the segments that did not change). A change is a reason to build again.
     let builtFrom: { lines: readonly unknown[]; count: number } | null = null;
     let request: AbortController | null = null;
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -62,7 +63,8 @@ export function createElevationProfile({ store, source, notify, delay = 1000 }: 
         state().setProfile(null);
     }
 
-    // Строит профиль цели по треку из стора. false — строить не из чего (трека нет, линий нет или их длина 0).
+    // Builds the profile of the target from the track in the store. false means there is nothing to build from (no
+    // track, no lines, or their length is 0).
     function build(target: ProfileTarget): boolean {
         const track = state().tracks.find((item) => item.id === target.trackId);
         const lines = track && linesOf(track, target);
@@ -90,7 +92,7 @@ export function createElevationProfile({ store, source, notify, delay = 1000 }: 
                     return;
                 }
                 request = null;
-                // новые точки — прежние курсор и выделение указывают не туда
+                // new points: the previous cursor and selection point to wrong places
                 store.setState({ profileCursor: null, profileSelection: null });
                 state().setProfileData({ samples, values, updating: false, error: null });
             },
@@ -118,7 +120,8 @@ export function createElevationProfile({ store, source, notify, delay = 1000 }: 
             timer = null;
             const target = state().profile;
             const track = target && state().tracks.find((item) => item.id === target.trackId);
-            // ожидающий отрезок — прямая-заглушка: ждать ответа роутера, он снова поменяет трек
+            // a pending segment is a straight placeholder line: wait for the router answer, which changes the track
+            // again
             if (!target || !track || hasPending(track, target)) {
                 return;
             }
@@ -147,7 +150,7 @@ export function createElevationProfile({ store, source, notify, delay = 1000 }: 
             return;
         }
         builtFrom = lines;
-        // прежний график с индикатором: перестроение ждёт паузы и ответа роутера
+        // the previous graph with an indicator: the rebuild waits for the pause and for the router answer
         const data = state().profileData;
         if (data && !data.updating) {
             state().setProfileData({ ...data, updating: true });
@@ -156,7 +159,8 @@ export function createElevationProfile({ store, source, notify, delay = 1000 }: 
     }
 
     return {
-        // Профиль трека (segment null) или отрезка; пустой — сообщение Track is empty, как у старого клиента
+        // The profile of a track (segment null) or of a segment; an empty one gives the message Track is empty, as in
+        // the old client
         open(trackId: string, segment: number | null = null) {
             cancel();
             const target = { trackId, segment };
@@ -173,7 +177,8 @@ export function createElevationProfile({ store, source, notify, delay = 1000 }: 
                 close();
             }
         },
-        // подписка на стор — в эффекте App, а не при создании: Strict Mode создаёт объект дважды
+        // the store subscription is in an effect of App, not at the creation: Strict Mode creates the object two
+        // times
         start() {
             const unsubscribe = store.subscribe(onChange);
             return () => {

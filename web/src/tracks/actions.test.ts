@@ -6,7 +6,7 @@ import { createTrackActions, nextPointName, pointCoordinates } from './actions';
 import type { ExportedFile } from './export';
 import { geoData, type Waypoint } from './model';
 
-// Точки трека на действиях списка без карты (спека tracks, «Добавление точек трека», «Меню точки трека»)
+// Track points through the list actions without a map (spec tracks, «Добавление точек трека», «Меню точки трека»)
 
 function setup(writeClipboard: (text: Promise<string>) => Promise<void> = async () => {}) {
     const store = createAppStore({
@@ -57,7 +57,7 @@ describe('Добавление точек трека', () => {
         const first = actions.addPoint(track.id, { lat: 41.69, lng: 44.78 });
         expect(store.getState().pointDialog).toEqual({ trackId: track.id, point: first });
         actions.addPoint(track.id, { lat: 41.7, lng: 404.79 });
-        // долгота приводится в ±180, как latlng.wrap() старого клиента
+        // the longitude goes into ±180, as latlng.wrap() of the old client
         expect(points()).toEqual([
             { lat: 41.69, lng: 44.78, name: '001' },
             { lat: 41.7, lng: expect.closeTo(44.79), name: '002' },
@@ -115,7 +115,7 @@ describe('Меню точки трека', () => {
     });
 });
 
-// Спека track-files, «GPX с высотами» («Save as GPX»): запросы к API — подставной fetch, файл — подставная запись
+// Spec track-files, «GPX с высотами» («Save as GPX»): API requests go to a fake fetch, the file goes to a fake write
 describe('GPX с высотами', () => {
     function withElevation(fetch: typeof globalThis.fetch, elevationTimeout?: number) {
         const store = createAppStore({
@@ -174,7 +174,8 @@ describe('GPX с высотами', () => {
         });
         const [track] = store.getState().addTracks([walk]);
         await actions.saveGpx(track);
-        // файл нужен и без сети: тот же GPX без <ele>, сообщения нет (design trim-track-menus)
+        // the user needs the file without the network too: the same GPX without <ele>, no message
+        // (design trim-track-menus)
         expect(messages).toEqual([]);
         expect(saved.map((file) => file.filename)).toEqual(['Walk.gpx']);
         expect(saved[0].content).not.toContain('<ele>');

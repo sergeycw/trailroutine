@@ -1,25 +1,26 @@
 import {anonymousTileUrl, heatmapCookie, isStravaHeatmap} from './strava';
 import {errorBody, isTracestrackTile, responseHeaders, TRACESTRACK_HOST, withKey, withoutKey} from './tracestrack';
 
-// user-agent: fetch из Worker'а своего не ставит, а часть сайтов без него отвечает 403 (так было у Wikimapia,
-// чей адрес /wikimapia/ ушёл вместе со старым клиентом, change retire-old-client-services).
+// user-agent: fetch in a Worker does not set its own, and some sites answer 403 without it (Wikimapia did this;
+// its address /wikimapia/ was removed together with the old client, change retire-old-client-services).
 const FORWARDED_REQUEST_HEADERS = ['accept', 'accept-language', 'content-type', 'range', 'user-agent'];
 const DROPPED_RESPONSE_HEADERS = ['set-cookie'];
 const EXPOSED_HEADERS = 'Content-Disposition';
-// Только чтение: клиент через прокси не шлёт POST, а пересылка тел делала прокси открытым релеем
-// (security-аудит, п. 4; change restrict-cors-proxy).
+// Read only: the client does not send POST through the proxy, and forwarding of bodies made the proxy an open relay
+// (security audit, item 4; change restrict-cors-proxy).
 const ALLOWED_METHODS = 'GET, HEAD, OPTIONS';
 const READ_METHODS = ['GET', 'HEAD'];
-// Хосты тайловых слоёв клона, которые приложение шлёт через прокси (viaCorsProxy в web/src/layers/catalog.ts):
-// Strava heatmap, Tsvetkov и Tracestrack Topo. Они тратят RATE_LIMITER (1200 в минуту), все остальные хосты (импорт по ссылке,
-// поиск, короткие ссылки, свои слои через прокси) — OTHER_RATE_LIMITER. Забытый здесь хост слоя не ломается, а
-// получает меньший лимит.
+// Hosts of the tile layers of the clone that the app sends through the proxy (viaCorsProxy in
+// web/src/layers/catalog.ts): Strava heatmap, Tsvetkov and Tracestrack Topo. They use RATE_LIMITER (1200 per minute).
+// All other hosts (import by link, search, short links, custom layers through the proxy) use OTHER_RATE_LIMITER. A
+// layer host that is missing here does not break, but it gets a lower limit.
 const LAYER_HOSTS = [/^content-[a-z]\.strava\.com$/u, 'maptiles.website.yandexcloud.net', TRACESTRACK_HOST];
-// Свои адреса клона: Worker'ы аккаунта и так отвечают на подзапрос error 1042, а Pages — нет.
+// Own addresses of the clone: Workers of the account already answer a subrequest with error 1042; Pages does not.
 const OWN_HOSTS = [/(^|\.)nakarte-routing\.workers\.dev$/u, /(^|\.)nakarte-routing\.pages\.dev$/u, /(^|\.)trailroutine\.com$/u];
-// На эти ответы CloudFront на тайл с куками прокси пробует анонимный тайл: куки протухли или не приняты.
+// When CloudFront gives these answers to a tile with cookies, the proxy tries the anonymous tile: the cookies expired
+// or CloudFront did not accept them.
 const STRAVA_REJECTED = [401, 403];
-// Длина окна `[[ratelimits]]` в wrangler.toml.
+// The window length of `[[ratelimits]]` in wrangler.toml.
 const RETRY_AFTER_SECONDS = '60';
 
 function allowedOrigins(env) {
@@ -72,7 +73,7 @@ function hostMatches(hostname, patterns) {
     return patterns.some((pattern) => (typeof pattern === 'string' ? pattern === hostname : pattern.test(hostname)));
 }
 
-// Счётчик по роли цели; без разобранной цели (404) — счётчик слоёв, как до разделения.
+// The counter depends on the target role; without a parsed target (404) it is the layer counter, as before the split.
 function limiterFor(env, target) {
     if (!target || hostMatches(new URL(target).hostname, LAYER_HOSTS)) {
         return env.RATE_LIMITER;
@@ -80,7 +81,7 @@ function limiterFor(env, target) {
     return env.OTHER_RATE_LIMITER;
 }
 
-// Без CF-Connecting-IP (локальный wrangler dev, тесты) частоту не ограничиваем.
+// Without CF-Connecting-IP (local wrangler dev, tests) the rate is not limited.
 async function overLimit(request, limiter) {
     const ip = request.headers.get('CF-Connecting-IP');
     if (!ip) {
@@ -108,7 +109,7 @@ function preflight(request, origin) {
 }
 
 async function proxy(request, env, ctx, origin, target, proxyOrigin) {
-    // без ключа тайл Tracestrack не запрашивается вовсе: клиент получает ошибку и откатывается на OSM
+    // without the key, the proxy never requests a Tracestrack tile: the client gets an error and falls back to OSM
     const tracestrack = isTracestrackTile(target);
     if (tracestrack && !env.TRACESTRACK_KEY) {
         return new Response('Tracestrack key is not set\n', {status: 503, headers: corsHeaders(origin)});
@@ -121,18 +122,18 @@ async function proxy(request, env, ctx, origin, target, proxyOrigin) {
             upstreamHeaders.set(name, value);
         }
     }
-    // куки Strava уходят только на тайлы heatmap, cookie клиента не пересылается никогда (src/strava.js)
+    // the Strava cookies go only to heatmap tiles; the proxy never forwards the cookie of the client (src/strava.js)
     const strava = isStravaHeatmap(target) ? await heatmapCookie(env, ctx) : null;
     if (strava?.cookie) {
         upstreamHeaders.set('cookie', strava.cookie);
     }
-    // HEAD уходит к сервису как GET, как у авторского прокси на nginx (proxy_cache_convert_head):
-    // короткие ссылки mapy.com на HEAD отвечают 404, а на GET — редиректом, который и нужен клиенту.
+    // HEAD goes to the service as GET, as in the nginx proxy of the author (proxy_cache_convert_head):
+    // short links of mapy.com answer 404 to HEAD, but answer GET with the redirect that the client needs.
     const isHead = request.method === 'HEAD';
     function send(url) {
         return fetch(url, {method: 'GET', headers: upstreamHeaders, redirect: 'manual'});
     }
-    // без кук или с отвергнутыми куками тайл z≤12 берётся с анонимного адреса Strava, без кук
+    // if cookies are absent or rejected, the proxy gets a z≤12 tile without cookies from the anonymous Strava address
     const anonymous = strava ? anonymousTileUrl(target) : null;
     let stravaSource = strava?.source;
     let upstream = null;
@@ -159,7 +160,7 @@ async function proxy(request, env, ctx, origin, target, proxyOrigin) {
     for (const [name, value] of Object.entries(corsHeaders(origin))) {
         headers.set(name, value);
     }
-    // откуда куки тайла (session, fallback, anonymous, none) — для проверки STRAVA_SESSION
+    // the source of the tile cookies (session, fallback, anonymous, none), to check STRAVA_SESSION
     if (strava) {
         headers.set('X-Strava-Cookies', stravaSource);
     }

@@ -1,9 +1,9 @@
 import { splitLinesAt180 } from './geometry';
 import type { LatLng, TrackData, Waypoint } from './model';
 
-// Экспорт треков (geo_file_exporters.js и exportTrackAsFile старого клиента): GPX 1.1 и KML 2.2; ZIP всех треков удалён
-// (design trim-track-menus). Строки — обычные строки JS: в UTF-8 их переводит Blob при сохранении (старый клиент
-// кодировал вручную через двоичную строку).
+// Track export (geo_file_exporters.js and exportTrackAsFile of the old client): GPX 1.1 and KML 2.2; the ZIP of all
+// tracks is removed (design trim-track-menus). Strings are plain JS strings: Blob converts them to UTF-8 on save (the
+// old client encoded by hand through a binary string).
 
 export interface ExportedFile {
     filename: string;
@@ -28,13 +28,14 @@ function escapeXml(text: string): string {
 
 const coord = (value: number) => value.toFixed(6);
 
-// Высоты GPX с высотами: по одной на точку трека и на точку отрезков, null — без <ele> (точка без данных у API высот)
+// Elevations for GPX with elevations: one for each track point and each segment point; null means no <ele> (the
+// elevation API has no data for the point)
 export interface GpxElevations {
     points: readonly (number | null)[];
     segments: readonly (readonly (number | null)[])[];
 }
 
-// <ele> с одним знаком, как saveGpx(…, withElevations) старого клиента
+// <ele> with one decimal place, as saveGpx(…, withElevations) of the old client
 const ele = (value: number | null | undefined) =>
     value === null || value === undefined ? '' : `<ele>${value.toFixed(1)}</ele>`;
 
@@ -44,7 +45,7 @@ export function toGpx(
     points: readonly Waypoint[],
     elevations?: GpxElevations,
 ): string {
-    // time у точек трека ничего не значит: без него Garmin Connect не принимал файл (комментарий старого клиента)
+    // time on track points means nothing: Garmin Connect did not accept the file without it (old client comment)
     const fakeTime = '1970-01-01T00:00:01.000Z';
     const gpx = [
         '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>',
@@ -57,7 +58,7 @@ export function toGpx(
     ];
     points.forEach((point, i) => {
         gpx.push(`\t<wpt lat="${coord(point.lat)}" lon="${coord(point.lng)}">`);
-        // порядок элементов wpt по схеме GPX 1.1: ele раньше name
+        // the order of wpt elements by the GPX 1.1 schema: ele before name
         const height = ele(elevations?.points[i]);
         if (height) {
             gpx.push(`\t\t${height}`);
@@ -108,14 +109,14 @@ export function toKml(name: string, segments: readonly (readonly LatLng[])[], po
     return kml.join('\n');
 }
 
-// splitExtensionsFirstStage и splitExtensions старого клиента: «track.gpx» → «track», «track.gpx.xml» → «track»
+// splitExtensionsFirstStage and splitExtensions of the old client: «track.gpx» → «track», «track.gpx.xml» → «track»
 const EXTENSION_STAGES = [
     ['xml', 'txt', 'html', 'php', 'tmp', 'gz'],
     ['gpx', 'kml', 'geojson', 'kmz', 'wpt', 'rte', 'plt', 'fit', 'tmp', 'jpg', 'crdownload'],
 ];
 
 export function fileBaseName(trackName: string): string {
-    // браузер (Chrome) срезает точку в начале имени, а на Linux это скрытый файл
+    // the browser (Chrome) removes a dot at the start of the name, and on Linux it is a hidden file
     let name = trackName.replace(/^\./u, '_');
     for (const extensions of EXTENSION_STAGES) {
         const dot = name.lastIndexOf('.');
@@ -133,7 +134,7 @@ const FORMATS: Record<Format, { write: typeof toGpx; mimeType: string }> = {
     kml: { write: toKml, mimeType: 'application/vnd.google-earth.kml+xml' },
 };
 
-// Пустой трек — EmptyTrackError
+// An empty track gives EmptyTrackError
 export function exportTrack(track: TrackData, format: Format): ExportedFile {
     const segments = splitLinesAt180(track.segments);
     if (segments.length === 0 && track.points.length === 0) {
@@ -144,9 +145,10 @@ export function exportTrack(track: TrackData, format: Format): ExportedFile {
     return { filename: `${name}.${format}`, content: write(name, segments, track.points), mimeType };
 }
 
-// GPX с высотами (exportTrackAsFile старого клиента с addElevations): высоты всех точек трека и отрезков — без выборки,
-// после деления у 180°, как в файле. elevations — запрос к API высот (elevation/api.ts); его ошибка уходит наверх, и
-// GPX без высот тогда собирает saveGpx в actions.ts. Пустой трек — EmptyTrackError без запроса.
+// GPX with elevations (exportTrackAsFile of the old client with addElevations): elevations of all track points and
+// segment points, without sampling, after the split at 180°, as in the file. elevations is the request to the
+// elevation API (elevation/api.ts); its error goes up, and then saveGpx in actions.ts makes the GPX without
+// elevations. An empty track gives EmptyTrackError without a request.
 export async function exportGpxWithElevations(
     track: TrackData,
     elevations: (points: readonly LatLng[]) => Promise<(number | null)[]>,
@@ -172,7 +174,7 @@ export async function exportGpxWithElevations(
     };
 }
 
-// Сохранение файла: ссылка с download на Blob
+// File save: a link with download to a Blob
 export function saveFile({ filename, content, mimeType }: ExportedFile): void {
     const url = URL.createObjectURL(new Blob([content], { type: mimeType }));
     const link = document.createElement('a');

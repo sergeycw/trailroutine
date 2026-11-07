@@ -1,9 +1,10 @@
 import { browserLanguages, type PlaceQuery, RESULTS_LIMIT, SearchResponseError } from './mapycz';
 import { PLACE_ZOOM, type SearchResult } from './result';
 
-// Запасной поиск — photon.komoot.io напрямую (CORS *), когда mapy.cz не ответил (design add-web-search-panoramas,
-// «Поиск по названию»). Разбор — PhotonProvider старого клиента (src/lib/leaflet.control.search/providers/photon.js):
-// GeoJSON, extent — [запад, север, восток, юг], без extent — зум 17 старого. Ответ — fixtures/photon-mtatsminda.json.
+// The fallback search is photon.komoot.io directly (CORS *) when mapy.cz did not answer (design
+// add-web-search-panoramas, «Поиск по названию»). The parsing is PhotonProvider of the old client
+// (src/lib/leaflet.control.search/providers/photon.js): GeoJSON, extent is [west, north, east, south], without extent
+// the zoom is 17 of the old client. The answer is fixtures/photon-mtatsminda.json.
 
 export const PHOTON_URL = 'https://photon.komoot.io/api/';
 export const PHOTON_ATTRIBUTION = { text: 'Photon by Komoot', url: 'https://photon.komoot.io/' };
@@ -14,7 +15,7 @@ export function photonUrl({ query, lat, lng, languages }: PlaceQuery): string {
     const url = new URL(PHOTON_URL);
     url.searchParams.append('limit', String(RESULTS_LIMIT));
     url.searchParams.append('q', query);
-    // старый вычислял язык браузера, но слал en; здесь — вычисленный
+    // the old client calculated the browser language but sent en; here the calculated language goes
     url.searchParams.append('lang', browserLanguages(languages, LANGUAGES)[0] ?? 'en');
     url.searchParams.append('lat', String(lat));
     url.searchParams.append('lon', String(lng));
@@ -61,7 +62,7 @@ export function parsePhoton(json: unknown): SearchResult[] {
             title = address;
             address = null;
         }
-        // osm_value «yes» ничего не говорит — тогда osm_key
+        // osm_value "yes" says nothing, so use osm_key
         let category = properties.osm_value === 'yes' ? properties.osm_key : properties.osm_value;
         category = category?.replace(/_/gu, ' ');
         const extent =

@@ -4,15 +4,17 @@ import type { ProfileData } from '@/state/store';
 import { cursorInfo, profileSections } from './format';
 import { distanceAt, gridValues, indexAtDistance, pointAt, SLOPE_CLASSES, slopeClass } from './profile';
 
-// График профиля — свой SVG (design add-web-elevation-profile, «График: свой SVG»): ломаная по точкам выборки над
-// заливкой участков цветом ступени крутизны (design slope-profile), шкала слева, курсор и выделение поверх. Ось X — расстояние, а не номер точки: на концах отрезков шаг
-// выборки короче. Мышь: движение — курсор, нажатие со сдвигом — выделение, клик — снять выделение, двойной клик —
-// карта в эту точку, колесо — зум 1–10× (прокрутка родная). Палец водит курсор, без выделения и зума.
+// The profile graph is our own SVG (design add-web-elevation-profile, «График: свой SVG»): a polyline through the
+// sample points above a fill of the sections in the color of the slope step (design slope-profile), the scale on the
+// left, the cursor and the selection on top. The X axis is the distance, not the point index: at the segment ends the
+// sample step is shorter. Mouse: a move sets the cursor, a press with a move makes a selection, a click removes the
+// selection, a double click moves the map to this point, the wheel zooms 1–10× (the scroll is native). A finger
+// moves the cursor, without selection and zoom.
 
 const PAD_TOP = 8;
 const PAD_BOTTOM = 4;
 const MAX_ZOOM = 10;
-// сдвиг мыши, после которого нажатие — выделение, а не клик
+// the mouse move after which a press is a selection, not a click
 const DRAG_THRESHOLD = 3;
 
 interface Size {
@@ -61,8 +63,8 @@ function scaleOf(values: readonly (number | null)[], height: number): Scale | nu
     return { grid, y: (value) => PAD_TOP + ((high - value) / (high - low)) * span };
 }
 
-// Ломаная: прогон рвётся на точке без данных и на стыке отрезков. Заливка — по участкам крутизны, по пути на ступень:
-// участки рвутся там же, где ломаная (slopeSections).
+// Polyline: a run breaks at a point without data and at a joint of segments. Fill: by slope sections, one path per
+// step: the sections break at the same places as the polyline (slopeSections).
 function paths(data: ProfileData, width: number, height: number, scale: Scale) {
     const { distances, starts } = data.samples;
     const values = data.values ?? [];
@@ -114,9 +116,10 @@ export function ProfileGraph({ data }: { data: ProfileData }) {
     const scrollRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
     const [zoom, setZoom] = useState(1);
-    // зум и прокрутка, которые ещё не дошли до DOM: два события колеса до рендера считаются от них, а не от старых
+    // the zoom and the scroll that are not in the DOM yet: two wheel events before a render count from them, not
+    // from the old values
     const zoomRef = useRef(1);
-    // прокрутка после зума: точка под мышью остаётся на месте (onSvgMouseWheel старого клиента)
+    // the scroll after a zoom: the point below the mouse stays in place (onSvgMouseWheel of the old client)
     const pendingScroll = useRef<number | null>(null);
     const drag = useRef<{ start: number; x: number; moved: boolean } | null>(null);
 
@@ -147,15 +150,15 @@ export function ProfileGraph({ data }: { data: ProfileData }) {
         }
     });
 
-    // колесо — зум по горизонтали; слушатель не пассивный (React вешает wheel пассивным), иначе страница не даст
-    // отменить прокрутку
+    // the wheel zooms horizontally; the listener is not passive (React adds wheel as passive), otherwise the page
+    // does not let the code cancel the scroll
     useEffect(() => {
         const scroller = scrollRef.current;
         if (!scroller) {
             return;
         }
         function onWheel(event: WheelEvent) {
-            // горизонтальная прокрутка тачпада — родная
+            // the horizontal scroll of a touchpad is native
             if (!scroller || Math.abs(event.deltaY) <= Math.abs(event.deltaX)) {
                 return;
             }
@@ -212,7 +215,7 @@ export function ProfileGraph({ data }: { data: ProfileData }) {
         if (!current || event.pointerType !== 'mouse') {
             return;
         }
-        // клик без сдвига снимает выделение (onSvgClick старого клиента)
+        // a click without a move removes the selection (onSvgClick of the old client)
         if (!current.moved) {
             state().setProfileSelection(null);
         }
@@ -231,7 +234,7 @@ export function ProfileGraph({ data }: { data: ProfileData }) {
 
     const info = cursor === null ? null : cursorInfo(data, cursor);
     const cursorX = cursor === null ? 0 : xOf(cursor);
-    // подпись курсора у правого края — слева от линии
+    // the cursor label near the right edge goes on the left of the line
     const labelLeft = cursorX + 120 > (scrollRef.current?.scrollLeft ?? 0) + frame.width;
 
     return (
@@ -245,8 +248,8 @@ export function ProfileGraph({ data }: { data: ProfileData }) {
             </div>
             <div ref={frameRef} className="relative min-w-0 flex-1">
                 <div ref={scrollRef} className="absolute inset-0 overflow-x-auto overflow-y-hidden">
-                    {/* biome-ignore lint/a11y/noStaticElementInteractions: график для мыши и пальца, как у старого клиента;
-                        цифры профиля доступны текстом в сводке */}
+                    {/* biome-ignore lint/a11y/noStaticElementInteractions: the graph is for mouse and finger, as in
+                        the old client; the profile numbers are available as text in the summary */}
                     <div
                         ref={contentRef}
                         className="relative h-full touch-none select-none"
@@ -276,7 +279,7 @@ export function ProfileGraph({ data }: { data: ProfileData }) {
                                 <>
                                     {drawn.fills.map((d, step) => (
                                         <path
-                                            // biome-ignore lint/suspicious/noArrayIndexKey: ступени постоянны, номер — ключ
+                                            // biome-ignore lint/suspicious/noArrayIndexKey: the steps do not change
                                             key={step}
                                             d={d}
                                             className={SLOPE_CLASSES[step].fill}
@@ -293,7 +296,7 @@ export function ProfileGraph({ data }: { data: ProfileData }) {
                                 </>
                             )}
                         </svg>
-                        {/* выделение приглушает график вокруг: цвета ступеней внутри остаются истинными (design
+                        {/* the selection dims the graph around it: the step colors inside stay true (design
                             slope-profile, «Выделение») */}
                         {selection && (
                             <>

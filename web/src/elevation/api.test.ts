@@ -4,7 +4,7 @@ import { ELEVATION_CHUNK, ElevationError, fetchElevations, parseResponse, reques
 const URL = 'https://elevation.example.test/';
 const P = (lat: number, lng: number) => ({ lat, lng });
 
-// API высот в памяти: высота точки — широта × 100, точки южнее экватора — NULL
+// An in-memory elevation API: the elevation of a point is the latitude × 100, points south of the equator give NULL
 function fakeApi() {
     const bodies: string[] = [];
     const fetch = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {

@@ -15,10 +15,10 @@ const ONLY = (process.env.ONLY ?? '').split(',').filter(Boolean);
 const CONCURRENCY = Number(process.env.CONCURRENCY ?? 4);
 const MANIFEST_KEY = 'manifest.json';
 const MANIFEST_SAVE_EVERY = 20;
-// Локальный R2 (wrangler dev) — только через wrangler; локально хватает последней 4.x.
+// The local R2 (wrangler dev) is available only through wrangler; locally the latest 4.x is sufficient.
 const WRANGLER = process.env.WRANGLER ?? 'wrangler@4';
 const INDEX_ROW = /<a href="([^"]+\.rd5)">[^<]*<\/a>\s+(\S+ \S+)\s+(\d+)/gu;
-// S3 API R2 так отвечает на отсутствующий ключ; любая другая ошибка чтения манифеста — не «пустой манифест».
+// The R2 S3 API gives this answer for a missing key; any other error on the manifest read is not an «empty manifest».
 const NO_SUCH_KEY = /NoSuchKey/u;
 
 function run(command, args, {env = process.env, capture = false} = {}) {
@@ -44,9 +44,10 @@ function run(command, args, {env = process.env, capture = false} = {}) {
     });
 }
 
-// Cloudflare — S3 API R2, как заливка высот (workers/elevation/scripts/elevation-data.sh): REST API объектов,
-// в который ходит wrangler, не принимает токен с правом на один бакет (change sync-tiles-via-s3).
-// Ключи из секретов GitHub часто приходят с переводом строки, а aws CLI тогда собирает битый Authorization.
+// Cloudflare goes through the R2 S3 API, as the elevation upload does (workers/elevation/scripts/elevation-data.sh):
+// the REST API of objects that wrangler uses does not accept a token with a permission on one bucket (change
+// sync-tiles-via-s3). The keys from GitHub secrets often come with a line feed, and then the aws CLI makes a broken
+// Authorization.
 function awsEnv() {
     return {
         ...process.env,
@@ -85,7 +86,7 @@ async function readManifest(dir) {
     try {
         await getObject(MANIFEST_KEY, path);
     } catch (e) {
-        // локальный стенд без манифеста — норма; в Cloudflare пустым считаем только отсутствующий объект
+        // a local setup without a manifest is normal; in Cloudflare only a missing object counts as an empty manifest
         if (!REMOTE || NO_SUCH_KEY.test(e.stderr ?? '')) {
             return {lookupsSha256: null, tiles: {}};
         }

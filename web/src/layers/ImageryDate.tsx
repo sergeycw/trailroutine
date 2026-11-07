@@ -17,11 +17,12 @@ import {
     type Point,
 } from './dated';
 
-// Кнопка даты снимков по датам снизу по центру, рядом с кнопкой профиля (design add-dated-imagery, «Кнопка даты снизу
-// по центру»): видна, пока подложка — слой с dated. Без даты в сторе сама берёт дату по умолчанию из Earth Search над
-// центром карты; список дат — по нажатию, заново, если карта ушла от точки прошлого запроса.
+// The date button of dated imagery at the bottom center, next to the profile button (design add-dated-imagery,
+// «Кнопка даты снизу по центру»): it is visible while the basemap is a layer with dated. If the store has no date, the
+// button itself gets the default date from Earth Search over the map center. The date list loads on a click, and loads
+// again if the map moved away from the point of the previous request.
 
-// ≈ 10 км: дальше — другой квадрат MGRS, у него свои даты и облачность
+// ≈ 10 km: farther away is another MGRS square, with its own dates and cloud cover
 const RELOAD_DEGREES = 0.1;
 
 type Dates = { center: Point } & ({ status: 'loading' } | { status: 'error' } | { status: 'done'; dates: DateItem[] });
@@ -55,9 +56,10 @@ function DateButton({ fetch }: { fetch: typeof window.fetch }) {
                 if (controller.signal.aborted) {
                     return;
                 }
-                // пустой ответ (открытый океан, полярная ночь) — тоже «недоступно»: выбрать в списке нечего, остаётся Other date
+                // an empty answer (open ocean, polar night) is also "unavailable": the list has nothing to choose,
+                // only Other date stays
                 setDates(found.length ? { center, status: 'done', dates: found } : { center, status: 'error' });
-                // дата по умолчанию — только если её так и нет: пользователь мог выбрать свою, пока шёл запрос
+                // the default date only if there is still no date: the user could choose a date during the request
                 const fallback = defaultDate(found, today);
                 if (store.getState().imageryDate === null && fallback) {
                     store.getState().setImageryDate(fallback);
@@ -71,7 +73,7 @@ function DateButton({ fetch }: { fetch: typeof window.fetch }) {
         );
     }, [fetch, store]);
 
-    // без даты — запрос дат для даты по умолчанию; после ошибки повтор — только кнопкой Retry
+    // without a date, request the dates for the default date; after an error, only the Retry button repeats the request
     useEffect(() => {
         if (date === null && dates === null) {
             load();
@@ -137,7 +139,7 @@ function DateButton({ fetch }: { fetch: typeof window.fetch }) {
                     </span>
                 )}
             </PopoverTrigger>
-            {/* вверх: кнопка снизу, над ней карта */}
+            {/* upward: the button is at the bottom, the map is above it */}
             <PopoverContent
                 side="top"
                 className="max-h-[min(var(--available-height),24rem)] w-max max-w-[calc(100vw-1.5rem)] gap-1 overflow-y-auto overscroll-contain p-1.5"
@@ -201,7 +203,7 @@ function DateButton({ fetch }: { fetch: typeof window.fetch }) {
                     className="flex items-center gap-2 border-border border-t px-1.5 pt-1.5 text-muted-foreground text-xs"
                 >
                     Other date
-                    {/* key: после выбора из списка поле показывает новую дату, а не введённую раньше */}
+                    {/* key: after a choice from the list, the field shows the new date, not the date typed before */}
                     <Input
                         key={date}
                         id={otherId}
@@ -210,8 +212,9 @@ function DateButton({ fetch }: { fetch: typeof window.fetch }) {
                         max={isoDay(today)}
                         defaultValue={date ?? ''}
                         className="h-7 w-auto"
-                        // по Enter и уходу с поля, а не на input: Chromium шлёт input на каждый сегмент даты, и месяц
-                        // 1 из «10» уже давал готовую дату — список закрывался посреди ввода (ревью диффа)
+                        // on Enter and on blur, not on input: Chromium sends input for each date segment, and month
+                        // 1 of «10» already gave a complete date, so the list closed in the middle of the input (diff
+                        // review)
                         onKeyDown={(event) => {
                             if (event.key === 'Enter') {
                                 commitOther(event.currentTarget.value);

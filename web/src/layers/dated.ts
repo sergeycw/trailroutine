@@ -1,30 +1,33 @@
 import { DATE_TOKEN, type LayerDef, type LayerSource, YEAR_TOKEN } from './catalog';
 
-// Снимки по датам (design add-dated-imagery): дата в адресе, даты съёмки над точкой из STAC Earth Search и дата по
-// умолчанию. Модуль без React и стора: сеть — переданный fetch, «сегодня» — переданная дата (тесты).
+// Dated imagery (design add-dated-imagery): the date in the address, the capture dates over a point from STAC Earth
+// Search and the default date. The module has no React and no store: the network is the given fetch, "today" is the
+// given date (tests).
 
-// d=ГГГГ-ММ-ДД — ни старый клиент, ни апстрим ключ d не заняли (enableHashState в src/ старого клиента)
+// d=YYYY-MM-DD: neither the old client nor the upstream use the key d (enableHashState in src/ of the old client)
 export const DATE_PARAM = 'd';
 
-// STAC API Element 84 (https://earth-search.aws.element84.com/v1): CORS *, без ключа; заявляет fields и sort item-search
+// STAC API of Element 84 (https://earth-search.aws.element84.com/v1): CORS *, no key; it declares fields and sort of
+// item-search
 export const EARTH_SEARCH_URL = 'https://earth-search.aws.element84.com/v1/search';
-// За 90 дней у Казбеги — 65 сцен обеих коллекций, у Тромсё — 195, на Шпицбергене — 266 (перекрытие орбит у полюса):
-// одна страница до 500; при большем числе теряются только старые даты, сортировка — по убыванию даты
+// In 90 days, Kazbegi has 65 scenes of both collections, Tromsø 195, Svalbard 266 (the orbits overlap near the pole):
+// one page up to 500; with more, only old dates are lost, because the sort is by date, descending
 const SEARCH_LIMIT = 500;
 export const DATES_DAYS = 90;
-// HLS выходит через 2–3 дня после съёмки (https://www.earthdata.nasa.gov/data/projects/hls): более свежая дата Earth
-// Search может ещё не дойти до GIBS, и тайлы будут прозрачными
+// HLS comes out 2–3 days after the capture (https://www.earthdata.nasa.gov/data/projects/hls): a newer Earth Search
+// date can still be missing in GIBS, and then the tiles are transparent
 export const HLS_LATENCY_DAYS = 3;
-// облачность сцены (eo:cloud_cover, на квадрат 110 км или сцену Landsat 185 км), при которой дата считается ясной
+// the scene cloud cover (eo:cloud_cover, for a 110 km square or a 185 km Landsat scene) at which the date counts as
+// clear
 export const CLEAR_CLOUD_COVER = 20;
-// первая дата L30 в WMTSCapabilities GIBS: раньше снимков HLS нет
+// the first L30 date in the GIBS WMTSCapabilities: there are no HLS images before it
 export const FIRST_DATE = '2013-03-22';
 
 export type Satellite = 'Sentinel-2' | 'Landsat';
 
 export interface ImageryDate {
     date: string;
-    // наименьшая облачность сцен дня, проценты; null — сервис не дал
+    // the smallest cloud cover of the scenes of the day, percent; null — the service did not give it
     cloudCover: number | null;
     satellites: Satellite[];
 }
@@ -40,7 +43,7 @@ export function isoDay(date: Date): string {
     return date.toISOString().slice(0, 10);
 }
 
-// только настоящая дата: 2026-02-30 Date.UTC перенёс бы на март
+// only a real date: Date.UTC would move 2026-02-30 to March
 export function isDate(value: string): boolean {
     if (!/^\d{4}-\d{2}-\d{2}$/u.test(value)) {
         return false;
@@ -49,17 +52,18 @@ export function isDate(value: string): boolean {
     return !Number.isNaN(time) && isoDay(new Date(time)) === value;
 }
 
-// раньше первых снимков HLS — серая карта без объяснений, такая дата отбрасывается
+// before the first HLS images there is a gray map without explanation, so such a date is dropped
 export function parseDateParam(values: readonly string[] | undefined): string | null {
     return values?.length === 1 && isDate(values[0]) && values[0] >= FIRST_DATE ? values[0] : null;
 }
 
-// сколько полных дней прошло от даты снимка до сегодня (UTC)
+// how many full days passed from the image date to today (UTC)
 export function ageDays(date: string, today: Date): number {
     return Math.round((Date.parse(`${isoDay(today)}T00:00:00Z`) - Date.parse(`${date}T00:00:00Z`)) / DAY_MS);
 }
 
-// Слой с dated за дату: DATE_TOKEN в шаблонах, YEAR_TOKEN в подписи (год Copernicus — год снимка)
+// A layer with dated for a date: DATE_TOKEN in the templates, YEAR_TOKEN in the attribution (the Copernicus year is the
+// image year)
 export function withDate(layer: LayerDef, date: string): LayerDef {
     const { source } = layer;
     return {
@@ -72,8 +76,9 @@ export function withDate(layer: LayerDef, date: string): LayerDef {
     };
 }
 
-// Сцены обеих коллекций, чьи контуры содержат точку, за DATES_DAYS дней. Точка, а не bbox экрана: облачность — свойство
-// сцены, а bbox мелкого зума задевает десяток квадратов MGRS с разными датами
+// Scenes of both collections whose footprints contain the point, for DATES_DAYS days. A point, not the screen bbox: the
+// cloud cover is a property of the scene, and the bbox of a small zoom touches about ten MGRS squares with different
+// dates
 export function datesUrl(center: Point, today: Date): string {
     const from = isoDay(new Date(today.getTime() - DATES_DAYS * DAY_MS));
     const params = new URLSearchParams({
@@ -93,7 +98,7 @@ interface SceneProperties {
     'eo:cloud_cover'?: unknown;
 }
 
-// L30 строится только из Landsat 8 и 9, а в landsat-c2-l2 — весь архив Landsat
+// L30 is built only from Landsat 8 and 9, and landsat-c2-l2 has the full Landsat archive
 function satelliteOf(platform: unknown): Satellite | null {
     if (typeof platform !== 'string') {
         return null;
@@ -104,8 +109,8 @@ function satelliteOf(platform: unknown): Satellite | null {
     return platform === 'landsat-8' || platform === 'landsat-9' ? 'Landsat' : null;
 }
 
-// Ответ /search → даты от свежей к старой: сцены одного дня UTC (S2A и S2B в один день, Sentinel-2 и Landsat) —
-// одна дата с наименьшей облачностью
+// The /search answer → dates from the newest to the oldest: the scenes of one UTC day (S2A and S2B on one day,
+// Sentinel-2 and Landsat) give one date with the smallest cloud cover
 export function parseDates(body: unknown): ImageryDate[] {
     const features = (body as { features?: { properties?: SceneProperties }[] } | null)?.features;
     if (!Array.isArray(features)) {
@@ -133,8 +138,8 @@ export function parseDates(body: unknown): ImageryDate[] {
     return [...byDate.values()].sort((a, b) => b.date.localeCompare(a.date));
 }
 
-// Самая свежая ясная дата не моложе HLS_LATENCY_DAYS, иначе наименее облачная из них, иначе самая свежая (все
-// моложе). dates — от свежей к старой
+// The newest clear date that is at least HLS_LATENCY_DAYS old, otherwise the least cloudy of these dates, otherwise
+// the newest date (all dates are younger). dates go from the newest to the oldest
 export function defaultDate(dates: readonly ImageryDate[], today: Date): string | null {
     const ready = dates.filter((item) => ageDays(item.date, today) >= HLS_LATENCY_DAYS);
     const clear = ready.find((item) => item.cloudCover !== null && item.cloudCover <= CLEAR_CLOUD_COVER);

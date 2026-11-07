@@ -33,7 +33,7 @@ describe('Street View в адресе', () => {
             pano: null,
         });
         expect(parseStreetView(['_g', 'g', '41'], undefined)).toEqual({ enabled: true, pano: null });
-        // панорама другого провайдера при включённом Google — без панорамы
+        // a panorama of a different provider with Google on gives no panorama
         expect(parseStreetView(['_gw', 'w', '41', '44', '1', '2', '3'], undefined)).toEqual({
             enabled: true,
             pano: null,

@@ -1,16 +1,17 @@
 import { isRouteShape, routeFits, type SegmentRoute, settledRoute } from '@/routing/line';
 import type { GeoData, LatLng, Track, TrackColor, Waypoint } from '@/tracks/model';
 
-// Запись рабочего набора в IndexedDB (design add-web-autosave, «Автосохранение: структура в IndexedDB»): точные
-// координаты без округления и упрощения — номера опорных точек разметки верны как есть. Отрезок — Float64Array
-// (lat, lng подряд): structured clone копирует буфер, а не обходит объекты {lat, lng}.
+// The record of the working set in IndexedDB (design add-web-autosave, «Автосохранение: структура в IndexedDB»):
+// exact coordinates without rounding and simplification, so the waypoint indexes of the markup stay correct as they
+// are. A segment is a Float64Array (lat, lng in sequence): structured clone copies the buffer and does not walk the
+// {lat, lng} objects.
 
-// Новая форма записи — новая версия; запись другой версии при чтении пропускается и перезаписывается следующей
+// A new record shape is a new version; the read skips a record of a different version, and the next write replaces it
 export const SAVED_VERSION = 1;
 
 export interface SavedTrack {
     name: string;
-    // номер палитры или свой '#rrggbb' (design track-color-picker): записи с номером читаются как раньше
+    // a palette index or a custom '#rrggbb' (design track-color-picker): records with an index read as before
     color: TrackColor;
     visible: boolean;
     measureTicksShown: boolean;
@@ -41,7 +42,7 @@ function unpackLine(packed: Float64Array): LatLng[] {
     return line;
 }
 
-// Ожидающий отрезок пишется непроложенным: после перезагрузки ответа на прежний запрос не будет
+// The code writes a pending segment as not routed: after a reload, no answer comes for the previous request
 function savedRoute(line: readonly LatLng[], route: SegmentRoute | null | undefined): SegmentRoute | null {
     if (!isRouteShape(route)) {
         return null;
@@ -78,9 +79,10 @@ function isSavedTrack(value: unknown): value is SavedTrack {
     );
 }
 
-// Запись → треки для addTracks. null — записи нет, она другой версии или испорчена. Отрезок короче двух точек
-// (сохранён посреди рисования) отбрасывается, трек без отрезков и точек — тоже: так заканчивается редактирование
-// (спека route-editing, «Начало и конец редактирования»). Разметка, которая не сходится с точками, отбрасывается.
+// Record → tracks for addTracks. null means there is no record, or it has a different version, or it is corrupted.
+// The code discards a segment shorter than two points (saved in the middle of a drawing), and also a track without
+// segments and points: this is how the edit ends (spec route-editing, «Начало и конец редактирования»). The code
+// discards markup that does not agree with the points.
 export function fromSaved(value: unknown): GeoData[] | null {
     const set = value as SavedSet | null;
     if (typeof set !== 'object' || set === null || set.version !== SAVED_VERSION || !Array.isArray(set.tracks)) {

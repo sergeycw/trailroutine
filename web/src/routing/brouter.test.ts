@@ -10,17 +10,17 @@ function activity(id: string): Activity {
     return found;
 }
 
-// Сценарии спеки routing («Активность задаёт профиль BRouter», «Форма полученного отрезка», «Ошибка прокладки»)
-// без сети: ответ BRouter — GeoJSON строкой, как его отдают и движок, и сервер.
+// Scenarios of the spec routing («Активность задаёт профиль BRouter», «Форма полученного отрезка», «Ошибка прокладки»)
+// without network: the BRouter response is GeoJSON as a string, as both the engine and the server return it.
 
-// градус широты в метрах (R = 6 371 000 м, как distance)
+// a degree of latitude in meters (R = 6 371 000 m, as in distance)
 const DEG = (6371000 * Math.PI) / 180;
 
 function geojson(coordinates: [number, number][]) {
     return JSON.stringify({ type: 'FeatureCollection', features: [{ geometry: { type: 'LineString', coordinates } }] });
 }
 
-// дорога с изломом в Тбилиси: упрощение её не схлопывает
+// a road with a bend in Tbilisi: the simplification does not collapse it
 const ROAD: [number, number][] = [
     [44.78, 41.69],
     [44.785, 41.692],
@@ -60,7 +60,7 @@ describe('Форма полученного отрезка', () => {
         const to = { lat: 41.69 + 5 / DEG, lng: 44.79 };
         expect(distance(from, { lat: 41.69, lng: 44.78 })).toBeLessThan(20);
         const nodes = parseRoute(geojson(ROAD), from, to);
-        // обе крайние точки дороги ближе 20 м к своим опорным — линия идёт от опорной прямо к излому
+        // both road ends are nearer than 20 m to their waypoints: the line goes from the waypoint directly to the bend
         expect(nodes).toEqual([{ lat: 41.692, lng: 44.785 }]);
     });
 
@@ -68,7 +68,7 @@ describe('Форма полученного отрезка', () => {
         const from = { lat: 41.69 + 200 / DEG, lng: 44.78 };
         const to = { lat: 41.69, lng: 44.79 };
         const nodes = parseRoute(geojson(ROAD), from, to);
-        // от далёкой опорной точки до дороги остаётся прямой отрезок: первая точка дороги на месте
+        // from a far waypoint to the road a straight piece stays: the first road point is in its place
         expect(nodes[0]).toEqual({ lat: 41.69, lng: 44.78 });
         expect(nodes).toHaveLength(2);
     });

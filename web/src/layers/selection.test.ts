@@ -49,7 +49,7 @@ describe('Слои в адресе', () => {
     test('Горизонтали из рельефа: ссылка с l=O/Ct', () => {
         const parsed = layers('l=O/Ct/Hs');
         expect(parsed).toEqual({ selection: { base: 'O', overlays: ['Ct', 'Hs'] }, custom: [] });
-        // в адресе — порядок наложения каталога: отмывка под горизонталями
+        // the address has the catalog stacking order: the hillshade is under the contour lines
         expect(formatLayersParam(parsed?.selection ?? DEFAULT_SELECTION, byCode)).toEqual(['O', 'Hs', 'Ct']);
     });
 
@@ -96,7 +96,7 @@ describe('Слои в адресе', () => {
         );
         expect(formatLayersParam({ base: 'E', overlays: ['Sa', CUSTOM_OVERLAY, 'Hs', 'Nm'] }, all)).toEqual([
             'E',
-            // isTop: false — место #custom-bottom, под встроенными оверлеями
+            // isTop: false — the place #custom-bottom, under the built-in overlays
             CUSTOM_OVERLAY,
             'Nm',
             'Hs',
@@ -118,7 +118,7 @@ describe('Откат подложки при ошибке тайлов', () => {
 
 describe('сохранённый выбор', () => {
     test('пропавшие слои отбрасываются, без подложки — по умолчанию', () => {
-        // подложка по умолчанию — OpenFreeMap Outdoor (спека map-layers, «Подложка по умолчанию»)
+        // the default basemap is OpenFreeMap Outdoor (spec map-layers, «Подложка по умолчанию»)
         expect(DEFAULT_SELECTION).toEqual({ base: 'Of', overlays: [] });
         expect(validSelection(null, byCode)).toEqual(DEFAULT_SELECTION);
         expect(validSelection({ base: 'Y', overlays: ['W', 'Hs', 'Hs', 'O'] }, byCode)).toEqual({

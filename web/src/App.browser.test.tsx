@@ -5,15 +5,15 @@ import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 import { App } from './App';
 import { config } from './config';
-// стили приложения нужны тесту целиком: проверяется, как Tailwind и CSS MapLibre уживаются на одной странице
+// the test needs all styles of the app: it checks how Tailwind and the MapLibre CSS work together on one page
 import './index.css';
 import { fixtureContours } from './test/render-app';
 import { type FixtureTiles, fixtureTiles } from './test/tiles';
 
-// Настоящая карта MapLibre в Chromium; тайлы всех слоёв — локальная фикстура (src/test/tiles.ts), в сеть тест
-// не ходит. Названия тестов — сценарии спек web-client и map-layers.
+// A real MapLibre map in Chromium; the tiles of all layers are a local fixture (src/test/tiles.ts), and the test does
+// not use the network. The test titles are the scenarios of the specs web-client and map-layers.
 
-// ответы с заданным статусом отдаёт плагин statusResponses в vitest.config.ts
+// the plugin statusResponses in vitest.config.ts gives the answers with a given status
 const UNAVAILABLE_URL = new URL('/__status__/503/tile.png', location.href).href;
 const MISSING_URL = new URL('/__status__/404/tile.png', location.href).href;
 
@@ -35,7 +35,7 @@ async function renderApp(hash = '') {
     const mapRef = createRef<MapRef>();
     const screen = await render(<App transformRequest={tiles.transformRequest} mapRef={mapRef} />);
     await expect.poll(() => mapRef.current?.getMap().loaded(), { timeout: 10_000 }).toBe(true);
-    // biome-ignore lint/style/noNonNullAssertion: карта загружена строкой выше
+    // biome-ignore lint/style/noNonNullAssertion: the line above waits until the map loads
     return { screen, map: mapRef.current!.getMap() };
 }
 
@@ -55,20 +55,21 @@ describe('Интерфейс поверх карты', () => {
         const zoomIn = document.querySelector('.maplibregl-ctrl-zoom-in') as HTMLElement;
         const { x, y } = centerOf(zoomIn);
         expect(zoomIn.contains(document.elementFromPoint(x, y))).toBe(true);
-        // атрибуция подложки по умолчанию (OpenFreeMap Outdoor) видна
+        // the attribution of the default basemap (OpenFreeMap Outdoor) is visible
         await expect.element(page.getByRole('link', { name: 'OpenFreeMap' })).toBeVisible();
     });
 
     test('Клик по панели', async () => {
         const { map } = await renderApp();
-        // плавающая панель — капсула строки поиска слева сверху
+        // the floating panel is the search bar capsule at the top left
         const panel = page.getByTestId('search-bar');
         await expect.element(panel).toBeVisible();
 
         const panelElement = panel.element() as HTMLElement;
         const rect = panelElement.getBoundingClientRect();
         for (const [x, y] of [
-            // хит-тест углов учитывает border-radius: у капсулы радиус 18 px, точка (16, 16) — почти центр дуги угла
+            // the hit test of the corners uses border-radius: the capsule radius is 18 px, and the point (16, 16) is
+            // almost the center of the corner arc
             [rect.left + 16, rect.top + 16],
             [rect.right - 16, rect.bottom - 16],
             [rect.left + rect.width / 2, rect.top + rect.height / 2],
@@ -77,7 +78,8 @@ describe('Интерфейс поверх карты', () => {
         }
 
         const before = map.getCenter();
-        // у поля поиска, мимо кнопок: углы строки скруглены, и клик в самом углу ушёл бы карте
+        // near the search field, not on the buttons: the bar corners are round, and a click in the corner itself
+        // would go to the map
         await userEvent.click(panelElement, { position: { x: 16, y: 16 } });
         await userEvent.dblClick(panelElement, { position: { x: 16, y: 16 } });
         expect(map.getCenter()).toEqual(before);
@@ -92,7 +94,7 @@ describe('Тост при ошибке тайлов', () => {
         await expect.element(page.getByText('Map tiles failed to load')).toBeVisible();
         await expect.element(page.getByText('OpenStreetMap', { exact: true })).toBeVisible();
 
-        // новые тайлы — новые ошибки, но тост остаётся один
+        // new tiles give new errors, but there is still one toast
         map.jumpTo({ zoom: 10 });
         await expect.poll(() => map.loaded(), { timeout: 10_000 }).toBe(true);
         expect(page.getByText('Map tiles failed to load').all()).toHaveLength(1);
@@ -121,7 +123,7 @@ describe('Подложка Tracestrack', () => {
         await expect
             .element(page.getByRole('link', { name: '© OpenStreetMap contributors' }))
             .toHaveAttribute('href', 'https://www.openstreetmap.org/copyright');
-        // подпись целиком — из условий Tracestrack (design map-chrome)
+        // the full attribution text is from the terms of Tracestrack (design map-chrome)
         expect(document.querySelector('.maplibregl-ctrl-attrib-inner')?.textContent).toBe(
             "Data: © OpenStreetMap contributors, SRTM, GEBCO, SONNY's LiDAR DTM, NASADEM, ESA WorldCover; Maps © Tracestrack",
         );
@@ -137,7 +139,7 @@ describe('Подложка Tracestrack', () => {
         await expect.poll(() => map.getLayer('O')).toBeDefined();
         expect(map.getLayer('Tt')).toBeUndefined();
         expect(map.getLayer('Hs')).toBeDefined();
-        // откат — не выбор: в адресе и в localStorage осталась подложка Tracestrack
+        // a fallback is not a selection: the address and localStorage keep the Tracestrack basemap
         expect(location.hash).toContain('l=Tt/Hs');
         expect(JSON.parse(localStorage.getItem('nakarte-web:layers') ?? '').selection).toEqual({
             base: 'Tt',
@@ -171,8 +173,8 @@ describe('Подложка OpenFreeMap Outdoor', () => {
         expect(location.hash).toContain('l=Of');
     });
 
-    // описание тайлов или сами тайлы: откат на Tracestrack Topo, выбор не меняется (спека map-layers, «Откат подложки
-    // при ошибке тайлов»)
+    // the tile description or the tiles: fallback to Tracestrack Topo, the selection does not change (spec map-layers,
+    // «Откат подложки при ошибке тайлов»)
     test.each([
         ['описание тайлов', OPENFREEMAP_TILEJSON],
         ['тайлы', OPENFREEMAP_TILES],
@@ -193,7 +195,7 @@ describe('Подложка OpenFreeMap Outdoor', () => {
     });
 
     test('Описание тайлов пропало: 404 на TileJSON — тоже откат', async () => {
-        // закрытый или переименованный адрес OpenFreeMap ответит 404: это не «тайла нет», источника нет вовсе
+        // a closed or renamed OpenFreeMap address answers 404: this is not "no tile", there is no source at all
         tiles.respond(OPENFREEMAP_TILEJSON, MISSING_URL);
         const { map } = await renderApp('#m=8/41.7/44.8&l=Of');
         await expect.element(page.getByText('OpenFreeMap Outdoor is unavailable')).toBeVisible();
@@ -212,7 +214,8 @@ describe('Подложка OpenFreeMap Outdoor', () => {
         await expect.poll(() => tiles.requested.some((url) => url.includes('tile.openstreetmap.org'))).toBe(true);
     });
 
-    // 404 векторного тайла MapLibre считает пустым тайлом и ошибкой не шлёт: тест держит это поведение, а не логику App
+    // MapLibre treats a 404 of a vector tile as an empty tile and does not send an error: the test pins this behavior,
+    // not the logic of App
     test('Тайла нет', async () => {
         tiles.respond(OPENFREEMAP_TILES, MISSING_URL);
         const { map } = await renderApp('#l=Of');
@@ -229,11 +232,11 @@ describe('Подложка OpenFreeMap Outdoor', () => {
         await expect
             .poll(() => tiles.requested.some((url) => /\/planet\/fixture\/\d+\/\d+\/\d+\.pbf$/.test(url)))
             .toBe(true);
-        // только TileJSON и тайлы OpenFreeMap: без шрифтов, спрайтов и растров (external проверяет afterEach)
+        // only the TileJSON and the tiles of OpenFreeMap: no fonts, sprites or rasters (afterEach checks external)
         expect(tiles.requested.every((url) => url.startsWith(OPENFREEMAP))).toBe(true);
         expect(map.getStyle().glyphs).toBeUndefined();
         expect(map.getStyle().sprite).toBeUndefined();
-        // вершины фикстуры (Казбек и соседи) нарисованы слоем стиля
+        // a style layer draws the peaks of the fixture (Kazbek and its neighbors)
         await expect.poll(() => map.queryRenderedFeatures({ layers: ['Of-peaks'] }).length).toBeGreaterThan(0);
         expect(page.getByText('Map tiles failed to load').all()).toHaveLength(0);
         expect(location.hash).toContain('l=Of');
@@ -268,7 +271,7 @@ describe('Подложка Sentinel-2', () => {
         await expect
             .element(page.getByRole('link', { name: 'CC BY-NC-SA 4.0' }))
             .toHaveAttribute('href', 'https://creativecommons.org/licenses/by-nc-sa/4.0/');
-        // подпись целиком — из условий EOX с годом мозаики (design add-sentinel-imagery)
+        // the full attribution text is from the terms of EOX, with the mosaic year (design add-sentinel-imagery)
         expect(document.querySelector('.maplibregl-ctrl-attrib-inner')?.textContent).toBe(
             'EOxCloudless https://cloudless.eox.at by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2025), ' +
                 'CC BY-NC-SA 4.0',

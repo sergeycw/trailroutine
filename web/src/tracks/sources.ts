@@ -1,12 +1,12 @@
 import { viaCorsProxy } from '@/layers/catalog';
 
-// Откуда треки берут сеть: fetch и адреса сервисов. Параметром, а не глобально: unit-тесты подставляют ответы-фикстуры,
-// browser-тесты — заглушку через проп App (design add-web-tracks, «Импорт по ссылке»).
+// Where tracks get the network: fetch and service addresses. It is a parameter, not a global: unit tests give fixture
+// responses, browser tests give a stub through an App prop (design add-web-tracks, «Импорт по ссылке»).
 export interface TrackSources {
     fetch: typeof fetch;
     corsProxyUrl: string;
     tracksStorageServer: string;
-    // API высот (спека elevation-api): GPX с высотами и профиль
+    // elevation API (spec elevation-api): GPX with elevations and the profile
     elevationsServer: string;
 }
 
@@ -14,7 +14,8 @@ export function proxied(sources: TrackSources, url: string): string {
     return viaCorsProxy(sources.corsProxyUrl, url);
 }
 
-// fetch, который не бросает: сетевая ошибка (CORS, обрыв) — null, как отказ xhr-promise старого клиента
+// fetch that does not throw: a network error (CORS, a lost connection) gives null, as a rejected xhr-promise does in
+// the old client
 export async function fetchOrNull(sources: TrackSources, url: string): Promise<Response | null> {
     try {
         return await sources.fetch(url);

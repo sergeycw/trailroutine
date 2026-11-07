@@ -1,9 +1,9 @@
 //! `elevation-repack --out DIR [--level N] [--only N43E042=5,6] FILE.hgt...`
 //!
-//! Пишет `DIR/dem3/<градус>` и строку `<градус> <байт>` на файл в stdout. Если объект уже есть
-//! (один HGT встречается в нескольких zip viewfinderpanoramas), первый не перезаписывается, а в
-//! stdout уходит `duplicate <градус> same|different` — так конвейер видит повторы.
-//! `--only` можно повторять; с ним пишутся только перечисленные градусы и куски.
+//! Writes `DIR/dem3/<degree>` and one line `<degree> <bytes>` per file to stdout. If the object
+//! exists (one HGT occurs in several viewfinderpanoramas zips), the tool does not overwrite the
+//! first one, and writes `duplicate <degree> same|different` to stdout: this is how the pipeline
+//! sees repeats. `--only` can repeat; with it, the tool writes only the listed degrees and chunks.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -99,8 +99,8 @@ fn main() -> ExitCode {
         eprintln!("{error}");
         return ExitCode::FAILURE;
     }
-    // zstd -19 медленный (≈ секунда на градус), поэтому файлы делятся между потоками.
-    // Повторы имён внутри одного запуска разводит мьютекс записи (сжатие идёт вне его).
+    // zstd -19 is slow (≈ one second per degree), thus the threads share the files.
+    // The write mutex separates repeated names in one run (the compression runs outside it).
     let queue = Mutex::new(args.files.iter());
     let write_lock = Mutex::new(());
     let failed = Mutex::new(false);

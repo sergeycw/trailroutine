@@ -2,26 +2,27 @@ import type { LayerDef } from './catalog';
 import { isCustomLayerCode, parseCustomLayerCode } from './custom';
 import { canonicalCustomCode, type Selection } from './settings';
 
-// Подложка по умолчанию — векторная OpenFreeMap Outdoor (владелец 2026-10-30, design openfreemap-default-basemap): у
-// публичного OpenFreeMap нет лимита запросов, а бесплатной квоты Tracestrack Topo (умолчание с add-outdoor-basemap)
-// хватало на ≈ 900 активных заходов в месяц (openspec/research/load-capacity.md). До Tracestrack был OpenStreetMap,
-// первый слой списка старого клиента
+// The default basemap is the vector OpenFreeMap Outdoor (owner 2026-10-30, design openfreemap-default-basemap): the
+// public OpenFreeMap has no request limit, and the free quota of Tracestrack Topo (the previous default, since
+// add-outdoor-basemap) was enough for ≈ 900 active visits per month (openspec/research/load-capacity.md). Before
+// Tracestrack, the default was OpenStreetMap, the first layer of the old client list
 export const DEFAULT_SELECTION: Selection = { base: 'Of', overlays: [] };
 
-// Откат подложки при ошибке её тайлов (App, стор basemapFallback): следующая в цепочке Of → Tt → O. У OpenFreeMap нет
-// SLA — откат на Tracestrack тратит её квоту только во время сбоя; OSM — последний: правила OSMF не дают нагружать его
-// приложением. У O и прочих подложек следующей нет — их ошибки дают обычный тост
+// The basemap fallback on an error of its tiles (App, the store basemapFallback): the next basemap in the chain
+// Of → Tt → O. OpenFreeMap has no SLA, and a fallback to Tracestrack spends its quota only during a failure; OSM is the
+// last one: the OSMF rules do not allow an app to load it heavily. O and the other basemaps have no next basemap: their
+// errors give the usual toast
 export const BASEMAP_FALLBACKS: Readonly<Record<string, string>> = { Of: 'Tt', Tt: 'O' };
 
 export interface ParsedLayers {
     selection: Selection;
-    // свои слои из ссылки (каноничные коды): их надо добавить в список, если их там ещё нет
+    // custom layers from the link (canonical codes): add them to the list if they are not there yet
     custom: string[];
 }
 
-// l= старых ссылок по правилам unserializeState старого клиента (leaflet.hashState/Leaflet.Control.Layers.js и
-// leaflet.control.layers.configure): неизвестные коды и коды удалённых слоёв пропускаются; если среди кодов нет
-// ни одной подложки, l= игнорируется целиком. Из нескольких подложек берётся первая (нижняя).
+// l= of old links by the rules of unserializeState of the old client (leaflet.hashState/Leaflet.Control.Layers.js and
+// leaflet.control.layers.configure): unknown codes and codes of deleted layers are skipped; if the codes have no
+// basemap, l= is ignored fully. Of several basemaps, the first one (the bottom one) is taken.
 export function parseLayersParam(
     values: readonly string[] | undefined,
     catalog: ReadonlyMap<string, LayerDef>,
@@ -61,7 +62,7 @@ export function parseLayersParam(
     return base ? { selection: { base, overlays }, custom } : null;
 }
 
-// Сохранённый выбор мог сослаться на слой, которого больше нет (удалённый свой слой, старый код)
+// A saved selection can refer to a layer that no longer exists (a deleted custom layer, an old code)
 export function validSelection(selection: Selection | null, layers: ReadonlyMap<string, LayerDef>): Selection {
     if (!selection) {
         return DEFAULT_SELECTION;
@@ -73,7 +74,7 @@ export function validSelection(selection: Selection | null, layers: ReadonlyMap<
     };
 }
 
-// l= для адреса: коды снизу вверх, как serializeState старого клиента (по zIndex слоёв)
+// l= for the address: codes from bottom to top, as serializeState of the old client (by the zIndex of the layers)
 export function formatLayersParam(selection: Selection, layers: ReadonlyMap<string, LayerDef>): string[] {
     const overlays = selection.overlays
         .map((code) => layers.get(code))

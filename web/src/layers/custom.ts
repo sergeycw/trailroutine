@@ -1,19 +1,20 @@
 import { CUSTOM_BOTTOM_ORDER, CUSTOM_TOP_ORDER, type LayerDef, viaCorsProxy } from './catalog';
 
-// Свои слои пользователя. Формат кода — как у старого клиента (serializeCustomLayer и loadCustomLayerFromString в
-// src/lib/leaflet.control.layers.configure/index.js): `-cs` + URL-safe base64 от JSON полей формы, не-ASCII —
-// через \uXXXX. Ключи JSON в том же порядке, поэтому ссылка со своим слоем читается обоими клиентами, а дубликаты
-// ловятся сравнением кодов. Новое поле corsProxy старый клиент игнорирует (он грузит тайлы <img> без CORS).
+// Custom layers of the user. The code format is the same as in the old client (serializeCustomLayer and
+// loadCustomLayerFromString in src/lib/leaflet.control.layers.configure/index.js): `-cs` + URL-safe base64 of the JSON
+// of the form fields, non-ASCII through \uXXXX. The JSON keys are in the same order, so both clients read a link with
+// a custom layer, and a comparison of the codes finds duplicates. The old client ignores the new field corsProxy (it
+// loads the tiles with <img> without CORS).
 
 export interface CustomLayerFields {
     name: string;
     url: string;
     tms: boolean;
-    // нужно было только печати старого клиента; в форме нового нет, из старых кодов сохраняется как было
+    // only printing in the old client needed it; the new form does not have it, old codes keep it as it was
     scaleDependent: boolean;
     maxZoom: number;
     isOverlay: boolean;
-    // над или под встроенными оверлеями; для подложки не важно
+    // above or under the built-in overlays; not important for a basemap
     isTop: boolean;
     corsProxy?: boolean;
 }
@@ -50,13 +51,14 @@ export function parseCustomLayerCode(code: string): CustomLayerFields | null {
     if (typeof fields.url !== 'string' || typeof fields.name !== 'string') {
         return null;
     }
-    // порядок ключей сохраняется (spread исходного объекта) — повторная сериализация даёт тот же код;
-    // isTop без значения — коды до его появления, старый клиент считал их «над» (upgrade в loadCustomLayerFromString)
+    // the key order stays (spread of the source object), so a second serialization gives the same code;
+    // isTop without a value is a code from before this field, the old client treated it as "above" (upgrade in
+    // loadCustomLayerFromString)
     return { ...fields, isTop: fields.isTop ?? true } as CustomLayerFields;
 }
 
-// Токены SAS Planet старого CustomLayer: MapLibre подставляет только свои токены, а transformRequest получает уже
-// готовый адрес без z/x/y — поддержка стоила бы своего протокола загрузки (design, «Свои слои»)
+// SAS Planet tokens of the old CustomLayer: MapLibre substitutes only its own tokens, and transformRequest gets a ready
+// address without z/x/y; their support would need an own load protocol (design, «Свои слои»)
 const UNSUPPORTED_TOKENS = ['{z_1}', '{x_1024}', '{y_1024}'];
 
 export function unsupportedTokens(url: string): string[] {
@@ -68,8 +70,8 @@ interface TileTemplates {
     scheme: 'xyz' | 'tms';
 }
 
-// Шаблон Leaflet → токены MapLibre: {s} — адреса по поддоменам abc (умолчание L.TileLayer), {r} → {ratio},
-// {-y} (перевёрнутый y) и флаг tms → scheme: 'tms'
+// Leaflet template → MapLibre tokens: {s} → addresses by the subdomains abc (the L.TileLayer default), {r} → {ratio},
+// {-y} (inverted y) and the tms flag → scheme: 'tms'
 export function tileTemplates(fields: CustomLayerFields, corsProxyUrl: string): TileTemplates {
     const flipped = fields.url.includes('{-y}');
     const template = fields.url.replaceAll('{-y}', '{y}').replaceAll('{r}', '{ratio}');
@@ -86,7 +88,7 @@ export function customLayerDef(code: string, fields: CustomLayerFields, corsProx
         code,
         title: fields.name,
         group: 'Custom layers',
-        // места своих слоёв в порядке наложения — #custom-top и #custom-bottom старого каталога
+        // the places of custom layers in the stacking order are #custom-top and #custom-bottom of the old catalog
         order: fields.isOverlay && fields.isTop ? CUSTOM_TOP_ORDER : CUSTOM_BOTTOM_ORDER,
         isOverlay: fields.isOverlay,
         isDefault: false,
@@ -94,8 +96,8 @@ export function customLayerDef(code: string, fields: CustomLayerFields, corsProx
     };
 }
 
-// Адрес одного тайла в центре вида — для проверки CORS. zoom — зум карты MapLibre; тайлы 256 px на нём имеют
-// зум floor(zoom + 1), не глубже maxZoom слоя.
+// The address of one tile at the view center, for the CORS check. zoom is the MapLibre map zoom; 256 px tiles at it
+// have the zoom floor(zoom + 1), not deeper than the layer maxZoom.
 export function probeTileUrl(
     fields: CustomLayerFields,
     center: { lat: number; lng: number },
@@ -118,15 +120,15 @@ export function probeTileUrl(
 
 export type CorsCheck = 'ok' | 'no-cors' | 'unreachable';
 
-// CORS-запрос прошёл — сервер разрешает чтение (даже 404: тайла в центре может не быть). Не прошёл, а no-cors
-// вернул ответ — сервер жив, но без CORS: тогда форма предлагает прокси. Упал и no-cors — сервер недоступен
-// (или http:// со страницы https://).
+// The CORS request passed: the server allows reading (even 404: the center can have no tile). It failed, but no-cors
+// returned an answer: the server is alive but without CORS, so the form offers the proxy. no-cors failed too: the
+// server is unreachable (or http:// from an https:// page).
 export async function checkCors(url: string, fetchImpl: typeof fetch = fetch): Promise<CorsCheck> {
     try {
         await fetchImpl(url, { mode: 'cors' });
         return 'ok';
     } catch {
-        // ниже — no-cors
+        // no-cors is below
     }
     try {
         await fetchImpl(url, { mode: 'no-cors' });

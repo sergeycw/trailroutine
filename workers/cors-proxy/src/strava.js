@@ -1,47 +1,48 @@
-// Куки для тайлов Strava Global Heatmap (слои Sa/Sr/Sb/Sw). CloudFront отдаёт тайлы
-// content-*.strava.com/identified/globalheat/ только с подписанными куками CloudFront-Key-Pair-Id,
-// CloudFront-Policy, CloudFront-Signature (без них 403 `MissingKey`) и JWT-кукой _strava_idcf (без неё
-// функция CloudFront отвечает 401). Живут они около суток.
+// Cookies for the tiles of Strava Global Heatmap (layers Sa/Sr/Sb/Sw). CloudFront gives the tiles
+// content-*.strava.com/identified/globalheat/ only with the signed cookies CloudFront-Key-Pair-Id, CloudFront-Policy,
+// CloudFront-Signature (without them 403 `MissingKey`) and the JWT cookie _strava_idcf (without it the CloudFront
+// function answers 401). They live for approximately one day.
 //
-// Их ставит сам ответ HTML-страницы www.strava.com/maps/global-heatmap вошедшему пользователю
-// (найдено 2026-10-08 в браузере владельца: запросы getKey и notifications их не ставят). Поэтому
-// прокси держит секрет STRAVA_SESSION — куки сессии Strava в форме заголовка Cookie — и сам
-// запрашивает эту страницу, когда куки кончаются. Запасной путь — статический секрет STRAVA_COOKIES
-// (scripts/strava-heatmap-secret.mjs). Решения — openspec/changes/archive/*-add-strava-heatmap-refresh/design.md.
+// The response of the HTML page www.strava.com/maps/global-heatmap to a logged-in user sets them (found 2026-10-08 in
+// the browser of the owner: the getKey and notifications requests do not set them). Thus the proxy keeps the secret
+// STRAVA_SESSION (the Strava session cookies in the form of a Cookie header) and itself requests this page when the
+// cookies expire. The fallback is the static secret STRAVA_COOKIES (scripts/strava-heatmap-secret.mjs). Decisions:
+// openspec/changes/archive/*-add-strava-heatmap-refresh/design.md.
 //
-// Ни сессия, ни куки, ни строки Set-Cookie не попадают в журнал: только имена и статусы.
-// fetchHeatmapCookies не зависит от env Worker'а: её импортирует scripts/strava-session-secret.mjs под Node.
+// The session, the cookies and the Set-Cookie lines never go to the log: only names and statuses. fetchHeatmapCookies
+// does not depend on the env of the Worker: scripts/strava-session-secret.mjs imports it under Node.
 
 const HEATMAP_COOKIES = ['CloudFront-Key-Pair-Id', 'CloudFront-Policy', 'CloudFront-Signature', '_strava_idcf'];
 const HEATMAP_TILE = {host: /^content-[a-z]\.strava\.com$/u, path: /^\/identified\/globalheat\//u};
 const HEATMAP_PAGE = 'https://www.strava.com/maps/global-heatmap';
-// сессия уходит только сюда: редирект на другой origin — неудача без перехода
+// the session goes only here: a redirect to a different origin is a failure, and the proxy does not follow it
 const STRAVA_ORIGIN = 'https://www.strava.com';
-// так Strava отвечает на отклонённую сессию
+// Strava answers a rejected session with a redirect to this path
 const LOGIN_PATH = /^\/(login|session)\b/u;
 const MAX_REDIRECTS = 3;
 const TIMEOUT_MS = 10_000;
-// Strava отдаёт страницу браузеру; пустой User-Agent fetch'а Worker'а рискует получить отказ, как у Wikimapia
+// Strava gives the page to a browser; the empty User-Agent of fetch in a Worker can get a refusal, as with Wikimapia
 const USER_AGENT = [
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
     'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
 ].join(' ');
 
-// Куки обновляются за 30 минут до срока политики: разница часов и тайлы, начатые перед сроком.
+// The cookies refresh 30 minutes before the policy expiry: this covers clock skew and tiles started before the expiry.
 const EXPIRY_MARGIN_MS = 30 * 60 * 1000;
-// Политика не разобралась — лишнее обновление через час лучше кук неизвестной свежести.
+// The policy did not parse: an extra refresh after one hour is better than cookies of unknown freshness.
 const UNKNOWN_EXPIRY_TTL_MS = 60 * 60 * 1000;
-// После неудачи (сессия отклонена, Strava ответила не так) не дёргать страницу на каждый тайл.
+// After a failure (the session is rejected, Strava gave an unexpected answer), do not request the page for each tile.
 const RETRY_PAUSE_MS = 10 * 60 * 1000;
 
-// Анонимная heatmap: без входа Strava отдаёт те же тайлы с heatmap-external-{a,b,c}.strava.com/tiles/
-// до z12 при px=256 и до z11 при px=512, выше — 403 (замер 2026-10-08; так же делает canicule). Прокси
-// берёт их, когда кук нет или CloudFront их не принял: слои не пустеют на обзорных зумах без сессии.
+// Anonymous heatmap: without login, Strava gives the same tiles from heatmap-external-{a,b,c}.strava.com/tiles/
+// up to z12 with px=256 and up to z11 with px=512, above that 403 (measured 2026-10-08; canicule does the same). The
+// proxy gets them when there are no cookies or CloudFront did not accept them: the layers are not empty at overview
+// zooms without a session.
 const ANONYMOUS_MAX_ZOOM = {256: 12, 512: 11};
 const ANONYMOUS_HOSTS = ['a', 'b', 'c'];
 const HEATMAP_TILE_PATH = /^\/identified\/globalheat\/(\w+)\/(\w+)\/(\d+)\/(\d+)\/(\d+)\.png$/u;
 
-// Адрес того же тайла без входа или null, если зум выше порога. Без px Strava отдаёт 256.
+// The address of the same tile without login, or null if the zoom is above the limit. Without px, Strava gives 256.
 function anonymousTileUrl(target) {
     const url = new URL(target);
     const match = HEATMAP_TILE_PATH.exec(url.pathname);
@@ -54,7 +55,7 @@ function anonymousTileUrl(target) {
     if (maxZoom === undefined || Number(z) > maxZoom) {
         return null;
     }
-    // поддомен по тайлу, как subdomains у Leaflet: один тайл — всегда один хост
+    // the subdomain depends on the tile, as subdomains in Leaflet: one tile always has one host
     const host = ANONYMOUS_HOSTS[(Number(x) + Number(y)) % ANONYMOUS_HOSTS.length];
     return `https://heatmap-external-${host}.strava.com/tiles/${activity}/${color}/${z}/${x}/${y}.png?px=${px}`;
 }
@@ -64,8 +65,8 @@ function isStravaHeatmap(target) {
     return HEATMAP_TILE.host.test(url.hostname) && HEATMAP_TILE.path.test(url.pathname);
 }
 
-// CloudFront-Policy — JSON политики в base64 с заменами CloudFront: + → -, = → _, / → ~.
-// Срок — Condition.DateLessThan['AWS:EpochTime'] первого Statement, в секундах. Возвращает миллисекунды.
+// CloudFront-Policy is the policy JSON in base64 with the CloudFront replacements: + → -, = → _, / → ~.
+// The expiry is Condition.DateLessThan['AWS:EpochTime'] of the first Statement, in seconds. Returns milliseconds.
 function policyExpiry(policy) {
     try {
         const json = atob(policy.replace(/-/gu, '+').replace(/_/gu, '=').replace(/~/gu, '/'));
@@ -76,8 +77,8 @@ function policyExpiry(policy) {
     }
 }
 
-// Имя куки и её срок из атрибутов Expires/Max-Age, без значения: по этому журналу видно, продлевает ли
-// Strava сессию (_strava4_session в ответе) и насколько.
+// The cookie name and its lifetime from the Expires/Max-Age attributes, without the value: this log shows if
+// Strava extends the session (_strava4_session in the response) and by how much.
 function describeSetCookie(line) {
     const [pair, ...attributes] = line.split(';');
     const name = pair.slice(0, pair.indexOf('=')).trim();
@@ -99,13 +100,14 @@ function collectHeatmapCookies(response, found, seen) {
     }
 }
 
-// Ошибка с описанием всех Set-Cookie цепочки (имена и сроки), чтобы журнал показал их и при неудаче.
+// An error with the description of all Set-Cookie lines of the chain (names and lifetimes), so the log shows them
+// also on a failure.
 function refreshError(message, seen) {
     return Object.assign(new Error(message), {setCookies: seen});
 }
 
-// Ошибки несут только статус, путь и имена кук: их текст идёт в журнал и в вывод скрипта.
-// setCookies — имена и сроки всех кук из ответов, без значений.
+// The errors contain only the status, the path and the cookie names: their text goes to the log and to the script
+// output. setCookies contains the names and lifetimes of all cookies from the responses, without the values.
 async function fetchHeatmapCookies(session, fetchImpl = fetch) {
     const found = new Map();
     const seen = [];
@@ -116,7 +118,7 @@ async function fetchHeatmapCookies(session, fetchImpl = fetch) {
             redirect: 'manual',
             signal: AbortSignal.timeout(TIMEOUT_MS),
         });
-        // нужны только заголовки: HTML не читаем, CPU на него не тратим
+        // only the headers are necessary: do not read the HTML and do not use CPU on it
         await response.body?.cancel();
         collectHeatmapCookies(response, found, seen);
         const location = response.headers.get('location');
@@ -137,7 +139,7 @@ async function fetchHeatmapCookies(session, fetchImpl = fetch) {
         if (!response.ok) {
             throw refreshError(`strava page answered ${response.status}`, seen);
         }
-        // так Strava ответила 2026-10-08 на подставную сессию: 200 без кук, а не редирект на /login
+        // Strava answered a fake session like this on 2026-10-08: 200 without cookies, not a redirect to /login
         if (!found.size) {
             throw refreshError(`strava page set no heatmap cookies: ${response.status}, session not logged in`, seen);
         }
@@ -154,16 +156,16 @@ async function fetchHeatmapCookies(session, fetchImpl = fetch) {
     throw refreshError(`strava page redirects more than ${MAX_REDIRECTS} times`, seen);
 }
 
-// Состояние изолята. Промис обновления разрешается строкой, а не Response, поэтому его можно ждать
-// из параллельных запросов (I/O-объекты между запросами делить нельзя). Смена STRAVA_SESSION
-// сбрасывает всё.
+// The state of the isolate. The refresh promise resolves to a string, not to a Response, thus parallel requests
+// can wait for it (requests cannot share I/O objects). A change of STRAVA_SESSION resets all of it.
 const state = {session: null, cookie: null, freshUntil: 0, expiresAt: 0, failedAt: -Infinity, refreshing: null};
 
 function resetState(session) {
     Object.assign(state, {session, cookie: null, freshUntil: 0, expiresAt: 0, failedAt: -Infinity, refreshing: null});
 }
 
-// Лучшее из имеющегося, пока свежих кук нет: старые, если CloudFront их ещё примет, иначе запасной секрет.
+// The best available cookies while there are no fresh ones: the old ones if CloudFront still accepts them,
+// otherwise the fallback secret.
 function bestKnown(now, fallback) {
     return state.cookie && now < state.expiresAt ? {cookie: state.cookie, source: 'session'} : fallback;
 }
@@ -183,7 +185,7 @@ async function refresh(session, now) {
             });
             return cookie;
         }
-        // политика короче запаса — всё равно не чаще раза в паузу
+        // if the policy is shorter than the margin, refresh still not more often than once per pause
         Object.assign(state, {
             cookie,
             expiresAt,
@@ -206,9 +208,9 @@ async function refresh(session, now) {
     }
 }
 
-// Куки для тайла heatmap: {cookie, source}, source — session, fallback или none (без кук).
-// `ctx` — контекст запроса Worker'а: обновление регистрируется в waitUntil, чтобы обрыв клиента
-// не отменил fetch, которого ждут параллельные запросы.
+// Cookies for a heatmap tile: {cookie, source}, source is session, fallback or none (no cookies).
+// `ctx` is the request context of the Worker: the refresh goes into waitUntil, so a client disconnect
+// does not cancel the fetch that parallel requests wait for.
 async function heatmapCookie(env, ctx, now = Date.now()) {
     const fallback = env.STRAVA_COOKIES
         ? {cookie: env.STRAVA_COOKIES, source: 'fallback'}

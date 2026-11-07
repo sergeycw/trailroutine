@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// e2e против собранного приложения (vite preview отдаёт build/ от корня, как Pages на проде).
-// Сборка — до запуска: npm run build && npm run e2e. В сеть тесты не ходят — e2e/fixtures.ts.
+// e2e against the built app (vite preview serves build/ from the root, as Pages does in production).
+// Build before the run: npm run build && npm run e2e. The tests do not go to the network — e2e/fixtures.ts.
 const BASE_URL = 'http://localhost:4173/';
 
 export default defineConfig({

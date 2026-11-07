@@ -1,5 +1,5 @@
-// Анонимные тайлы heatmap: без кук или с отвергнутыми куками прокси берёт тайл z≤12 с
-// heatmap-external-*.strava.com. CloudFront и анонимный хост — заглушки из vitest.config.js.
+// Anonymous heatmap tiles: without cookies or with rejected cookies, the proxy gets a z≤12 tile from
+// heatmap-external-*.strava.com. CloudFront and the anonymous host are stubs from vitest.config.js.
 import {describe, expect, it} from 'vitest';
 
 import worker from '../src/index.js';

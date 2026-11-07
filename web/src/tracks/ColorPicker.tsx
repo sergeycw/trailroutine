@@ -7,18 +7,20 @@ import { HsvPicker } from './HsvPicker';
 import { TRACK_COLORS, type Track, type TrackColor, trackColor } from './model';
 import { readRecentColors, rememberColor } from './recent-colors';
 
-// Палитра цвета трека: строка списка треков и строка редактора линии (design editor-row-cleanup, «Палитра одна на
-// список и редактор»). Список, открытый до начала правки, остаётся до первого нажатия на карту — тогда кнопок
-// `Color of <название>` на экране две, и тесты редактора ищут свою внутри edit-panel. Смена цвета меняет только поле
-// color и правку линии не прерывает. Строка цветов — недавние свои и готовые, под ней пикер (design track-color-picker):
-// цвет из строки закрывает палитру, свой из пикера — нет, его подбирают за несколько движений.
+// Track color palette: a row of the track list and a row of the line editor (design editor-row-cleanup,
+// «Палитра одна на список и редактор»). A list that was open before editing started stays until the first press on
+// the map: then the screen has two `Color of <name>` buttons, and the editor tests look for theirs inside edit-panel.
+// A color change changes only the color field and does not stop the line editing. The color row has recent custom
+// colors and preset colors, the picker is under it (design track-color-picker): a color from the row closes the
+// palette, a custom one from the picker does not, because the user adjusts it in several movements.
 export function ColorPicker({ track }: { track: Track }) {
     const [open, setOpen] = useState(false);
     const popup = useRef<HTMLDivElement>(null);
     const selected = useRef<HTMLButtonElement>(null);
-    // Фокус при открытии (design palette-one-row): мышью и пальцем — на сам попап, без рамки на кнопке цвета (рамка
-    // первой кнопки выглядела как выбранный цвет); с клавиатуры — на выбранный цвет строки, иначе как у Base UI. Фокус не
-    // остаётся на кнопке-триггере: Escape там дошёл бы до редактора линии, а попап (role="dialog") редактор пропускает.
+    // Focus on open (design palette-one-row): with a mouse and a finger, on the popup itself, without a ring on the
+    // color button (the ring of the first button looked like the selected color); with a keyboard, on the selected
+    // color of the row, otherwise as in Base UI. The focus does not stay on the trigger button: Escape there would
+    // reach the line editor, but the editor skips the popup (role="dialog").
     const initialFocus = (type: string) => (type === 'keyboard' ? (selected.current ?? true) : popup.current);
     return (
         <Popover open={open} onOpenChange={setOpen}>
@@ -46,11 +48,11 @@ export function ColorPicker({ track }: { track: Track }) {
     );
 }
 
-// Содержимое открытой палитры: монтируется при каждом открытии, недавние цвета читаются тогда же. Пока палитра открыта,
-// строка цветов не меняется: новый недавний цвет сдвинул бы готовые под пальцем. При закрытии (любом, и Escape тоже)
-// применяется показанный, но не применённый цвет пикера — набранный hex без Enter (что видно в образце, то и у трека),
-// а в недавние уходит один цвет — последний свой, применённый за это открытие: стрелки и короткие перетаскивания иначе
-// вытеснили бы недавние почти одинаковыми оттенками.
+// Content of the open palette: it mounts on each open, and recent colors are read at the same time. While the
+// palette is open, the color row does not change: a new recent color would move the preset colors under the finger.
+// On close (any close, Escape too), the picker color that is shown but not applied is applied: a typed hex without
+// Enter (what the sample shows, the track gets). Only one color goes to the recent colors: the last custom color
+// applied during this open. Otherwise arrows and short drags would push out the recent colors with almost equal hues.
 function Palette({
     track,
     close,
@@ -62,7 +64,7 @@ function Palette({
 }) {
     const actions = useTrackActions();
     const [recent] = useState(readRecentColors);
-    // трек на момент закрытия: эффект закрытия видит замыкание первого рендера
+    // the track at the moment of close: the close effect sees the closure of the first render
     const current = useRef(track);
     current.current = track;
     const draft = useRef<string | null>(null);
@@ -76,7 +78,7 @@ function Palette({
             actions.setColor(current.current, color);
         }
     };
-    // biome-ignore lint/correctness/useExhaustiveDependencies: только при закрытии, choose читает refs
+    // biome-ignore lint/correctness/useExhaustiveDependencies: only on close, choose reads refs
     useEffect(
         () => () => {
             if (draft.current) {
@@ -88,9 +90,10 @@ function Palette({
         },
         [],
     );
-    // одна строка из шести (design palette-one-row): недавние свои слева, за ними готовые по порядку, лишние готовые
-    // справа не видны; номер готового цвета в подписи не зависит от места в строке. Выбранный готовый, выпавший из строки
-    // (цвета по кругу дают 4–6-му треку красный, розовый, жёлтый), встаёт последним: строка без выбранного путала.
+    // one row of six (design palette-one-row): recent custom colors on the left, then preset colors in order, extra
+    // preset colors on the right are not visible; the preset color number in the label does not depend on its place in
+    // the row. A selected preset color that fell out of the row (the color cycle gives red, pink, yellow to the 4th–6th
+    // track) goes last: a row without the selected color was confusing.
     const presets = TRACK_COLORS.map((color, index) => ({
         color,
         value: index as TrackColor,

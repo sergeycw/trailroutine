@@ -5,7 +5,7 @@ import {onRequest} from '../../../functions/brouter-wasm/[[path]].js';
 const JAR = Uint8Array.from({length: 500}, (_, i) => i % 256);
 const JAR_URL = 'https://clone.test/brouter-wasm/lib/brouter.jar';
 
-// Статика Pages Range не понимает и отдаёт файл целиком; функция режет его сама.
+// Pages static files do not support Range and give the full file; the function cuts it itself.
 const env = {
     ASSETS: {
         fetch(request) {

@@ -1,24 +1,25 @@
 import type { LatLng } from '@/tracks/model';
 import type { PanoView } from './hash';
 
-// Street View за своим интерфейсом (design add-web-search-panoramas, «Модули»): приложение не знает про Google, а
-// browser-тесты и e2e подставляют своё окно без сети (src/test/fake-street-view.ts, заглушка API в e2e/fixtures.ts).
+// Street View behind its own interface (design add-web-search-panoramas, «Модули»): the app does not know about
+// Google, and the browser tests and e2e put in their own window without the network (src/test/fake-street-view.ts,
+// the API stub in e2e/fixtures.ts).
 
 export interface StreetViewHandlers {
-    // окно перешло в другую точку или повернулось
+    // the window moved to a different point or turned
     onChange(view: PanoView): void;
 }
 
 export interface StreetViewViewer {
     show(view: PanoView): void;
-    // контейнер поменял размер
+    // the container changed its size
     resize(): void;
-    // окно больше не нужно: слушатели сняты, панорама спрятана
+    // the window is not necessary any more: remove the listeners and hide the panorama
     destroy(): void;
 }
 
 export interface StreetViewApi {
-    // ближайшая панорама в радиусе (метры) или null; ошибка загрузки API — исключение
+    // the nearest panorama in the radius (meters) or null; an API load error is an exception
     findPanorama(at: LatLng, radius: number): Promise<LatLng | null>;
     createViewer(container: HTMLElement, handlers: StreetViewHandlers): Promise<StreetViewViewer>;
 }

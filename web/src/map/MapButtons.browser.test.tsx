@@ -8,9 +8,9 @@ import { renderApp } from '@/test/render-app';
 import { type FixtureTiles, fixtureTiles } from '@/test/tiles';
 import { POSITION_KEY } from './locate';
 
-// Кнопки карты в App (спека web-client: «Где я», «Последнее положение при заходе»,
-// «Масштаб на карте», «Атрибуция карты»). Геолокация браузера подменяется на время теста: настоящая в headless
-// спросила бы разрешение.
+// The map buttons in App (spec web-client: «Где я», «Последнее положение при заходе»,
+// «Масштаб на карте», «Атрибуция карты»). The test replaces the browser geolocation for its duration: the real one in
+// headless mode would ask for permission.
 
 let tiles: FixtureTiles;
 
@@ -21,7 +21,7 @@ beforeEach(() => {
 
 afterEach(async () => {
     await cleanup();
-    // своё свойство убирается — возвращается настоящий navigator.geolocation прототипа
+    // the own property is removed, so the real navigator.geolocation of the prototype comes back
     Reflect.deleteProperty(navigator, 'geolocation');
     vi.restoreAllMocks();
     expect(tiles.external, 'запросы мимо localhost и тайлов').toEqual([]);
@@ -32,7 +32,7 @@ interface FakeAnswer {
     error?: { code: number; message: string };
 }
 
-// Подменённая геолокация: на watchPosition и getCurrentPosition отвечает сразу заданным положением или ошибкой
+// A replaced geolocation: it answers watchPosition and getCurrentPosition at once with the given position or error
 function fakeGeolocation(answer: FakeAnswer) {
     const calls = { watch: 0, current: 0 };
     const respond = (success: PositionCallback, failure?: PositionErrorCallback | null) => {
@@ -77,11 +77,11 @@ describe('Где я', () => {
         fakeGeolocation({ position: { lat: 41.7, lng: 44.8, accuracy: 30 } });
         const { map } = await renderApp(tiles, '#m=10/41/44&l=O');
         await page.getByRole('button', { name: 'Find my location' }).click();
-        // MapLibre летит к положению анимацией flyTo
+        // MapLibre flies to the position with the flyTo animation
         await expect.poll(() => near(map.getCenter(), P(41.7, 44.8)), { timeout: 5000 }).toBe(true);
         await expect.poll(() => document.querySelector('.maplibregl-user-location-dot')).not.toBeNull();
         expect(document.querySelector('.maplibregl-user-location-accuracy-circle')).not.toBeNull();
-        // положение запомнено для следующего захода
+        // the position is remembered for the next visit
         expect(JSON.parse(localStorage.getItem(POSITION_KEY) ?? 'null')).toEqual({ lat: 41.7, lng: 44.8 });
     });
 
@@ -105,7 +105,7 @@ describe('Где я', () => {
 });
 
 describe('Вид кнопки геолокации', () => {
-    // цвет токена так, как его отдаёт getComputedStyle: пробный элемент с тем же фоном
+    // the token color as getComputedStyle gives it: a test element with the same background
     function tokenColor(token: string) {
         const probe = document.createElement('div');
         probe.style.backgroundColor = `var(${token})`;
@@ -130,7 +130,7 @@ describe('Вид кнопки геолокации', () => {
         await expect.element(button()).toHaveClass('maplibregl-ctrl-geolocate-active');
         expect(getComputedStyle(button().element()).backgroundColor).toBe(tokenColor('--primary'));
         expect(icon().backgroundColor).toBe(tokenColor('--primary-foreground'));
-        // форма значка — маска: без неё вместо значка был бы белый квадрат
+        // the icon shape is a mask: without it, a white square would show instead of the icon
         expect(icon().backgroundImage).toBe('none');
         expect(icon().maskImage).toContain('data:image/svg+xml');
     });
@@ -139,10 +139,11 @@ describe('Вид кнопки геолокации', () => {
         fakeGeolocation({ position: { lat: 41.7, lng: 44.8, accuracy: 30 } });
         const { map } = await renderApp(tiles, '#m=10/41/44&l=O');
         await button().click();
-        // слежение начинается с ответом браузера: до перелёта к положению сдвиг карты состояние не меняет
+        // tracking starts with the browser answer: before the flight to the position, a map move does not change the
+        // state
         await expect.poll(() => near(map.getCenter(), P(41.7, 44.8)), { timeout: 5000 }).toBe(true);
         await expect.element(button()).not.toHaveClass('maplibregl-ctrl-geolocate-waiting');
-        // сдвиг карты не от геолокации уводит слежение в фон
+        // a map move that does not come from geolocation sends tracking to the background
         map.panBy([100, 0], { duration: 0 });
         await expect.element(button()).toHaveClass('maplibregl-ctrl-geolocate-background');
         expect(getComputedStyle(button().element()).backgroundColor).not.toBe(tokenColor('--primary'));
@@ -152,13 +153,13 @@ describe('Вид кнопки геолокации', () => {
 
 describe('Последнее положение при заходе', () => {
     test('Заход с запомненным положением', async () => {
-        // браузер отвечает другим положением чуть позже — карта переходит к нему
+        // the browser answers with another position a bit later: the map moves to it
         const calls = fakeGeolocation({ position: { lat: 41.8, lng: 44.9, accuracy: 30 } });
         localStorage.setItem(POSITION_KEY, '{"lat":41.69,"lng":44.78}');
         const { map } = await renderApp(tiles, '');
         expect(calls.current).toBe(1);
         await expect.poll(() => near(map.getCenter(), P(41.8, 44.9))).toBe(true);
-        // зум по умолчанию — тот же, что у начального вида (config.ts)
+        // the default zoom is the same as for the initial view (config.ts)
         expect(map.getZoom()).toBe(config.defaultZoom);
     });
 
@@ -189,7 +190,7 @@ describe('Масштаб на карте', () => {
         await renderApp(tiles, '#m=13/42.68490/47.07008&l=O');
         await expect.element(page.getByRole('button', { name: 'Zoom in' })).toBeVisible();
         expect(document.querySelector('.maplibregl-ctrl-scale')?.textContent).toMatch(/\d+\s?(m|km)/u);
-        // между кнопками зума номера нет: капсула — только «+» и «−»
+        // there is no number between the zoom buttons: the capsule has only "+" and "−"
         const zoom = document.querySelector('.maplibregl-ctrl-zoom-in')?.parentElement;
         expect(zoom?.textContent).toBe('');
     });
@@ -201,19 +202,19 @@ describe('Атрибуция карты', () => {
 
     test('Сворачивание по первому движению карты', async () => {
         const { map } = await renderApp(tiles, '#m=13/42.68490/47.07008&l=O');
-        // при старте раскрыта: подпись слоя видна без нажатий
+        // expanded at the start: the layer attribution is visible without clicks
         await expect.element(page.getByRole('link', { name: '© OpenStreetMap contributors' })).toBeVisible();
         expect(expanded()).toBe(true);
-        // программный переход (вид из адреса, треки, геолокация) не сворачивает
+        // a programmatic move (the view from the address, tracks, geolocation) does not collapse it
         map.jumpTo({ center: [47.1, 42.7] });
         expect(expanded()).toBe(true);
-        // зум кнопкой — движение пользователя, не только drag, на который сворачивает сам MapLibre
+        // a zoom by the button is a user move, not only the drag on which MapLibre itself collapses it
         await page.getByRole('button', { name: 'Zoom in' }).click();
         await expect.poll(expanded).toBe(false);
-        // свёрнутая: подписи не видно, только кнопка (i); ссылку под display: none (MapLibre прячет блок классом,
-        // <details> остаётся open) getByRole не находит — проверка по DOM
+        // collapsed: the attribution is not visible, only the (i) button; getByRole does not find a link under
+        // display: none (MapLibre hides the block with a class, <details> stays open), so the check uses the DOM
         expect(attribution()?.querySelector('.maplibregl-ctrl-attrib-inner')?.checkVisibility()).toBe(false);
-        // кнопка (i) раскрывает её снова
+        // the (i) button expands it again
         await page.getByTitle('Toggle attribution').click();
         await expect.poll(expanded).toBe(true);
         await expect.element(page.getByRole('link', { name: '© OpenStreetMap contributors' })).toBeVisible();

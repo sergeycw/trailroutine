@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react';
 import type { StreetView } from './controller';
 
-// Режим Street View для компонентов: App создаёт его один раз со своим API (Google или заглушка тестов)
+// The Street View mode for the components: App creates it one time with its API (Google or the test stub)
 export const StreetViewContext = createContext<StreetView | null>(null);
 
 export function useStreetView(): StreetView {
