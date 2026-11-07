@@ -214,7 +214,8 @@ test('Точка трека', async ({ page }) => {
 // A real touch (CDP Input.dispatchTouchEvent): after the finger is released the browser sends compatibility
 // mousedown/click, and without preventDefault on touchend the Base UI menu closed at once (the synthetic TouchEvent of
 // the browser tests does not catch this)
-test('Долгое нажатие', async ({ browser, network }) => {
+test('Долгое нажатие', async ({ browser, browserName, network }) => {
+    test.skip(browserName !== 'chromium', 'CDP Input.dispatchTouchEvent есть только в Chromium');
     const phone = await browser.newContext({ ...devices['Pixel 7'] });
     try {
         await network.attach(phone);

@@ -57,7 +57,11 @@ async function servePagesRedirects(page: Page) {
     );
 }
 
-test('Ссылка на /next/ с параметрами', async ({ page, network }) => {
+// WebKit: «route.fulfill: Cannot fulfill with redirect status», the stub of Pages cannot answer with 3xx
+const NO_REDIRECT_FULFILL = 'WebKit: route.fulfill не отдаёт ответ 3xx';
+
+test('Ссылка на /next/ с параметрами', async ({ page, browserName, network }) => {
+    test.skip(browserName === 'webkit', NO_REDIRECT_FULFILL);
     await servePagesRedirects(page);
     await page.goto('/next/#m=13/42.68490/47.07008&l=O');
     expect(new URL(page.url()).pathname).toBe('/');
@@ -67,7 +71,8 @@ test('Ссылка на /next/ с параметрами', async ({ page, networ
         .toContain(`https://tile.openstreetmap.org/${tileOf(42.6849, 47.07008, 13)}.png`);
 });
 
-test('Стенд по старому адресу', async ({ page }) => {
+test('Стенд по старому адресу', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', NO_REDIRECT_FULFILL);
     await servePagesRedirects(page);
     await page.goto('/next/engine-bench.html');
     expect(new URL(page.url()).pathname).toBe('/engine-bench.html');
