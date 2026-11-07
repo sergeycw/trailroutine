@@ -113,6 +113,11 @@ export function reverseLine(line: RouteLine): RouteLine {
 
 // Join: other attaches with its end otherEnd to the end end of the line, the joint is a straight leg (joinTrackSegments
 // of the old client)
+// the index of the seam leg of joinLines: the straight leg between the two parts
+export function joinSeam(line: RouteLine, end: End, other: RouteLine): number {
+    return end === 'end' ? line.legs.length : other.legs.length;
+}
+
 export function joinLines(line: RouteLine, end: End, other: RouteLine, otherEnd: End): RouteLine {
     if (end === 'end') {
         const tail = otherEnd === 'start' ? other : reverseLine(other);
