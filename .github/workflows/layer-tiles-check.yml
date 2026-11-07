@@ -1,0 +1,26 @@
+name: layer tiles check
+
+# Once a week requests one tile of each raster map layer of the app catalog (scripts/layer-tiles-check.mjs): tile
+# providers stop working one at a time, and then the layer in the app only becomes empty, without an error for Sentry.
+# A red run sends an email; the run annotations name each broken layer with its tile address. Of, Tt and the Strava
+# heatmaps have their own daily checks. Actions run on a schedule only from the default branch; after 60 days without
+# activity GitHub disables the schedule of a public repository.
+
+on:
+  schedule:
+    - cron: '23 6 * * 1'
+  workflow_dispatch:
+
+jobs:
+  check:
+    if: github.repository == 'sergeycw/trailroutine'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          # Node 24 strips the types of web/src/layers/catalog.ts without a flag
+          node-version: 24
+      - name: one tile of each layer
+        run: node scripts/layer-tiles-check.mjs

@@ -73,6 +73,7 @@ flowchart LR
     cron2(["cron Mon 04:00 UTC"])
     cron3(["cron 05:17 UTC daily"])
     cron5(["cron 05:41 UTC daily"])
+    cron7(["cron Mon 06:23 UTC"])
     cron6(["cron 05:47 UTC daily"])
     manual(["workflow_dispatch"])
 
@@ -80,6 +81,8 @@ flowchart LR
     edata["elevation data<br/>elevation-data.sh"]
     scheck["strava heatmap check"]
     tcheck["tracestrack check"]
+    lcheck["layer tiles check<br/>scripts/layer-tiles-check.mjs"]
+    providers["tile providers<br/>of the catalog layers"]
     ocheck["openfreemap check"]
     pcheck["prod check<br/>scripts/prod-check.sh"]
     cron4(["cron 05:40 UTC daily,<br/>after the deploy"])
@@ -108,6 +111,11 @@ flowchart LR
     manual --> tcheck
     tcheck -->|"GET of a Tracestrack Topo tile,<br/>200: the key works, 503: no key"| proxy
     tcheck -.-> mail
+    cron7 --> lcheck
+    manual --> lcheck
+    lcheck -->|"GET of one tile per raster layer:<br/>200, image, CORS, no redirect"| providers
+    lcheck -->|"Mt"| proxy
+    lcheck -.-> mail
     cron6 --> ocheck
     manual --> ocheck
     ocheck -->|"GET of the TileJSON and one tile:<br/>200 with CORS"| ofm
@@ -129,6 +137,7 @@ flowchart LR
 | `elevation data` | manually | repack of HGT to `dem3/*` | R2 `nakarte-elevation` |
 | `strava heatmap check` | daily 05:17 UTC, manually | a heatmap tile through the proxy; fails without `session` | — |
 | `tracestrack check` | daily 05:41 UTC, manually | a Tracestrack Topo tile through the proxy: `503` (no key) is a warning, another failure (key, quota) fails the workflow | — |
+| `layer tiles check` | Monday 06:23 UTC, manually | one tile of each raster layer of `web/src/layers/catalog.ts`, through the proxy for the proxy layers; fails on a status other than `200`, a body that is not an image, a redirect or no CORS header. `Of`, `Tt`, the Strava heatmaps, `Hls` and `Ct` are not in it | — |
 | `openfreemap check` | daily 05:47 UTC, manually | the TileJSON of the default basemap OpenFreeMap Outdoor and one tile from its template: `200` with a CORS header, the tile not empty | — |
 | `prod check` | daily 05:40 UTC, after the deploy (job `smoke`), manually | `scripts/prod-check.sh`: the app on `/`, the redirect from `/next/` to `/`, the trailroutine services respond; read only | — |
 
