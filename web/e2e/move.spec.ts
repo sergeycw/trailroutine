@@ -19,12 +19,16 @@ const LAYERS = JSON.stringify({
 
 test.use({ tracksOpen: false });
 
-// WebKit stops all loads of the old address when location.replace starts the move. The dynamic import of maplibre-gl
-// (src/map/maplibre.ts) that is still loading then fails, and Sentry reports «Importing a module script failed.» from
-// the old address. Chromium lets the old page load until the new page commits. The report is noise in Sentry, not a
-// failed move, and these tests do not check it.
+// WebKit and Firefox stop all loads of the old address when location.replace starts the move. The dynamic import of
+// maplibre-gl (src/map/maplibre.ts) that is still loading then fails, and Sentry reports it from the old address:
+// «Importing a module script failed.» in WebKit, «error loading dynamically imported module» in Firefox. Chromium lets
+// the old page load until the new page commits. The report is noise in Sentry, not a failed move, and these tests do
+// not check it.
 function abortedImportOnOldAddress(envelope: string) {
-    return envelope.includes('Importing a module script failed.') && envelope.includes(`"url":"${OLD}/`);
+    return (
+        /Importing a module script failed\.|error loading dynamically imported module/.test(envelope) &&
+        envelope.includes(`"url":"${OLD}/`)
+    );
 }
 
 test.beforeEach(({ network }) => {
