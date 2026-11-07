@@ -13,6 +13,7 @@ import { saveNktk } from '@/tracks/nktk';
 import { TRACK_POINTS } from '@/tracks/style';
 import mapyczJson from './fixtures/mapycz-mtatsminda.json';
 import photonJson from './fixtures/photon-mtatsminda.json';
+import { SEARCH_HINT } from './search';
 
 // Search and the placemark in App on a real map (spec map-search): the network is a fetch stub with saved answers of
 // mapy.cz and photon, the tests do not go to the network. The test titles are the scenarios of the spec.
@@ -76,6 +77,18 @@ describe('Строка поиска', () => {
         await expect.element(page.getByText('Type at least 3 characters')).toBeVisible();
         await new Promise((resolve) => setTimeout(resolve, 600));
         expect(net.requests).toEqual([]);
+    });
+
+    test('Подсказка в пустой строке', async () => {
+        await render();
+        await searchField().click();
+        const hint = page.getByText(SEARCH_HINT);
+        await expect.element(hint).toBeVisible();
+        for (const source of ['nakarte', 'Yandex ruler', 'OpenStreetMap traces', 'Tracedetrail', 'Sports Tracker']) {
+            expect(SEARCH_HINT).toContain(source);
+        }
+        await searchField().fill('Tbilisi');
+        await expect.element(hint).not.toBeInTheDocument();
     });
 
     test('Горячая клавиша', async () => {

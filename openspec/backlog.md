@@ -37,7 +37,6 @@
 - Лицензия CheerpJ Community: держать рантайм у себя нельзя — «Self-Hosting not allowed» для Community, только по коммерческой лицензии ([licensing](https://cheerpj.com/licensing/), 2026-10-08), то есть требование «Рантайм с CDN Leaning Technologies» в `browser-routing-engine` верно. Не сверено, нужно ли указывать авторство в UI (сейчас его нет).
 - Закрепить digest образа `brouter:nightly` в деплое, чтобы профили и `lookups.dat` движка не менялись незаметно (см. риски в `changes/archive/2026-10-07-add-pages-autodeploy/design.md`).
 - Проверка в Firefox, Safari и на телефоне.
-- Короткие ссылки Google `maps.app.goo.gl/…` (нынешний формат «Поделиться») в поиске нового приложения: старый клиент их не понимал, а разворот через прокси клона не проверен — нужна живая ссылка (обычные `google.com/maps` и `goo.gl/maps` работают). Проверить `HEAD` через прокси (Google может отдать капчу или страницу согласия), добавить в `web/src/search/links.ts`.
 - Свой ключ Google для Street View, если понадобится чистая панорама. Сейчас клон, как nakarte.me, грузит Maps JavaScript API без ключа (`keyless-street-view`) и прячет режим разработки Google своим CSS (`hide-street-view-dev-overlay`); это против условий Google, и Google может режим закрыть или сменить вёрстку. Ключ — секрет GitHub `GOOGLE_MAPS_API_KEY`, деплой подставит его сам. Шаги владельца: проект в Google Cloud с биллингом (карта нужна даже для бесплатного объёма), включить Maps JavaScript API, создать ключ с ограничениями Websites `https://nakarte-routing.pages.dev` и API только Maps JavaScript API ([рекомендации Google](https://developers.google.com/maps/api-security-best-practices)), бюджет с оповещением, `gh secret set GOOGLE_MAPS_API_KEY`. Цена по [прайсу Google Maps Platform](https://developers.google.com/maps/billing-and-pricing/pricing): Dynamic Street View — 5 000 бесплатных панорам в месяц, дальше $14 за 1 000; покрытие — тайлы без ключа, не тарифицируются.
 
 ## Редактор и активности
@@ -67,12 +66,7 @@
 
 В Things у таких задач тег `Feedback`.
 
-- Импорт по ссылкам (отзыв тестировщика 2026-11-07, Chrome на iPad): «какие вообще ссылки жрёт? из накарте не хочет, из стравы тоже; пусть жрёт все, включая мэнимэпс, plotaroute, tracedetrail».
-  - Strava: импорта нет, см. «Импорт треков по ссылкам Strava, Garmin Connect и Wikiloc» в разделе рисков.
-  - plotaroute.com: сервиса в `web/src/tracks/import-url.ts` нет; главная страница отвечает `403` на curl (2026-11-07), проверять на живой ссылке маршрута.
-  - tracedetrail: сервис есть, но через прокси ≈ 3 запроса подряд, потом `429` (раздел рисков). Нужна ссылка, которая не открылась.
-  - «мэнимэпс» — неясно, какой сервис; уточнить у тестировщика.
-  - Какие ссылки понимает поиск, в интерфейсе не видно: в строке только «Search or paste a track link».
+- Импорт по ссылкам (отзыв тестировщика 2026-11-07, Chrome на iPad): «какие вообще ссылки жрёт? из накарте не хочет, из стравы тоже; пусть жрёт все, включая мэнимэпс, plotaroute, tracedetrail». Сделано: ссылки nakarte.me с `nktl=` (архив `import-nakarte-storage-links`), подсказка пустой строки поиска и сообщение для Strava, Garmin Connect, Wikiloc, plotaroute и MapMagic (архив `explain-track-link-sources`; «мэнимэпс» — MapMagic, у него нет публичных ссылок на маршруты, plotaroute закрыт проверкой на ботов). Открыто: tracedetrail — ссылка `/en/trace/300530` через прокси открывается (2026-11-07), а ссылки тестировщика, которая не открылась, нет; ждём её.
 
 ## Новые возможности
 
