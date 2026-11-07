@@ -8,6 +8,7 @@ import type { LayerSettings, Selection } from '@/layers/settings';
 import type { End } from '@/routing/editor';
 import type { RouteLine } from '@/routing/line';
 import type { LinePlace } from '@/routing/line-tools';
+import { DEFAULT_HIKING_OPTIONS, type HikingOptions } from '@/routing/options';
 import type { Placemark } from '@/search/placemark';
 import type { PanoView } from '@/streetview/hash';
 import { parseTrackColor } from '@/tracks/color';
@@ -50,6 +51,8 @@ export interface AppState {
     // the router is alive (red button), the edited line and the index of the dragged waypoint: what the map draws. The
     // map draws the drag preview and the rubber band past the store (routing/MapEditor.tsx).
     routingActivity: string | null;
+    // options of the hiking profile for the next routed legs (routing/options.ts)
+    hikingOptions: HikingOptions;
     routerReachable: boolean;
     routeEdit: RouteEditState | null;
     routeDrag: number | null;
@@ -104,6 +107,7 @@ export interface AppState {
     changeLoadingTracks(delta: number): void;
     setCopyFallback(fallback: CopyFallback | null): void;
     setRoutingActivity(id: string | null): void;
+    setHikingOptions(options: HikingOptions): void;
     setRouterReachable(reachable: boolean): void;
     setRouteEdit(edit: RouteEditState | null): void;
     setRouteDrag(index: number | null): void;
@@ -197,6 +201,7 @@ export interface AppStoreInit {
     view: View;
     imageryDate?: string | null;
     routingActivity?: string | null;
+    hikingOptions?: HikingOptions;
     placemark?: Placemark | null;
     streetView?: { enabled: boolean; pano: PanoView | null };
 }
@@ -245,6 +250,7 @@ export function createAppStore(init: AppStoreInit): AppStore {
             loadingTracks: 0,
             copyFallback: null,
             routingActivity: init.routingActivity ?? null,
+            hikingOptions: init.hikingOptions ?? DEFAULT_HIKING_OPTIONS,
             routerReachable: true,
             routeEdit: null,
             routeDrag: null,
@@ -435,6 +441,7 @@ export function createAppStore(init: AppStoreInit): AppStore {
             changeLoadingTracks: (delta) => set({ loadingTracks: get().loadingTracks + delta }),
             setCopyFallback: (copyFallback) => set({ copyFallback }),
             setRoutingActivity: (routingActivity) => set({ routingActivity }),
+            setHikingOptions: (hikingOptions) => set({ hikingOptions }),
             setRouterReachable: (routerReachable) => set({ routerReachable }),
             setRouteEdit: (routeEdit) => set({ routeEdit }),
             setRouteDrag: (routeDrag) => set({ routeDrag }),

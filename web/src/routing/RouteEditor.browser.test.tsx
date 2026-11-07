@@ -667,6 +667,35 @@ describe('Меню активностей', () => {
         await expect.element(page.getByRole('button', { name: 'Routing: Hiking', exact: true })).toBeVisible();
     });
 
+    test('Option applies to the next leg', async () => {
+        const { map, router } = await render(VIEW, fakeRouter({ auto: true }), 'hiking');
+        await page.getByRole('button', { name: /^Routing/ }).click();
+        await page.getByRole('menuitemcheckbox', { name: 'Avoid climbs' }).click();
+        await page.getByRole('menuitemcheckbox', { name: 'Allow steps' }).click();
+        await page.getByRole('menuitem', { name: 'Max difficulty: T3' }).click();
+        await page.getByRole('menuitemradio', { name: 'T5 · demanding alpine hiking' }).click();
+        await expect.element(page.getByRole('menuitem', { name: /^Max difficulty/ })).not.toBeInTheDocument();
+        await newTrack(map, [A, B]);
+        await expect.poll(() => router.calls.length).toBeGreaterThan(0);
+        expect(router.calls[0].activity.params).toEqual([
+            ['SAC_scale_limit', 5],
+            ['consider_elevation', 1],
+            ['allow_steps', 0],
+        ]);
+        expect(JSON.parse(localStorage.getItem('nakarte-web:hiking-options') ?? '')).toEqual({
+            sacLimit: 5,
+            avoidClimbs: true,
+            allowSteps: false,
+        });
+    });
+
+    test('Options only for hiking', async () => {
+        await render(VIEW, fakeRouter({ auto: true }), 'gravel');
+        await page.getByRole('button', { name: /^Routing/ }).click();
+        await expect.element(page.getByRole('menuitemradio', { name: 'Gravel bike' })).toBeChecked();
+        await expect.element(page.getByRole('menuitemcheckbox', { name: 'Avoid climbs' })).not.toBeInTheDocument();
+    });
+
     test('Движок в браузере не запустился', async () => {
         const router = fakeRouter({ status: 'failed' });
         await render(VIEW, router, 'hiking');
