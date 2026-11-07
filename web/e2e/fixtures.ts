@@ -312,6 +312,11 @@ export const test = base.extend<{ network: Network; tracksOpen: boolean }>({
                 });
                 await target.route('**/*', async (route) => {
                     const url = route.request().url();
+                    // WebKit also routes the blob: URL of the maplibre-contour worker (Chromium does not). It is a
+                    // local object of the page, and its hostname is empty, so the checks below would abort it
+                    if (url.startsWith('blob:')) {
+                        return route.continue();
+                    }
                     const { hostname, pathname, origin } = new URL(url);
                     if (siteHosts.has(hostname)) {
                         if (pathname === '/__seed__') {
