@@ -20,6 +20,13 @@ describe('origin check', () => {
         expect((await request('/https/example.com/', {origin: null})).status).toBe(403);
     });
 
+    // свой домен после переезда (change move-to-trailroutine-domain)
+    it('accepts the own domain trailroutine.com', async () => {
+        const response = await request('/https/example.com/', {origin: 'https://trailroutine.com'});
+        expect(response.status).toBe(200);
+        expect(response.headers.get('Access-Control-Allow-Origin')).toBe('https://trailroutine.com');
+    });
+
     it('accepts an allowed Referer when Origin is absent', async () => {
         const response = await request('/https/example.com/', {
             origin: null,
@@ -131,6 +138,8 @@ describe('own hosts', () => {
         '/https/762b3e5f.nakarte-routing.pages.dev/tiles/E40_N40.rd5',
         '/https/nakarte-elevation.nakarte-routing.workers.dev/tiles/0/0/0',
         '/http/nakarte-tracks.nakarte-routing.workers.dev/track/x',
+        '/https/trailroutine.com/tiles/E40_N40.rd5',
+        '/https/www.trailroutine.com/',
     ]) {
         it(`answers 403 to ${path}`, async () => {
             const response = await request(path);
@@ -143,6 +152,7 @@ describe('own hosts', () => {
     it('still proxies hosts that only look similar', async () => {
         const response = await request('/https/nakarte-routing.pages.dev.example.com/');
         expect(response.status).toBe(200);
+        expect((await request('/https/trailroutine.com.example.com/')).status).toBe(200);
     });
 });
 

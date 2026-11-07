@@ -16,7 +16,7 @@ const READ_METHODS = ['GET', 'HEAD'];
 // получает меньший лимит.
 const LAYER_HOSTS = [/^content-[a-z]\.strava\.com$/u, 'maptiles.website.yandexcloud.net', TRACESTRACK_HOST];
 // Свои адреса клона: Worker'ы аккаунта и так отвечают на подзапрос error 1042, а Pages — нет.
-const OWN_HOSTS = [/(^|\.)nakarte-routing\.workers\.dev$/u, /(^|\.)nakarte-routing\.pages\.dev$/u];
+const OWN_HOSTS = [/(^|\.)nakarte-routing\.workers\.dev$/u, /(^|\.)nakarte-routing\.pages\.dev$/u, /(^|\.)trailroutine\.com$/u];
 // На эти ответы CloudFront на тайл с куками прокси пробует анонимный тайл: куки протухли или не приняты.
 const STRAVA_REJECTED = [401, 403];
 // Длина окна `[[ratelimits]]` в wrangler.toml.
