@@ -29,7 +29,7 @@
 - Поиск по названиям: mapy.cz через свой прокси (главный) и photon.komoot.io напрямую как запасной (публичный инстанс Komoot, без ключа и без гарантий). Лягут оба — не работает поиск по названиям; поиск по координатам и ссылкам работает без них.
 - Тайловые слои: OSM, OpenTopoMap, CyclOSM, Waymarked Trails, Thunderforest (без ключа; с 2026-10-11 на тайлах водяной знак «API Key Required», владелец оставил как есть), Bing, Google, ESRI, национальные (swisstopo, Kartverket, Lantmäteriet, IGN и др.), слои через прокси (Strava, `Mt`). Ломаются по одному, слой просто пустеет; так же было у автора. Массовой проверки слоёв нет — кандидат: workflow, который раз в неделю запрашивает по тайлу каждого слоя.
 - Sentry (трекер ошибок браузера, change `add-error-tracking`): план Developer — 5 тыс. ошибок в месяц, 1 пользователь, история 30 дней ([sentry.io/pricing](https://sentry.io/pricing/), 2026-10-30); одна массовая ошибка выберет лимит, остальные отчёты Sentry отбросит до конца месяца. DSN публичен (он в бандле): кто угодно может слать в проект мусор — защита только фильтрами и Allowed Domains проекта.
-- OpenFreeMap (подложка по умолчанию `Of` с change `openfreemap-default-basemap`): публичный инстанс без лимитов и без SLA, сервис могут закрыть без уведомления ([условия](https://openfreemap.org/tos/)). При сбое — откат на Tracestrack Topo, чья квота кончится за дни долгого простоя, дальше OSM. Сигнала владельцу о сбое нет: откат — не ошибка для Sentry. Ежедневная проверка `Of` (TileJSON и тайл) по образцу `tracestrack check` — не сделана.
+- OpenFreeMap (подложка по умолчанию `Of` с change `openfreemap-default-basemap`): публичный инстанс без лимитов и без SLA, сервис могут закрыть без уведомления ([условия](https://openfreemap.org/tos/)). При сбое — откат на Tracestrack Topo, чья квота кончится за дни долгого простоя, дальше OSM. Откат — не ошибка для Sentry, поэтому сигнал о сбое даёт ежедневная проверка `Of` (TileJSON и тайл) — workflow `openfreemap check`, при сбое GitHub шлёт письмо.
 
 ## Отложено
 
@@ -84,7 +84,7 @@
 
 ## Сопровождение
 
-- Расписания GitHub выключает в публичном репо после 60 дней без активности: это синхронизация тайлов, `strava heatmap check`, `tracestrack check` и `prod check`. Ошибки клиента видит Sentry (архив `add-error-tracking`).
+- Расписания GitHub выключает в публичном репо после 60 дней без активности: это синхронизация тайлов, `strava heatmap check`, `tracestrack check`, `openfreemap check` и `prod check`. Ошибки клиента видит Sentry (архив `add-error-tracking`).
 - Год мозаики Sentinel-2 — константа `SENTINEL_YEAR` в `web/src/layers/catalog.ts`. Новая мозаика — слой `s2cloudless-<год>_3857` в Capabilities: `curl -s https://tiles.maps.eox.at/wmts/1.0.0/WMTSCapabilities.xml | grep -o 's2cloudless-[0-9]*_3857' | sort -u | tail -1`. Тогда поднять год, год в образце адреса и подписи тестов (`catalog.test.ts`, `App.browser.test.tsx`).
 - Мелочи хранилищ: у объектов `nakarte-tracks` есть время записи (`customMetadata.created`, с `limit-track-writes`), но нет версии `nktk`.
 - Безопасность после security-аудита (цены и формулы — `openspec/research/security-audit.md`, «Итог»):
