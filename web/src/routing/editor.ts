@@ -39,6 +39,8 @@ export interface RouteEditor {
     shortcut(from: LinePlace, to: LinePlace): boolean;
     // Reverse of the segment from the menu: the line back to front together with the markup
     reverse(): void;
+    // a straight leg goes to the router with the activity, without a history step, as a response does (the seam of Join)
+    routeLeg(index: number, activity: string): void;
     undo(): void;
     redo(): void;
     canUndo(): boolean;
@@ -288,6 +290,15 @@ export function createRouteEditor(initial: RouteLine, options: RouteEditorOption
             }
             edit(renewPending(line, next));
             return true;
+        },
+
+        routeLeg(index, activity) {
+            if (line.legs[index]?.state !== 'straight') {
+                return;
+            }
+            const legs = line.legs.slice();
+            legs[index] = pendingLeg(activity);
+            setLine({ waypoints: line.waypoints, legs });
         },
 
         reverse() {

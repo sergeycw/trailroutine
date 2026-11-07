@@ -8,14 +8,41 @@ import { distanceAt, gridValues, indexAtDistance, pointAt, SLOPE_CLASSES, slopeC
 // sample points above a fill of the sections in the color of the slope step (design slope-profile), the scale on the
 // left, the cursor and the selection on top. The X axis is the distance, not the point index: at the segment ends the
 // sample step is shorter. Mouse: a move sets the cursor, a press with a move makes a selection, a click removes the
-// selection, a double click moves the map to this point, the wheel zooms 1–10× (the scroll is native). A finger
-// moves the cursor, without selection and zoom.
+// selection, a double click moves the map to this point, the wheel zooms 1–10× (the scroll is native). Finger (change
+// profile-touch-gestures): a move sets the cursor, a long press and a move make a selection, a tap removes the
+// selection, two fingers zoom 1–10× and scroll (the graph is touch-action: none, so the app scrolls it itself).
 
 const PAD_TOP = 8;
 const PAD_BOTTOM = 4;
 const MAX_ZOOM = 10;
 // the mouse move after which a press is a selection, not a click
 const DRAG_THRESHOLD = 3;
+// the long press that starts a finger selection: the same 500 ms as the long press of MapLibre (contextmenu on touch)
+const LONG_PRESS_MS = 500;
+// the finger move after which a press is not a long press and not a tap
+const TOUCH_SLOP = 8;
+// the smallest distance between two fingers in the zoom formula: fingers one above the other would divide by zero
+const MIN_PINCH = 20;
+
+// the gesture of one finger: where it went down and whether it moved, the long press timer, the selection mode
+interface Press {
+    x: number;
+    index: number;
+    moved: boolean;
+    selecting: boolean;
+    timer?: ReturnType<typeof setTimeout>;
+}
+
+interface Touches {
+    // the fingers on the graph: pointerId → clientX
+    points: Map<number, number>;
+    press: Press | null;
+    // the two-finger zoom: the distance between the fingers and the zoom at the start, and the point of the graph
+    // between the fingers as a fraction of its width
+    pinch: { distance: number; zoom: number; ratio: number } | null;
+    // a second finger came: the fingers that stay do nothing until all fingers are up
+    ended: boolean;
+}
 
 interface Size {
     width: number;
@@ -122,6 +149,7 @@ export function ProfileGraph({ data }: { data: ProfileData }) {
     // the scroll after a zoom: the point below the mouse stays in place (onSvgMouseWheel of the old client)
     const pendingScroll = useRef<number | null>(null);
     const drag = useRef<{ start: number; x: number; moved: boolean } | null>(null);
+    const touches = useRef<Touches>({ points: new Map(), press: null, pinch: null, ended: false });
 
     const width = Math.max(frame.width * zoom, 1);
     const height = frame.height;
@@ -179,26 +207,31 @@ export function ProfileGraph({ data }: { data: ProfileData }) {
         return () => scroller.removeEventListener('wheel', onWheel);
     }, []);
 
+    useEffect(() => () => clearTimeout(touches.current.press?.timer), []);
+
     const state = () => store.getState();
 
     function onPointerDown(event: ReactPointerEvent) {
-        const index = indexAt(event.clientX);
         if (event.pointerType !== 'mouse') {
-            state().setProfileCursor(index);
+            onTouchDown(event);
             return;
         }
         if (event.button !== 0) {
             return;
         }
         event.currentTarget.setPointerCapture?.(event.pointerId);
-        drag.current = { start: index, x: event.clientX, moved: false };
+        drag.current = { start: indexAt(event.clientX), x: event.clientX, moved: false };
     }
 
     function onPointerMove(event: ReactPointerEvent) {
+        if (event.pointerType !== 'mouse') {
+            onTouchMove(event);
+            return;
+        }
         const index = indexAt(event.clientX);
         state().setProfileCursor(index);
         const current = drag.current;
-        if (!current || event.pointerType !== 'mouse') {
+        if (!current) {
             return;
         }
         if (!current.moved && Math.abs(event.clientX - current.x) > DRAG_THRESHOLD) {
@@ -210,15 +243,137 @@ export function ProfileGraph({ data }: { data: ProfileData }) {
     }
 
     function onPointerUp(event: ReactPointerEvent) {
-        const current = drag.current;
-        drag.current = null;
-        if (!current || event.pointerType !== 'mouse') {
+        if (event.pointerType !== 'mouse') {
+            onTouchUp(event);
             return;
         }
+        const current = drag.current;
+        drag.current = null;
         // a click without a move removes the selection (onSvgClick of the old client)
-        if (!current.moved) {
+        if (current && !current.moved) {
             state().setProfileSelection(null);
         }
+    }
+
+    function onPointerCancel(event: ReactPointerEvent) {
+        drag.current = null;
+        const touch = touches.current;
+        touch.points.delete(event.pointerId);
+        clearTimeout(touch.press?.timer);
+        touch.press = null;
+        touch.pinch = null;
+        touch.ended = touch.points.size > 0;
+    }
+
+    function onTouchDown(event: ReactPointerEvent) {
+        const touch = touches.current;
+        touch.points.set(event.pointerId, event.clientX);
+        if (touch.points.size === 1) {
+            const index = indexAt(event.clientX);
+            state().setProfileCursor(index);
+            const press: Press = { x: event.clientX, index, moved: false, selecting: false };
+            // at the end of the long press the selection is the press point: the panel shows Selection at once
+            press.timer = setTimeout(() => {
+                press.selecting = true;
+                state().setProfileSelection([index, index]);
+            }, LONG_PRESS_MS);
+            touch.ended = false;
+            touch.press = press;
+            return;
+        }
+        clearTimeout(touch.press?.timer);
+        touch.press = null;
+        touch.ended = true;
+        if (touch.points.size === 2) {
+            startPinch();
+        }
+    }
+
+    function onTouchMove(event: ReactPointerEvent) {
+        const touch = touches.current;
+        // a pen above the screen moves without a press: only the cursor
+        if (!touch.points.has(event.pointerId)) {
+            state().setProfileCursor(indexAt(event.clientX));
+            return;
+        }
+        touch.points.set(event.pointerId, event.clientX);
+        if (touch.pinch) {
+            movePinch();
+            return;
+        }
+        const press = touch.press;
+        if (!press || touch.ended) {
+            return;
+        }
+        if (!press.moved && Math.abs(event.clientX - press.x) > TOUCH_SLOP) {
+            press.moved = true;
+            clearTimeout(press.timer);
+        }
+        const index = indexAt(event.clientX);
+        state().setProfileCursor(index);
+        if (press.selecting) {
+            state().setProfileSelection([Math.min(press.index, index), Math.max(press.index, index)]);
+        }
+    }
+
+    function onTouchUp(event: ReactPointerEvent) {
+        const touch = touches.current;
+        if (!touch.points.delete(event.pointerId)) {
+            return;
+        }
+        if (touch.pinch) {
+            touch.pinch = null;
+            if (touch.points.size >= 2) {
+                startPinch();
+            }
+            return;
+        }
+        const press = touch.press;
+        touch.press = null;
+        clearTimeout(press?.timer);
+        // a tap and a long press without a move remove the selection, as a click of the mouse
+        if (press && !touch.ended && !press.moved) {
+            state().setProfileSelection(null);
+        }
+    }
+
+    // the first two fingers on the graph: their horizontal distance and their middle
+    function fingers() {
+        const [a, b] = [...touches.current.points.values()];
+        return { distance: Math.max(Math.abs(a - b), MIN_PINCH), middle: (a + b) / 2 };
+    }
+
+    function startPinch() {
+        const scroller = scrollRef.current;
+        if (!scroller) {
+            return;
+        }
+        const { distance, middle } = fingers();
+        const offset = middle - scroller.getBoundingClientRect().left;
+        const scrollLeft = pendingScroll.current ?? scroller.scrollLeft;
+        const zoom = zoomRef.current;
+        touches.current.pinch = { distance, zoom, ratio: (scrollLeft + offset) / (scroller.clientWidth * zoom) };
+    }
+
+    // the zoom follows the distance between the fingers, and the scroll keeps the point of the graph from the start
+    // of the pinch between the fingers: so a move of both fingers scrolls the graph
+    function movePinch() {
+        const scroller = scrollRef.current;
+        const pinch = touches.current.pinch;
+        if (!scroller || !pinch) {
+            return;
+        }
+        const { distance, middle } = fingers();
+        const next = Math.min(Math.max((pinch.zoom * distance) / pinch.distance, 1), MAX_ZOOM);
+        const offset = middle - scroller.getBoundingClientRect().left;
+        const scroll = Math.max(pinch.ratio * scroller.clientWidth * next - offset, 0);
+        if (next === zoomRef.current) {
+            scroller.scrollLeft = scroll;
+            return;
+        }
+        pendingScroll.current = scroll;
+        zoomRef.current = next;
+        setZoom(next);
     }
 
     function onPointerLeave(event: ReactPointerEvent) {
@@ -252,14 +407,18 @@ export function ProfileGraph({ data }: { data: ProfileData }) {
                         the old client; the profile numbers are available as text in the summary */}
                     <div
                         ref={contentRef}
-                        className="relative h-full touch-none select-none"
+                        className="relative h-full touch-none select-none [-webkit-touch-callout:none]"
                         style={{ width }}
                         data-testid="profile-graph"
                         onPointerDown={onPointerDown}
                         onPointerMove={onPointerMove}
                         onPointerUp={onPointerUp}
-                        onPointerCancel={() => {
-                            drag.current = null;
+                        onPointerCancel={onPointerCancel}
+                        // the long press of a finger: no context menu of the browser over the graph
+                        onContextMenu={(event) => {
+                            if (touches.current.points.size > 0) {
+                                event.preventDefault();
+                            }
                         }}
                         onPointerLeave={onPointerLeave}
                         onDoubleClick={onDoubleClick}

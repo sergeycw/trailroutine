@@ -16,6 +16,12 @@ env:
   WRANGLER: wrangler@4.148.0
   # sentry-cli for the source maps (design add-error-tracking): an exact version for the same reason
   SENTRY_CLI: '@sentry/cli@3.8.2'
+  # the BRouter image of the engine files (brouter.jar and the profiles with lookups.dat) is pinned by digest: the tag
+  # nightly moves, and a new jar or lookups.dat would reach production without a review, possibly out of step with the
+  # tiles in R2 (backlog, «Отложено»). This digest of nightly has the same brouter.jar as production on 2026-11-07.
+  # To update: docker buildx imagetools inspect ghcr.io/abrensch/brouter:nightly, put the new index digest here, and
+  # check that scripts/brouter-tiles-sync.mjs still accepts lookups.dat of brouter.de.
+  BROUTER_IMAGE: ghcr.io/abrensch/brouter@sha256:9374d48c68e83b6ba6f6dded50ff8a76de27193329df0faa9f6666d25affba0e
 
 permissions:
   contents: read
@@ -183,7 +189,7 @@ jobs:
           npm test
       - name: build brouter engine files
         run: |
-          docker create --name brouter ghcr.io/abrensch/brouter:nightly
+          docker create --name brouter "$BROUTER_IMAGE"
           BROUTER_CONTAINER=brouter sh experiments/wasm/cheerpj/build.sh
       # The app web/ goes to the root of build/ (openspec/specs/web-client, design switch-to-web-app); its build puts
       # the engine files from experiments/wasm/cheerpj/ there too (plugin engineFiles). Vitest and e2e as in

@@ -215,7 +215,7 @@ describe('Разрез отрезка', () => {
 
 describe('Склейка отрезков', () => {
     test('Склеить с отрезком другого трека', async () => {
-        const { map } = await render(`${VIEW}&nktk=${link('Zigzag', [Z])}/${link('Other', [OTHER])}`);
+        const { map, router } = await render(`${VIEW}&nktk=${link('Zigzag', [Z])}/${link('Other', [OTHER])}`);
         await expect.element(rows()).toHaveLength(2);
         await click(map, Z[4]);
         await expect.element(editPanel()).toBeVisible();
@@ -233,9 +233,29 @@ describe('Склейка отрезков', () => {
         expect(near(waypoints(map)[5], OTHER[2])).toBe(true);
         expect(near(waypoints(map)[7], OTHER[0])).toBe(true);
         await expect.element(rows()).toHaveLength(2);
+        // the seam C–E goes to the router with the current activity; the joined parts were straight lines
+        await expect.poll(() => router.calls.length).toBe(1);
+        expect(near(router.calls[0].from, Z[4]) && near(router.calls[0].to, OTHER[2])).toBe(true);
+        expect(router.calls[0].activity.id).toBe('hiking');
         // the choice is over (Cancel changed to the check mark), the edit continues without drawing
         await expect.element(page.getByRole('button', { name: 'Finish editing' })).toBeVisible();
         await expect.element(editPanel()).not.toHaveAttribute('data-drawing');
+    });
+
+    test('Стык без прокладки', async () => {
+        const { map, router } = await render(`${VIEW}&nktk=${link('Zigzag', [Z])}/${link('Other', [OTHER])}`);
+        await click(map, Z[4]);
+        await expect.element(editPanel()).toBeVisible();
+        await editPanel()
+            .getByRole('button', { name: /^Routing/ })
+            .click();
+        await page.getByRole('menuitemradio', { name: 'Off: straight lines' }).click();
+        await rightClick(map, Z[4]);
+        await chooseFromMenu('Join');
+        await click(map, P((OTHER[1].lat + OTHER[2].lat) / 2, (OTHER[1].lng + OTHER[2].lng) / 2));
+        await expect.poll(() => waypoints(map)).toHaveLength(8);
+        expect(router.calls).toHaveLength(0);
+        expect(states(map)).not.toContain('pending');
     });
 
     test('Склеить отрезки одного трека', async () => {
@@ -297,7 +317,8 @@ describe('Склейка отрезков: отмена', () => {
         await chooseFromMenu('Join');
         await click(map, D);
         await expect.poll(() => waypoints(map)).toHaveLength(5);
-        expect(states(map)).toEqual(['routed', 'routed', 'straight', 'routed']);
+        // the seam C–D is routed with the current activity at once
+        await expect.poll(() => states(map)).toEqual(['routed', 'routed', 'routed', 'routed']);
     });
 });
 

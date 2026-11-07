@@ -7,7 +7,7 @@ import { useTrackActions } from '@/tracks/actions-context';
 import { isCoordinatesQuery } from './coordinates';
 import { isLinkQuery } from './links';
 import { isTrackLinkResult, type SearchItem } from './result';
-import { type Attribution, MIN_QUERY_LENGTH, type SearchSources, search } from './search';
+import { type Attribution, MIN_QUERY_LENGTH, SEARCH_HINT, type SearchSources, search } from './search';
 
 // The search bar in its own glass capsule in the top bar (TopBar.tsx, design layout-three-zones; earlier design
 // add-web-search-panoramas, «Где живёт строка поиска»): the results are a list under the bar while the focus is
@@ -136,7 +136,11 @@ export function SearchBox({ sources }: { sources: SearchSources }) {
 
     const results = shown.kind === 'results' ? shown.results : [];
     const tooShort = query.trim().length > 0 && query.trim().length < MIN_QUERY_LENGTH;
-    const open = active && (results.length > 0 || shown.kind === 'error' || shown.kind === 'loading' || tooShort);
+    // an empty bar in focus explains what it understands: a touch screen does not show the title of the bar
+    // (spec map-search, «Строка поиска»)
+    const hint = query.trim().length === 0;
+    const open =
+        active && (hint || results.length > 0 || shown.kind === 'error' || shown.kind === 'loading' || tooShort);
 
     function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
         if (event.key === 'Escape') {
@@ -222,6 +226,7 @@ export function SearchBox({ sources }: { sources: SearchSources }) {
             </div>
             {open && (
                 <div className="glass -left-1 absolute top-full z-20 mt-2.5 flex max-h-72 w-[min(26rem,calc(100vw-1.5rem))] flex-col gap-1 overflow-y-auto rounded-xl p-2 text-sm">
+                    {hint && <p className="text-muted-foreground text-xs">{SEARCH_HINT}</p>}
                     {tooShort && <p className="text-muted-foreground">Type at least {MIN_QUERY_LENGTH} characters</p>}
                     {!tooShort && shown.kind === 'loading' && (
                         <LoaderCircleIcon

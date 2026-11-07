@@ -268,7 +268,8 @@ describe('Клик при рисовании', () => {
         const { map } = await render(VIEW, fakeRouter(), 'hiking');
         await newTrack(map, [A, B]);
         await expect.element(badge()).toBeInTheDocument();
-        expect(map.getCanvas().style.cursor).toBe('crosshair');
+        expect(map.getCanvas().style.cursor).toContain('data:image/svg+xml');
+        expect(map.getCanvas().style.cursor).toContain('crosshair');
     });
 
     test('резинка от последней точки к курсору', async () => {
@@ -473,6 +474,35 @@ describe('Перетаскивание опорной точки', () => {
         expect(near(fromMoved.from, moved) && near(fromMoved.to, C)).toBe(true);
     });
 
+    test('Route preview during a drag', async () => {
+        const { map, router } = await render(VIEW, fakeRouter({ auto: true }), 'hiking');
+        await newTrack(map, [A, B, C]);
+        pressEscape();
+        const routed = router.calls.length;
+        const moved = P(41.6915, 44.783);
+        fire(map, 'mousemove', B);
+        fire(map, 'mousedown', B);
+        fire(map, 'mousemove', moved);
+        // the pointer rests: both neighbour legs are routed for the preview, the line itself is not
+        await expect.poll(() => router.previews.length, { timeout: 3000 }).toBe(2);
+        const [toMoved, fromMoved] = router.previews;
+        expect(near(toMoved.from, A) && near(toMoved.to, moved)).toBe(true);
+        expect(near(fromMoved.from, moved) && near(fromMoved.to, C)).toBe(true);
+        expect(router.calls.length).toBe(routed);
+        // the preview draws the routed legs: the bend of the fake router is a third point of each line
+        await expect
+            .poll(() =>
+                features<LineString>(map, EDIT_PREVIEW)
+                    .filter((f) => f.geometry.type === 'LineString')
+                    .map((f) => f.geometry.coordinates.length),
+            )
+            .toEqual([3, 3]);
+        fire(map, 'mouseup', moved);
+        fire(map, 'click', moved);
+        await expect.poll(() => router.calls.length).toBe(routed + 2);
+        expect(router.previews).toHaveLength(2);
+    });
+
     test('ответ роутера во время перетаскивания его не отменяет', async () => {
         const { map, router } = await render(VIEW, fakeRouter(), 'hiking');
         await newTrack(map, [A, B, C]);
@@ -664,6 +694,35 @@ describe('Меню активностей', () => {
         router.setStatus('ready');
         // The engine is ready
         await expect.element(page.getByRole('button', { name: 'Routing: Hiking', exact: true })).toBeVisible();
+    });
+
+    test('Option applies to the next leg', async () => {
+        const { map, router } = await render(VIEW, fakeRouter({ auto: true }), 'hiking');
+        await page.getByRole('button', { name: /^Routing/ }).click();
+        await page.getByRole('menuitemcheckbox', { name: 'Avoid climbs' }).click();
+        await page.getByRole('menuitemcheckbox', { name: 'Allow steps' }).click();
+        await page.getByRole('menuitem', { name: 'Max difficulty: T3' }).click();
+        await page.getByRole('menuitemradio', { name: 'T5 · demanding alpine hiking' }).click();
+        await expect.element(page.getByRole('menuitem', { name: /^Max difficulty/ })).not.toBeInTheDocument();
+        await newTrack(map, [A, B]);
+        await expect.poll(() => router.calls.length).toBeGreaterThan(0);
+        expect(router.calls[0].activity.params).toEqual([
+            ['SAC_scale_limit', 5],
+            ['consider_elevation', 1],
+            ['allow_steps', 0],
+        ]);
+        expect(JSON.parse(localStorage.getItem('nakarte-web:hiking-options') ?? '')).toEqual({
+            sacLimit: 5,
+            avoidClimbs: true,
+            allowSteps: false,
+        });
+    });
+
+    test('Options only for hiking', async () => {
+        await render(VIEW, fakeRouter({ auto: true }), 'gravel');
+        await page.getByRole('button', { name: /^Routing/ }).click();
+        await expect.element(page.getByRole('menuitemradio', { name: 'Gravel bike' })).toBeChecked();
+        await expect.element(page.getByRole('menuitemcheckbox', { name: 'Avoid climbs' })).not.toBeInTheDocument();
     });
 
     test('Движок в браузере не запустился', async () => {

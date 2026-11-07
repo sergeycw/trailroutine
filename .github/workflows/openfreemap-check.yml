@@ -1,0 +1,60 @@
+name: openfreemap check
+
+# Once a day checks the default basemap OpenFreeMap Outdoor (layer Of, design openfreemap-default-basemap): the public
+# instance tiles.openfreemap.org has no SLA. When it fails, the app falls back to Tracestrack Topo and then to
+# OpenStreetMap; the fallback is not an error for Sentry, so without this check the owner gets no signal.
+# The check reads the TileJSON as the app does, takes its tile template and asks one vector tile of Tbilisi (z12).
+# A red run sends an email. Actions run on a schedule only from the default branch; after 60 days without activity
+# GitHub disables the schedule of a public repository.
+
+on:
+  schedule:
+    - cron: '47 5 * * *'
+  workflow_dispatch:
+
+jobs:
+  check:
+    if: github.repository == 'sergeycw/trailroutine'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: OpenFreeMap TileJSON and one tile
+        run: |
+          # the same TileJSON address as OPENFREEMAP_TILEJSON in web/src/layers/catalog.ts
+          tilejson='https://tiles.openfreemap.org/planet'
+          fetch() {
+            for _ in 1 2 3; do
+              if curl -sS --max-time 30 -o "$2" -D "$3" -H 'Origin: https://trailroutine.com' "$1"; then
+                return 0
+              fi
+              sleep 10
+            done
+            return 1
+          }
+          check() {
+            status=$(head -1 "$2" | tr -d '\r' | cut -d' ' -f2)
+            acao=$(grep -i '^access-control-allow-origin:' "$2" | tr -d '\r' | cut -d' ' -f2)
+            echo "$1: status $status, access-control-allow-origin $acao"
+            # the browser needs CORS on every answer: without it MapLibre gets no tile
+            if [ "$status" != 200 ] || [ -z "$acao" ]; then
+              echo "::error::$1 is not available (status $status, access-control-allow-origin '$acao')"
+              exit 1
+            fi
+          }
+          fetch "$tilejson" tilejson.json tilejson.headers || { echo '::error::TileJSON did not answer'; exit 1; }
+          check TileJSON tilejson.headers
+          template=$(jq -r '.tiles[0] // empty' tilejson.json)
+          if [ -z "$template" ]; then
+            echo '::error::TileJSON has no tile template'
+            exit 1
+          fi
+          tile=$(printf '%s' "$template" | sed 's/{z}/12/;s/{x}/2557/;s/{y}/1514/')
+          fetch "$tile" tile.pbf tile.headers || { echo '::error::tile did not answer'; exit 1; }
+          check tile tile.headers
+          size=$(wc -c < tile.pbf)
+          echo "tile size $size bytes"
+          # a tile of a city is kilobytes; an empty tile is what the address without the build version gives
+          if [ "$size" -lt 1000 ]; then
+            echo "::error::tile is almost empty ($size bytes)"
+            exit 1
+          fi

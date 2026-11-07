@@ -263,12 +263,12 @@ Cut SHALL делить отрезок трека на два: в выбранн�
 
 ### Requirement: Склейка отрезков
 
-Join у крайней опорной точки SHALL включать выбор на карте: от этого конца к курсору тянется линия, а над линией другого видимого отрезка она SHALL прилипать к его ближнему концу. Клик по такой линии SHALL приклеивать тот отрезок ближним концом к выбранному концу прямым отрезком; отрезок того же трека SHALL исчезать, другой трек SHALL оставаться как был. Escape, Enter или клик мимо линий SHALL отменять выбор. Склеенная линия SHALL оставаться в редактировании и сохранять разметку обеих частей.
+Join у крайней опорной точки SHALL включать выбор на карте: линия от этого конца к курсору SHALL прилипать к ближнему концу другого видимого отрезка под курсором. Клик по такой линии SHALL приклеивать тот отрезок ближним концом к выбранному концу, стык — прокладывать текущей активностью; отрезок того же трека SHALL исчезать, другой трек — оставаться. Escape, Enter или клик мимо линий SHALL отменять выбор. Склеенная линия SHALL оставаться в редактировании и сохранять разметку обеих частей.
 
 #### Scenario: Склеить с отрезком другого трека
 
 - **WHEN** пользователь выбирает Join у конца C линии A–B–C и кликает по линии другого трека D–E рядом с E
-- **THEN** редактируемая линия — A–B–C–E–D, C–E — прямой отрезок, трек D–E не изменился
+- **THEN** редактируемая линия — A–B–C–E–D, стык C–E прокладывается текущей активностью, трек D–E не изменился
 
 #### Scenario: Склеить отрезки одного трека
 
@@ -284,6 +284,11 @@ Join у крайней опорной точки SHALL включать выбо
 
 - **WHEN** пользователь выбрал Join и нажал Escape
 - **THEN** линия от конца к курсору исчезает, треки не изменились
+
+#### Scenario: Стык без прокладки
+
+- **WHEN** прокладка выключена и пользователь склеивает отрезки
+- **THEN** стык — прямой отрезок, запросов к роутеру нет
 
 ### Requirement: Срез участка
 
@@ -526,3 +531,12 @@ Delete segment SHALL удалять редактируемый отрезок и
 
 - **WHEN** роутер прокладывает соседний отрезок, пока пользователь тянет эту опорную точку
 - **THEN** после отпускания точка стоит там, где её отпустили, и оба соседних отрезка прокладываются заново
+
+### Requirement: Route preview during a drag
+
+When the pointer rests for 300 ms during a drag of a waypoint, the app SHALL route the neighbour legs to the current point with the current activity and options and SHALL show them in the drag preview. A new move SHALL cancel these requests and show straight lines until the next pause. The preview routes SHALL NOT change the line or its history. With routing off or on an error, the preview SHALL stay straight.
+
+#### Scenario: Route preview during a drag
+
+- **WHEN** the user drags the middle waypoint of a routed line and keeps the pointer still
+- **THEN** the two neighbour legs are routed to the pointer and the preview draws them; the line gets no new routes until the drop, and the drop routes the two legs as before
