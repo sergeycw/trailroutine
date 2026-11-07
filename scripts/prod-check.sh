@@ -12,7 +12,7 @@ OLD_SITE=${OLD_SITE:-https://nakarte-routing.pages.dev}
 ELEVATION=${ELEVATION:-https://nakarte-elevation.nakarte-routing.workers.dev}
 TRACKS=${TRACKS:-https://nakarte-tracks.nakarte-routing.workers.dev}
 PROXY=${PROXY:-https://nakarte-cors-proxy.nakarte-routing.workers.dev}
-# Tbilisi: the test area from AGENTS.md
+# Tbilisi: the area of the tests and the engine bench (web/src/bench/engine-bench.ts), BRouter tile E40_N40
 POINT='41.687 44.776'
 
 failed=0

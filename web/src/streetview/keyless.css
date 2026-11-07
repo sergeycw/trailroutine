@@ -9,9 +9,9 @@ inversion would spoil the panorama.
 This is a bypass of the Google limits for the mode without a key. The owner decided this for a personal
 non-commercial clone (openspec/changes/archive/*-hide-street-view-dev-overlay/design.md). The selectors
 depend on the Google markup and can break when Google updates it.
-A copy of src/lib/leaflet.control.panoramas/lib/google/keyless.css of the old client for the new app
-(design add-web-search-panoramas, «Maps JavaScript API и ключ»); a change of one is a change of both while the
-old client lives.
+The rules came from src/lib/leaflet.control.panoramas/lib/google/keyless.css of the old client
+(design add-web-search-panoramas, «Maps JavaScript API и ключ»). The old client is deleted
+(change switch-to-web-app), so this file is the only copy.
 */
 
 /* a second inversion on the scene root cancels the inversion of the canvas */

@@ -25,8 +25,8 @@ export default defineConfig({
         chunkSizeWarningLimit: 1200,
         // the licenses of the bundle dependencies in one file /licenses.md: BSD-3 (MapLibre, maplibre-contour) requires
         // the copyright and the license text for distribution in built form, and the minifier drops the license
-        // comments (design add-contour-lines, «Risks»). A name in the root, not the default .vite/license.md, gives a
-        // short address in production
+        // comments (design add-contour-lines, «Risks / Trade-offs»). A name in the root, not the default
+        // .vite/license.md, gives a short address in production
         license: { fileName: 'licenses.md' },
         // the engine bench deploys next to the app (/engine-bench.html) for checks in production
         // (design spike-engine-in-worker); no links go to it, the CheerpJ runtime loads only when you open it

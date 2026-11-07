@@ -1,7 +1,8 @@
 //! Main adapter: a Cloudflare Worker (`workers-rs`) over the R2 bucket `DEM` (`nakarte-elevation`).
 //!
-//! The Cache API has no use here: it does not work on `*.workers.dev`, and the clone has no own
-//! domain. Thus the headers and the compressed chunks are cached in the isolate memory
+//! The Cache API has no use here: it does not work on `*.workers.dev`, and the Worker has only
+//! the address `*.nakarte-routing.workers.dev`, without an own domain. Thus the headers and the
+//! compressed chunks are cached in the isolate memory
 //! (`ByteCache`), the isolate lives between requests and gives frequently used areas without
 //! requests to R2.
 

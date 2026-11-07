@@ -133,16 +133,16 @@ export function routePending(route: SegmentRoute | null | undefined): boolean {
     return route?.legs.some((leg) => leg.state === 'pending') ?? false;
 }
 
-// Does the router wait for at least one leg of at least one track: the cursor over the map and the top row spinners. By
-// tracks, not by the editor: Finish editing and Escape do not cancel the request (design drop-route-spinner and
-// editor-routing-indicator)
+// Does the router wait for at least one leg of at least one track: the badge at the mouse pointer over the map
+// (RoutingBadgeOnMap.tsx) and the thread RouteThread.tsx on the routing button and on Tracks. By tracks, not by the
+// editor: Finish editing and Escape do not cancel the request (design drop-route-spinner and editor-routing-indicator)
 export function tracksRouting(tracks: readonly { routes?: readonly (SegmentRoute | null)[] }[]): boolean {
     return tracks.some((track) => track.routes?.some(routePending));
 }
 
 // Markup without live requests: a pending leg becomes unrouted. A track copy and a reversed track are new segment
 // arrays, the editor does not recognize them, and the response to the old request will not come to them: without this,
-// the copy would keep a gap and a spinner forever.
+// the copy would keep a gap and the routing wait (tracksRouting) forever.
 export function settledRoute(route: SegmentRoute | null | undefined): SegmentRoute | null {
     if (!route) {
         return null;

@@ -364,8 +364,9 @@ describe('Действия со списком', () => {
         await expect.poll(() => points(map)).toHaveLength(2);
     });
 
-    // the New button is in the top row, it does not see the link field of the list: the name from that field, as in
-    // the old client, is gone (design polish-web-ui, «Макет 4a»)
+    // the New track button is in the top row, and the list has no link field (design search-track-links): the new
+    // track always gets the name "New track", the old client took the name from that field (design polish-web-ui,
+    // «Макет 4a»)
     test('новый трек: New track и сразу рисование', async () => {
         await renderApp(tiles);
         await page.getByRole('button', { name: 'New track' }).click();

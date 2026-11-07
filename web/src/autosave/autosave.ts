@@ -7,8 +7,8 @@ import { fromSaved, type SavedSet, toSaved } from './saved';
 // storage on each change of tracks in the store, and restores them at the start. No timer: a write starts at once,
 // and while it is in progress, the changes collect as a "dirty" flag and go as one write of the last state after it.
 // So a series of edits gives not more than one write per commit, and a single edit does not wait for a debounce
-// window in which a reload can occur. A write on pagehide during a reload can fail to finish (AGENTS.md), so flush is
-// only a backup.
+// window in which a reload can occur. A write on pagehide during a reload can fail to finish, so flush is only a
+// backup.
 
 export interface AutosaveStorage {
     // the record as it is, or undefined if there is no record; an error means the storage is not available

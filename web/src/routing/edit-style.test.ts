@@ -6,8 +6,8 @@ import { segmentPieces, TRACK_LINES, TRACK_UNROUTED, trackSources } from '@/trac
 import { EDIT_LEGS, EDIT_WAYPOINTS, editSources, previewData } from './edit-style';
 import { type RouteLine, toSegment } from './line';
 
-// Drawing of the route markup (specs route-editing «Разрыв со спиннером на ожидающем отрезке» and routing
-// «Ошибка прокладки»): which line parts are drawn, where the dashes and the spinners are.
+// Drawing of the route markup (specs route-editing «Разрыв на ожидающем отрезке» and routing «Ошибка прокладки»):
+// which line parts are drawn, where the dashes and the gaps are.
 
 const P = (lat: number, lng: number) => ({ lat, lng });
 const A = P(1, 1);

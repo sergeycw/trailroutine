@@ -31,8 +31,8 @@ export interface ProfileSamples {
 
 // Points at an equal step from the start of each segment, and always the segment end (in pathRegularSamples of the
 // old client, a tail shorter than the step was lost). The code skips segments of zero length. Points between the
-// vertices are linear in latitude and longitude, as in the old client: the step is 10–100 m, and the projection
-// distortion on it is very small.
+// vertices are linear in latitude and longitude, as in the old client: the step is 10–50 m (more only on a track longer
+// than ~500 km, samplingInterval), and the projection distortion on it is very small.
 export function sampleSegments(segments: readonly (readonly LatLng[])[], step?: number): ProfileSamples {
     const lengths = segments.map(segmentLength);
     const total = lengths.reduce((sum, value) => sum + value, 0);

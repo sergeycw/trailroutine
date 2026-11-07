@@ -8,7 +8,7 @@ import { createEngine } from '@/engine/engine';
 // runs=<number of routes>. The result is JSON in <pre> and window.__bench.
 // A MessageChannel ping measures the block: in a background tab rAF does not tick (AGENTS.md, CheerpJ).
 
-// The test area of AGENTS.md: Tbilisi, from ~41.687, 44.776 to the Mtatsminda TV tower, tile E40_N40.
+// The test area of the tests and the bench: Tbilisi, from ~41.687, 44.776 to the Mtatsminda TV tower, tile E40_N40.
 const DEFAULT_QUERY =
     'lonlats=44.776000,41.687000|44.751500,41.694700&profile=hiking-mountain&alternativeidx=0&format=geojson';
 // a task longer than 50 ms is a long task by the definition of the Long Tasks API

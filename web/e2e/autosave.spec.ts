@@ -188,7 +188,9 @@ function legacySessionIds(page: Page) {
 }
 
 test('Сессия старого клиента', async ({ page }) => {
-    // first visit without sessions: no own record appears, the database sessions is not created
+    // first visit without sessions: no own record appears (else the reload below does not import the session), and
+    // the database sessions is not created (else writeLegacySessions finds version 1 without the object store and
+    // does not finish)
     await page.goto(VIEW);
     await expect(page.locator('.maplibregl-canvas')).toBeVisible();
     await writeLegacySessions(page, [{ sessionId: 'old', mtime: Date.now(), tracks: MTATSMINDA }]);

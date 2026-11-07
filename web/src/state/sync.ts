@@ -109,8 +109,9 @@ export function bindAppStore(
         return found;
     }
 
-    // l= has the user selection, not the fallback basemap (design add-outdoor-basemap): a reload tries Tracestrack
-    // again, and a link from the address bar gives the selection, not a temporary replacement
+    // l= has the user selection, not the fallback basemap (design add-outdoor-basemap): a reload tries the selected
+    // basemap again (by default OpenFreeMap Outdoor), and a link from the address bar gives the selection, not a
+    // temporary replacement
     function layersParam() {
         const state = store.getState();
         return formatLayersParam(savedSelection(state), state.layers);

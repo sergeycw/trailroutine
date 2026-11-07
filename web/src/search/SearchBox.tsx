@@ -9,10 +9,11 @@ import { isLinkQuery } from './links';
 import { isTrackLinkResult, type SearchItem } from './result';
 import { type Attribution, MIN_QUERY_LENGTH, type SearchSources, search } from './search';
 
-// The search bar in the panel with the name (design add-web-search-panoramas, «Где живёт строка поиска»): the results
-// are a list under the bar while the focus is inside; the keys are SearchViewModel.onKeyDown of the old client. Search
-// providers run after an input pause, coordinates and links at once. An answer to an outdated request is dropped (the
-// request number), the previous request is cancelled.
+// The search bar in its own glass capsule in the top bar (TopBar.tsx, design layout-three-zones; earlier design
+// add-web-search-panoramas, «Где живёт строка поиска»): the results are a list under the bar while the focus is
+// inside; the keys are SearchViewModel.onKeyDown of the old client. Search providers run after an input pause,
+// coordinates and links at once. An answer to an outdated request is dropped (the request number), the previous
+// request is cancelled.
 
 const TYPING_DELAY_MS = 400;
 

@@ -5,8 +5,9 @@ import { enginePaths } from './cheerpj-router';
 
 // The BRouter engine in the browser (spec browser-routing-engine). A singleton outside React: CheerpJ gives one library
 // thread per page, and Strict Mode in dev calls effects two times, so a component does not create the engine.
-// Components get only promises: startEngine() is the warm-up when an activity is selected, routeInEngine() is a route
-// in the queue. Until somebody calls them, the runtime does not load.
+// App passes getEngine to the router (routing/router.ts): its warmUp() calls start() when an activity is selected or
+// is already selected at the page load, and a route goes to route() in the queue. Until the first getEngine() call,
+// the runtime does not load.
 
 export type EngineStatus = 'idle' | 'loading' | 'ready' | 'failed';
 

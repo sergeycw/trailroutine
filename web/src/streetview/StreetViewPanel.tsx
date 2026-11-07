@@ -8,7 +8,7 @@ import { useStreetView } from './context';
 import { UNAVAILABLE_MESSAGE } from './controller';
 
 // The panorama panel (design add-web-search-panoramas, «Панель панорамы»): at the bottom, full width, above the
-// elevation profile (--profile-inset). The editor and point panels, the attribution and the toasts are above it by
+// elevation profile (--profile-inset). The profile button, the attribution and the toasts are above it by
 // --bottom-inset (App). The panel creates the window at the first open, and the window lives while the mode is on:
 // close hides the panel, and turn-off of the mode removes the panel together with the window.
 

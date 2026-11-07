@@ -43,7 +43,7 @@ export interface RouteEditor {
     redo(): void;
     canUndo(): boolean;
     canRedo(): boolean;
-    // how many legs wait for a route (the «wait» cursor)
+    // how many legs wait for a route; only editor.test.ts reads it (the wait indicator reads tracksRouting in line.ts)
     pending(): number;
     // the edit number: it grows on each edit, undo and redo, but not on a router response. A response also moves a
     // waypoint (a spur at a turn, spur.ts), so the MapEditor gesture checks by the number, not by the point, whether

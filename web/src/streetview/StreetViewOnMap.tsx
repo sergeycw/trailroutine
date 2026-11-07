@@ -29,8 +29,8 @@ export function StreetViewOnMap() {
         const padY = bottom * 0.05;
         const inside = point.x > padX && point.x < canvas.width - padX && point.y > padY && point.y < bottom - padY;
         if (!inside) {
-            // the center of the visible part, not of the full map: an offset down by half of the band that the
-            // panels cover
+            // the center of the visible part, not of the full map: a negative offset puts the point up from the map
+            // center by half of the band that the panels cover
             map.easeTo({ center: [lng, lat], offset: [0, (bottom - canvas.height) / 2] });
         }
     }, [map, lat, lng]);

@@ -16,8 +16,8 @@ import { type LatLng, type Track, trackColor } from './model';
 //
 // A line feature is a piece of one track segment (the track id and the segment index are in the properties: a click
 // starts editing by them).
-// Route markup cuts a segment into pieces (design add-web-route-editor, «Отрисовка»): a pending leg is a gap with a
-// spinner in the middle, an unrouted leg is a red dashed line in the tracks-unrouted layer instead of the track line.
+// Route markup cuts a segment into pieces (design add-web-route-editor, «Отрисовка»): a pending leg is a gap without a
+// marker, an unrouted leg is a red dashed line in the tracks-unrouted layer instead of the track line.
 // The editor draws the segment in editing (routing/edit-style.ts), it is not here.
 
 export const TRACK_LINES = 'tracks';
@@ -68,8 +68,8 @@ export function segmentPieces(points: readonly LatLng[], route: SegmentRoute | n
         if (!a || !b) {
             return;
         }
-        // a pending leg is a gap without a marker: the cursor shows the wait (spec route-editing,
-        // «Разрыв на ожидающем отрезке»)
+        // a pending leg is a gap without a marker: the badge at the mouse pointer shows the wait
+        // (routing/RoutingBadgeOnMap.tsx, spec route-editing, «Разрыв на ожидающем отрезке»)
         if (leg.state === 'pending' || leg.state === 'failed') {
             flush();
             if (leg.state === 'failed') {

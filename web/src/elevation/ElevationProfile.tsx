@@ -13,10 +13,11 @@ import { type ProfileStats, profileStats, SLOPE_CLASSES, SLOPE_STEPS } from './p
 
 // The elevation profile panel (design add-web-elevation-profile, «Где живёт профиль»): full width at the bottom, the
 // height is PROFILE_HEIGHT; the profile button, the attribution and the toasts go above it by --bottom-inset (App).
-// At the top: the name, the summary in one line (it scrolls on a narrow screen) and the close control; below: the
-// graph.
+// On a narrow screen: the name, under it the summary in one line (it scrolls), and the graph below them; on a wide
+// screen, the name and the summary are a column on the left of the graph. The panel has no close button: the profile
+// button (MapActions) closes it.
 
-// in a low window (a phone in landscape), not more than a third of the window: otherwise the button column on the
+// in a low window (a phone in landscape), not more than 35% of the window height: otherwise the button column on the
 // right does not fit above the profile
 export const PROFILE_HEIGHT = 'min(12rem, 35dvh)';
 

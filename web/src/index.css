@@ -58,8 +58,9 @@
    dark */
 :root {
     color-scheme: light;
-    /* the height of the bottom panels (elevation profile and panorama): the editor panels, the map attribution and
-       the toasts go above them; App sets it. --profile-inset is only the profile: the panorama goes above it */
+    /* the height of the bottom panels (elevation profile and panorama): the profile button, the map attribution and
+       the toasts go above them, the top bar limits its height by it; App sets it. --profile-inset is only the
+       profile: the panorama goes above it */
     --bottom-inset: 0px;
     --profile-inset: 0px;
     /* the space for the elevation profile button at the bottom center while the button exists: the expanded

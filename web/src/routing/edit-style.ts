@@ -8,7 +8,7 @@ import { legPath } from './line';
 // The edited line on the map (design add-web-route-editor, «Отрисовка»): the sources are always in the style (empty
 // without editing), so that the layer order is stable. The look is as in the old editor (edit_line.css): a thin opaque
 // line in the track color, waypoints are white circles with a dark outline, the start is green, the end is red; the
-// white outline under the line is as on tracks (design map-chrome). A pending leg is not drawn (a gap with a spinner),
+// white outline under the line is as on tracks (design map-chrome). A pending leg is not drawn (a gap without a marker),
 // an unrouted leg has the same dashes with an outline as tracks.
 //
 // The preview (the rubber band while drawing, the dragged point with straight lines to its neighbors) changes on each

@@ -1,8 +1,9 @@
 name: elevation data
 
 # Manual repack of the viewfinderpanoramas HGT 3″ into the R2 bucket `nakarte-elevation`
-# (workers/elevation/scripts/elevation-data.sh). The upload goes through the R2 S3 API with a token with the permission
-# Object Read & Write on this bucket (secrets R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY);
+# (workers/elevation/scripts/elevation-data.sh). The upload goes through the R2 S3 API with the Account API token
+# "nakarte-elevation data upload": Bucket Item Write on `nakarte-elevation` and `nakarte-tiles`
+# (secrets R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY);
 # the script skips the degrees that are already in the bucket, so you can restart an interrupted run.
 
 on:

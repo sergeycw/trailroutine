@@ -294,7 +294,7 @@ describe('Ошибка прокладки', () => {
         const { map, router } = await render(VIEW, fakeRouter(), 'hiking');
         await newTrack(map, [A, B]);
         router.live()[0].reject(new RoutingError('no route found'));
-        // a marked straight line between the waypoints, a notice with the reason, the cursor does not wait any more
+        // a marked straight line between the waypoints, a notice with the reason, no wait badge at the pointer
         await expect.element(page.getByText('Routing failed: no route found')).toBeVisible();
         await expect.poll(() => legs(map).map((f) => f.properties?.unrouted)).toEqual([true]);
         await expect.element(badge()).not.toBeInTheDocument();

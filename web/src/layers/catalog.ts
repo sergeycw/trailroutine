@@ -1,9 +1,9 @@
 import type { RasterDEMSourceSpecification, RasterSourceSpecification, VectorSourceSpecification } from 'maplibre-gl';
 
-// The catalog of raster layers of the new app: the data of the old src/layers.js, converted to MapLibre sources
-// (design add-web-map-layers, «Каталог»). No Yandex (Y, S: EPSG:3395), Wikimapia (W) and the Ng grid: owner decisions
-// (record-new-ui-decisions). The module has no app imports: e2e (Node) imports it too, to know which tiles to replace
-// with the fixture.
+// The catalog of raster and vector layers of the new app: the data of the old src/layers.js, converted to MapLibre
+// sources (design add-web-map-layers, «Каталог»), and the new layers (for example Of and Ct). No Yandex (Y, S:
+// EPSG:3395), Wikimapia (W) and the Ng grid: owner decisions (record-new-ui-decisions). The module has no app imports:
+// e2e (Node) imports it too, to know which tiles to replace with the fixture.
 //
 // Conversion of the Leaflet options: the MapLibre map zoom is 1 less than the Leaflet zoom, the tile numbers are the
 // same. So maxNativeZoom goes to the source maxzoom as is (without it, 18: the old map did not go above maxZoom 18),
@@ -274,10 +274,11 @@ function definitions(env: CatalogEnv): Def[] {
             group: 'Default layers',
             isOverlay: false,
             isDefault: true,
-            // the default basemap (design add-outdoor-basemap). Only through the proxy: the API key is a secret of the
-            // proxy Worker, the client address does not have it (workers/cors-proxy/src/tracestrack.js). The address
-            // and maxZoom 19 are as in the openstreetmap.org layer; the label language is tracestrackMap; {ratio} is
-            // @2x on screens from 2x, with the same quota credit
+            // the second basemap of the fallback chain Of → Tt → O (BASEMAP_FALLBACKS in selection.ts, design
+            // openfreemap-default-basemap). Only through the proxy: the API key is a secret of the proxy Worker, the
+            // client address does not have it (workers/cors-proxy/src/tracestrack.js, design add-outdoor-basemap). The
+            // address and maxZoom 19 are as in the openstreetmap.org layer; the label language is tracestrackMap;
+            // {ratio} is @2x on screens from 2x, with the same quota credit
             source: raster(
                 [
                     viaCorsProxy(

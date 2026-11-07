@@ -209,11 +209,6 @@ interface Network {
 // o<…>.ingest.de.sentry.io. The deploy build has the real DSN, check-web has the fake o0: the stub accepts both
 const SENTRY_INGEST = /^o\d+\.ingest\.(?:[a-z]+\.)?sentry\.io$/;
 
-// Test network: localhost as is, the track storage in memory, the elevation service a stub, the proxy given answers,
-// the tiles of the catalog layers and of the custom layer a fixture with CORS (or an error), all else is aborted and
-// fails the test at the end. Thus e2e does not go to the providers and services, and catches extra external requests.
-// auto: a Playwright fixture is lazy, and a test that does not ask for network in its arguments would else run without
-// interception, into the real network (this was so before 2026-10-09 for tests of the form `async ({ page }) =>`)
 // The track list in the app is closed until the button Tracks (mockup 4a, design polish-web-ui), but the e2e of the
 // list and the editor need it open: after each goto and reload of an app page the fixture opens it. A page without the
 // app (engine bench, redirect) does not get the button, then the fixture does nothing.
@@ -258,6 +253,13 @@ export const test = base.extend<{ network: Network; tracksOpen: boolean }>({
         };
         await use(page);
     },
+    // Test network: localhost as is, the track storage in memory, the elevation service a stub, the proxy given
+    // answers, the tiles of the catalog layers and of the custom layer a fixture with CORS (or an error), all else is
+    // aborted and fails the test at the end. Thus e2e does not go to the providers and services, and catches extra
+    // external requests.
+    // auto: a Playwright fixture is lazy, and a test that does not ask for network in its arguments would else run
+    // without interception, into the real network (this was so before 2026-10-09 for tests of the form
+    // `async ({ page }) =>`)
     network: [
         async ({ context }, use) => {
             const failing = new Set<string>();

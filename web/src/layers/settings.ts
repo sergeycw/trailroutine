@@ -2,8 +2,10 @@ import type { LayerDef } from './catalog';
 import { isCustomLayerCode, parseCustomLayerCode, serializeCustomLayer } from './custom';
 import { quickGroupOf } from './quick-layers';
 
-// Layer settings of the new app in localStorage. An own key: the origin is shared with the old client, and the app
-// only reads its leafletLayersSettings, one time, while there are no own settings (design, «Настройки»).
+// Layer settings of the new app in localStorage, under an own key. leafletLayersSettings of the old client is legacy
+// data: browsers that opened the old client keep it, and the move copies it to trailroutine.com (MOVED_SETTINGS in
+// move/payload.ts). The app only reads it, one time, while there are no own settings (design add-web-map-layers,
+// «Настройки»).
 
 export const STORAGE_KEY = 'nakarte-web:layers';
 export const LEGACY_STORAGE_KEY = 'leafletLayersSettings';

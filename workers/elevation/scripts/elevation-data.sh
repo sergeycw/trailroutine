@@ -32,7 +32,7 @@ LEVEL="${LEVEL:-9}"
 FORCE="${FORCE:-0}"
 
 if [ "$#" -eq 0 ]; then
-    sed -n '2,23p' "$0"
+    sed -n '2,21p' "$0"
     exit 2
 fi
 

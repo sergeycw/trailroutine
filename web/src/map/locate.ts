@@ -2,8 +2,9 @@ import type { LatLng } from '@/tracks/model';
 
 // The last position of the user (design add-web-search-panoramas, «Геолокация»): moveMapToCurrentLocation of the old
 // client (src/lib/leaflet.control.locate/index.js). It is written on each received position and erased on an access
-// denial. An own key; without it, the key of the old client is read (the same origin), and the code does not touch it:
-// a forgotten position is written as null, so a fallback to the old key does not bring it back.
+// denial. An own key; without it, the legacy key of the old client is read (the move copies it to trailroutine.com,
+// MOVED_SETTINGS in move/payload.ts), and the code does not touch it: a forgotten position is written as null, so a
+// fallback to the old key does not bring it back.
 
 export const POSITION_KEY = 'nakarte-web:position';
 export const LEGACY_POSITION_KEY = 'leaflet_locate_position';

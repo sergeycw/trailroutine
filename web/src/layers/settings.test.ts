@@ -36,7 +36,7 @@ describe('Настройки старого клиента', () => {
         expect(settings).not.toHaveProperty('hotkeys');
         expect(settings.custom).toEqual([OLD_CUSTOM]);
         expect(isListed(layer('Co'), settings)).toBe(false);
-        // the old key stays untouched: the old client lives on the same origin
+        // the old key stays untouched: it is legacy data of the old client, and the app only reads it
         expect(storage.getItem(LEGACY_STORAGE_KEY)).toBe(JSON.stringify(legacy));
     });
 

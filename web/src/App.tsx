@@ -92,8 +92,9 @@ interface AppProps {
 }
 
 // The height of the bottom panels is in CSS variables on <html>: the panorama goes above the elevation profile
-// (--profile-inset), and the editor panels, the map attribution and the toasts go above both (--bottom-inset), and
-// Base UI renders the toasts into a portal outside <main>
+// (--profile-inset); the profile button, the map attribution and the toasts go above both (--bottom-inset), and the
+// top bar with the editor panels (TopBar.tsx) limits its height by it. The variables are on <html>, because Base UI
+// renders the toasts into a portal outside <main>
 function BottomInset() {
     const profile = useAppStore((state) => state.profile !== null);
     const panorama = useAppStore((state) => state.streetView.enabled && state.streetView.pano !== null);

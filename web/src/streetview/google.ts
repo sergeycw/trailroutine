@@ -8,8 +8,9 @@ import './keyless.css';
 // per page and only on demand. The address is as in the old client (v=3&key=), plus the documented callback. An
 // empty key means the mode without a key: a class of the window container turns on the rules of keyless.css.
 
-// Our own part of the API types instead of @types/google.maps: the code needs five methods (Street View reference,
-// 2026-10-09). StreetViewPov has no zoom: the window zoom uses getZoom/setZoom (the old client read pov.zoom).
+// Our own part of the API types instead of @types/google.maps: the code needs only the classes and methods below
+// (Street View reference, 2026-10-09). StreetViewPov has no zoom: the window zoom uses getZoom/setZoom (the old
+// client read pov.zoom).
 interface GLatLng {
     lat(): number;
     lng(): number;

@@ -15,7 +15,6 @@ function tileOf(lat: number, lng: number, zoom: number) {
     return `${zoom}/${x}/${y}`;
 }
 
-// the tiles of the default basemap go through the clone proxy, without a key (spec map-layers, «Слои через прокси»)
 // the vector tiles of the default basemap in the fixture network (e2e/fixtures.ts)
 const OPENFREEMAP_TILES = 'https://tiles.openfreemap.org/planet/fixture/';
 

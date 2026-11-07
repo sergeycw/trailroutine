@@ -1,12 +1,13 @@
 version: 2
-# The file came from the upstream, where Dependabot updated the root npm. In the fork, it updates only our own parts:
-# the workflows of the fork and the services in workers/. The root dependencies belong to the upstream, their bumps
-# would make the diff with the author larger, so there is no block for "/". In the fork, enable version updates manually
-# (Settings → Advanced Security → Dependabot version updates), this file alone is not sufficient.
+# The file came from the upstream (wladich/nakarte). Dependabot updates the workflows in .github/workflows/ and the
+# npm and cargo dependencies of the services in workers/ that are listed below. The repo is not a fork since
+# 2026-11-07 (it left the fork network). While it was a fork, version updates needed a manual switch
+# (Settings → Advanced Security → Dependabot version updates): this file alone was not sufficient.
 updates:
   - package-ecosystem: github-actions
     directory: "/"
-    # main.yml is the workflow of the upstream (`check`), do not change it
+    # main.yml was the upstream workflow `check`; the change switch-to-web-app deleted it, so this exclusion has no
+    # effect
     exclude-paths:
       - ".github/workflows/main.yml"
     schedule:

@@ -20,7 +20,8 @@ export interface TrackData {
     // index in TRACK_COLORS or a custom '#rrggbb'; without it, the next palette color in a cycle
     color?: TrackColor;
     hidden?: boolean;
-    // distance ticks on the line; the ruler draws them (change 8), here the flag only survives links
+    // distance ticks on the line: ticks.ts draws them, the item "Show distance marks" of the track menu (TrackList.tsx)
+    // switches them, a ruler track (Measure distance in TopBar.tsx) has them on; links and autosave keep the flag
     measureTicksShown?: boolean;
     // route markup by segment (routing/line.ts): routes[i] is for segments[i], null is a plain polyline. The nktk
     // link (the route field of a segment) and autosave keep it, and GPX/KML files do not (design add-web-autosave).

@@ -8,7 +8,7 @@ The points are in 10 quarter degrees (one 301×301 chunk for each); the script p
 list for `elevation-repack --only` to stderr: the thinned `dem3/*` are built from these chunks.
 The seed is fixed, thus a repeated run gives the same points; the answers of the author are live.
 The line format of reference.txt: `<lat> <lng> <answer of the author>`; coordinates with 6 digits,
-as the client sends them (`src/lib/elevations/index.js`).
+as the client sends them (`web/src/elevation/api.ts`).
 """
 
 import random

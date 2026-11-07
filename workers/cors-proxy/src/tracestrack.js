@@ -1,5 +1,6 @@
-// Tiles of Tracestrack Topo, the default basemap of the app (layer Tt in web/src/layers/catalog.ts). The API key is the
-// Worker secret TRACESTRACK_KEY: it is not in the bundle and not in the client address (design add-outdoor-basemap).
+// Tiles of Tracestrack Topo, the second basemap of the fallback chain Of → Tt → OSM (layer Tt in
+// web/src/layers/catalog.ts). The API key is the Worker secret TRACESTRACK_KEY: it is not in the bundle and not in the
+// client address (design add-outdoor-basemap).
 
 export const TRACESTRACK_HOST = 'tile.tracestrack.com';
 
