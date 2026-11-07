@@ -199,7 +199,7 @@ jobs:
         working-directory: web
         run: |
           npm ci
-          npx playwright install --with-deps chromium webkit
+          npx playwright install --with-deps chromium
       - name: web test
         working-directory: web
         run: npm test
@@ -223,7 +223,9 @@ jobs:
         run: npx --yes $SENTRY_CLI sourcemaps inject build/assets
       - name: web e2e
         working-directory: web
-        run: npm run e2e
+        # only Chromium: the deploy runs on Linux (docker for the engine files), and the Linux WebKit does not open the
+        # Base UI menus; the project ipad-webkit runs in check-web.yml on macOS before the merge
+        run: npm run e2e -- --project=chromium
       # The Sentry token goes only to this step: a Vite plugin would upload the maps from the build, where the
       # dependency code runs (design add-error-tracking, «Карты исходников»). Without the token the step skips the
       # upload; a failed upload (Sentry failure, no SENTRY_ORG) does not stop the deploy: the stack in Sentry has no

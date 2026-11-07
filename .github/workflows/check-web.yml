@@ -19,7 +19,10 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # macOS: the WebKit of Playwright on macOS is the engine of Safari, and the project ipad-webkit passes there as on
+    # the Mac of the owner. The Linux WebKit (WPE/GTK) with the iPad user agent does not open the Base UI menus at all
+    # (2026-11-07, PR 210): a difference of that build, not of Safari. macOS runners are free for a public repository
+    runs-on: macos-latest
     defaults:
       run:
         working-directory: web
