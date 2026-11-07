@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { parseRedirects, resolveRedirect } from '../vite/redirects.ts';
 import { expect, openTracks, test } from './fixtures.ts';
 
@@ -254,6 +254,11 @@ test('Ошибка подложки OpenFreeMap', async ({ page, network }) => {
 test.describe('в тёмной теме системы', () => {
     test.use({ colorScheme: 'dark' });
 
+    // light glass: semi-transparent white, or opaque white with prefers-reduced-transparency (the macOS runner of
+    // check-web.yml reports it, index.css, utility glass)
+    const LIGHT_GLASS = /^oklch\(1 0 0( \/ 0\.74)?\)$/;
+    const background = (locator: Locator) => locator.evaluate((element) => getComputedStyle(element).backgroundColor);
+
     test('Тёмная тема системы', async ({ page, network }) => {
         // the toast of the default basemap fallback: any toast is sufficient for the theme check
         network.failTiles('Of');
@@ -261,13 +266,13 @@ test.describe('в тёмной теме системы', () => {
         // the glass of the search bar, the toast and the layers button is light (--glass in index.css), not dark
         const panel = page.getByTestId('search-bar');
         await expect(panel).toBeVisible();
-        await expect(panel).toHaveCSS('background-color', 'oklch(1 0 0 / 0.74)');
+        await expect.poll(() => background(panel)).toMatch(LIGHT_GLASS);
         await expect(page.locator('html')).toHaveCSS('color-scheme', 'light');
         const toast = page.locator('[data-slot="toast"]');
         await expect(toast).toBeVisible();
-        await expect(toast).toHaveCSS('background-color', 'oklch(1 0 0 / 0.74)');
+        await expect.poll(() => background(toast)).toMatch(LIGHT_GLASS);
         // the system theme does not turn on the dark: classes of shadcn components (@custom-variant dark in index.css)
-        await expect(page.getByTestId('layers-button')).toHaveCSS('background-color', 'oklch(1 0 0 / 0.74)');
+        await expect.poll(() => background(page.getByTestId('layers-button'))).toMatch(LIGHT_GLASS);
     });
 });
 
