@@ -4,7 +4,7 @@ import { App, localStorageOrNull } from './App';
 import { indexedDbStorage } from './autosave/idb';
 import { legacySessionSource } from './autosave/legacy-session';
 import { config } from './config';
-import { rootErrorHandler, startErrorTracking } from './errors/tracking';
+import { rootErrorHandler, startErrorTracking, stopReportingOnLeave } from './errors/tracking';
 import { moveIn } from './move/move-in';
 import { moveOut } from './move/move-out';
 import './index.css';
@@ -29,6 +29,7 @@ async function start() {
         fetch,
     });
     if (target) {
+        stopReportingOnLeave();
         window.location.replace(target);
         return;
     }

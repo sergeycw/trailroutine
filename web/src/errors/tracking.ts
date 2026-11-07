@@ -9,6 +9,20 @@ import { keepBreadcrumb, scrubEvent } from './scrub';
 const DROPPED_INTEGRATIONS = new Set(['BrowserSession', 'CultureContext']);
 
 let started = false;
+// the page is leaving (a navigation, a reload, the move to the new domain): Safari and Firefox then abort the loads in
+// flight, and the aborted import() of MapLibre or the engine start come as errors. These are not errors of the app,
+// so the tracker drops every report after the leave begins (spec clone-monitoring, «No reports after the page
+// leaves»; change quiet-reports-on-leave)
+let leaving = false;
+
+export function stopReportingOnLeave(): void {
+    leaving = true;
+}
+
+// beforeSend: the scrub of the report, and nothing after the leave
+export function beforeSend(event: Sentry.ErrorEvent): Sentry.ErrorEvent | null {
+    return leaving ? null : scrubEvent(event);
+}
 // the engine backends with a failure report that is already sent: the engine restarts on each route request, and
 // otherwise one broken browser would use up the monthly limit with repeated reports
 const reportedBackends = new Set<string>();
@@ -49,9 +63,14 @@ export function startErrorTracking(dsn: string, origin = window.location.origin)
             databaseQueryData: false,
             queues: false,
         },
-        beforeSend: scrubEvent,
+        beforeSend,
         beforeBreadcrumb: keepBreadcrumb,
     });
+    // beforeunload comes at the start of a navigation or a reload, pagehide when the page goes away (Safari on iOS does
+    // not always send beforeunload)
+    // (the unit tests run in Node without window)
+    globalThis.addEventListener?.('beforeunload', stopReportingOnLeave);
+    globalThis.addEventListener?.('pagehide', stopReportingOnLeave);
     started = true;
     return true;
 }
