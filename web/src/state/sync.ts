@@ -3,6 +3,7 @@ import { DATE_PARAM, parseDateParam } from '@/layers/dated';
 import { formatLayersParam, parseLayersParam } from '@/layers/selection';
 import { loadSettings, saveSettings } from '@/layers/settings';
 import { loadActivity } from '@/routing/activity';
+import { loadHikingOptions } from '@/routing/options';
 import { formatPlacemark, PLACEMARK_PARAM, type Placemark, parsePlacemark } from '@/search/placemark';
 import {
     formatStreetView,
@@ -50,6 +51,7 @@ export function startAppStore({ catalog, corsProxyUrl, defaultView, hash, storag
         view: parseView(params.get('m')) ?? defaultView,
         imageryDate: parseDateParam(params.get(DATE_PARAM)),
         routingActivity: loadActivity(storage),
+        hikingOptions: loadHikingOptions(storage),
         placemark: parsePlacemark(params.get(PLACEMARK_PARAM)),
         streetView: parseStreetView(params.get(STREET_VIEW_PARAM), params.get(LEGACY_STREET_VIEW_PARAM)),
     });

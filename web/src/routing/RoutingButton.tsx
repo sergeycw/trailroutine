@@ -3,6 +3,7 @@ import { useSyncExternalStore } from 'react';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
+    DropdownMenuCheckboxItem,
     DropdownMenuContent,
     DropdownMenuGroup,
     DropdownMenuItem,
@@ -10,6 +11,9 @@ import {
     DropdownMenuRadioGroup,
     DropdownMenuRadioItem,
     DropdownMenuSeparator,
+    DropdownMenuSub,
+    DropdownMenuSubContent,
+    DropdownMenuSubTrigger,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
@@ -17,6 +21,7 @@ import { useAppStore } from '@/state/context';
 import { ACTIVITIES, getActivity } from './brouter';
 import { useRouteEditing } from './editing-context';
 import { tracksRouting } from './line';
+import { HIKING_PROFILE, SAC_LEVELS } from './options';
 import { RouteThread } from './RouteThread';
 import { routerDownHint, routerDownStatus } from './router';
 
@@ -33,6 +38,7 @@ const OFF = 'off';
 export function RoutingButton({ labeled = false }: { labeled?: boolean }) {
     const editing = useRouteEditing();
     const activityId = useAppStore((state) => state.routingActivity);
+    const hiking = useAppStore((state) => state.hikingOptions);
     const reachable = useAppStore((state) => state.routerReachable);
     const engineStatus = useSyncExternalStore(editing.subscribeEngine, editing.engineStatus);
     // the wait belongs to the leg, not to the activity: a request sent before the choice of Off still runs
@@ -110,6 +116,48 @@ export function RoutingButton({ labeled = false }: { labeled?: boolean }) {
                         ))}
                     </DropdownMenuRadioGroup>
                 </DropdownMenuGroup>
+                {/* options of a hiking activity: they apply to the legs routed next (spec routing, «Hiking options») */}
+                {activity?.profile === HIKING_PROFILE && (
+                    <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuGroup>
+                            <DropdownMenuLabel>Hiking</DropdownMenuLabel>
+                            <DropdownMenuSub>
+                                <DropdownMenuSubTrigger>Max difficulty: T{hiking.sacLimit}</DropdownMenuSubTrigger>
+                                <DropdownMenuSubContent className="w-auto">
+                                    <DropdownMenuRadioGroup
+                                        value={hiking.sacLimit}
+                                        onValueChange={(value) =>
+                                            editing.setHikingOptions({ ...hiking, sacLimit: Number(value) })
+                                        }
+                                    >
+                                        {SAC_LEVELS.map((level) => (
+                                            <DropdownMenuRadioItem key={level.value} value={level.value} closeOnClick>
+                                                {level.title}
+                                            </DropdownMenuRadioItem>
+                                        ))}
+                                    </DropdownMenuRadioGroup>
+                                </DropdownMenuSubContent>
+                            </DropdownMenuSub>
+                            <DropdownMenuCheckboxItem
+                                checked={hiking.avoidClimbs}
+                                onCheckedChange={(checked) =>
+                                    editing.setHikingOptions({ ...hiking, avoidClimbs: checked === true })
+                                }
+                            >
+                                Avoid climbs
+                            </DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem
+                                checked={hiking.allowSteps}
+                                onCheckedChange={(checked) =>
+                                    editing.setHikingOptions({ ...hiking, allowSteps: checked === true })
+                                }
+                            >
+                                Allow steps
+                            </DropdownMenuCheckboxItem>
+                        </DropdownMenuGroup>
+                    </>
+                )}
                 {/* Undo and Redo hotkeys: in the button titles, not in the menu (design editor-row-cleanup) */}
                 {down && (
                     <>
