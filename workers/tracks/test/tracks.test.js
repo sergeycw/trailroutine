@@ -131,6 +131,16 @@ describe('link body', () => {
         expect(created).toBeGreaterThanOrEqual(before - 1000);
         expect(created).toBeLessThanOrEqual(Date.now() + 1000);
     });
+
+    it('stores the nktk versions of the body in custom metadata', async () => {
+        // a real version 4 string (the track Mtatsminda of the web e2e) and a version 3 head: bytes 0x43 0x00 0x00
+        const v4 = 'RAoCEAESNgoKTXRhdHNtaW5kYRIQCgbele0B0gMSBorn_gHzAhoWCICZ7QEQluT-ARoKGghUViB0b3dlcg==';
+        const v3 = 'QwAA';
+        const body = `${v4}/${v3}/${v4}`;
+        await postTrack(clientKey(body), body);
+        const object = await env.TRACKS.head(`tracks/${clientKey(body)}`);
+        expect(object.customMetadata.nktk).toBe('3,4');
+    });
 });
 
 describe('GET /track/{key}', () => {

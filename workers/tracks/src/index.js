@@ -79,6 +79,30 @@ async function readLimited(request, limit) {
     return bytes;
 }
 
+// The nktk versions of the link body, as a sorted list «4» or «3,4» for customMetadata.nktk: a migration of the format
+// finds the old objects by a listing, without reading the bodies (spec track-storage, «Время записи»). The version is
+// the first packed number of each string: its first byte minus 64 (web/src/tracks/nktk.ts, PackedReader); the
+// versions 0–4 fit one byte. An unreadable string is skipped.
+export function nktkVersions(text) {
+    const versions = new Set();
+    for (const item of text.split('/')) {
+        try {
+            const head = atob(item.slice(0, 4).replace(/-/gu, '+').replace(/_/gu, '/'));
+            const first = head.charCodeAt(0);
+            if (first < 128) {
+                versions.add(first - 64);
+            }
+        } catch {
+            // not base64: no version
+        }
+    }
+    return [...versions].sort((a, b) => a - b).join(',');
+}
+
+function trackMetadata(text, extra = {}) {
+    return {created: new Date().toISOString(), nktk: nktkVersions(text), ...extra};
+}
+
 async function saveTrack(request, env, origin, key) {
     const bytes = await readLimited(request, MAX_TRACK_BYTES);
     if (!bytes) {
@@ -94,7 +118,7 @@ async function saveTrack(request, env, origin, key) {
     const objectKey = `tracks/${key}`;
     if (!(await env.TRACKS.head(objectKey))) {
         // the write time: after an abuse, a listing finds the objects of a time window without reading the bodies
-        await env.TRACKS.put(objectKey, bytes, {customMetadata: {created: new Date().toISOString()}});
+        await env.TRACKS.put(objectKey, bytes, {customMetadata: trackMetadata(text)});
     }
     return respond(origin, 200);
 }
@@ -150,7 +174,7 @@ async function loadTrack(env, origin, key) {
         return respond(origin, 502, 'Track storage of nakarte.me is not available');
     }
     await env.TRACKS.put(objectKey, copied, {
-        customMetadata: {created: new Date().toISOString(), source: 'nakarte.me'},
+        customMetadata: trackMetadata(new TextDecoder().decode(copied), {source: 'nakarte.me'}),
     });
     return respond(origin, 200, copied, TRACK_HEADERS);
 }
