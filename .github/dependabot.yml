@@ -1,15 +1,10 @@
 version: 2
-# The file came from the upstream (wladich/nakarte). Dependabot updates the workflows in .github/workflows/ and the
-# npm and cargo dependencies of the services in workers/ that are listed below. The repo is not a fork since
-# 2026-11-07 (it left the fork network). While it was a fork, version updates needed a manual switch
-# (Settings → Advanced Security → Dependabot version updates): this file alone was not sufficient.
+# Dependabot updates the workflows, the npm dependencies of the app (web/), of the services in workers/ and of the root
+# lint (Biome), and the cargo dependencies of workers/elevation. Version updates also need the switch in
+# Settings → Advanced Security → Dependabot version updates: this file alone is not sufficient.
 updates:
   - package-ecosystem: github-actions
     directory: "/"
-    # main.yml was the upstream workflow `check`; the change switch-to-web-app deleted it, so this exclusion has no
-    # effect
-    exclude-paths:
-      - ".github/workflows/main.yml"
     schedule:
       interval: weekly
     groups:
@@ -17,10 +12,15 @@ updates:
         patterns: ["*"]
 
   - package-ecosystem: npm
+    # all the services in workers/ and the root lint: one weekly PR (the agent's decision 2026-11-07, backlog item
+    # «Dependabot»)
     directories:
+      - "/"
       - "/workers/tracks"
       - "/workers/elevation"
       - "/workers/cors-proxy"
+      - "/workers/guard"
+      - "/workers/tiles"
     schedule:
       interval: weekly
     ignore:
@@ -31,6 +31,16 @@ updates:
     groups:
       workers-npm:
         patterns: ["*"]
+
+  # the app: a separate block, because it uses vitest 5 and the workers keep vitest 4. Minor and patch updates go as
+  # one weekly PR; a major update gets its own PR, so a break shows on its own
+  - package-ecosystem: npm
+    directory: "/web"
+    schedule:
+      interval: weekly
+    groups:
+      web-npm:
+        update-types: ["minor", "patch"]
 
   # worker-build is pinned in the workflows (0.8.7) for the crate worker 0.8: a bump of worker to 0.9 without
   # an update of worker-build makes npm test in check-elevation fail, and this is the check
