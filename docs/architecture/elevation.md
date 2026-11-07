@@ -37,7 +37,7 @@ flowchart LR
     data -->|"S3 API, aws s3 cp"| dem3
 ```
 
-The object format is in [format.rs](../../workers/elevation/core/src/format.rs) and [grid.rs](../../workers/elevation/core/src/grid.rs). The reason for this format: design `add-elevation-api`, ["Format: one object per degree, the author's parts"](../../openspec/changes/archive/2026-10-07-add-elevation-api/design.md#формат-объект-на-градус-куски-автора). Workflow and tokens: [ci-cd.md](ci-cd.md). The elevation tile archive `tiles/elevation-z0-9` in R2 stays until the owner decides, and the Worker does not read it.
+The object format is in [format.rs](../../workers/elevation/core/src/format.rs) and [grid.rs](../../workers/elevation/core/src/grid.rs). The reason for this format: design `add-elevation-api`, ["Format: one object per degree, the author's parts"](../../openspec/changes/archive/2026-10-07-add-elevation-api/design.md#формат-объект-на-градус-куски-автора). Workflow and tokens: [ci-cd.md](ci-cd.md).
 
 ## Request to the Worker
 
