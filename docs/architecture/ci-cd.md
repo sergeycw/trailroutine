@@ -21,7 +21,7 @@ flowchart LR
     djobs["deploy pages: job per Worker<br/>npm test / cargo test, wrangler deploy"]
     dpages["deploy pages: pages<br/>tests of functions and web/, build of<br/>web/ to the root of build/, e2e,<br/>wrangler pages deploy"]
 
-    ghcr["ghcr.io<br/>brouter:nightly"]
+    ghcr["ghcr.io<br/>brouter, pinned digest BROUTER_IMAGE"]
     pages["Pages nakarte-routing<br/>static files + functions/"]
     workers["Workers nakarte-cors-proxy,<br/>nakarte-tracks, nakarte-elevation,<br/>nakarte-guard"]
     prune["deploy pages: prune<br/>delete the Pages deploys, except the current one"]
@@ -73,12 +73,14 @@ flowchart LR
     cron2(["cron Mon 04:00 UTC"])
     cron3(["cron 05:17 UTC daily"])
     cron5(["cron 05:41 UTC daily"])
+    cron6(["cron 05:47 UTC daily"])
     manual(["workflow_dispatch"])
 
     sync["brouter tiles sync<br/>brouter-tiles-sync.mjs"]
     edata["elevation data<br/>elevation-data.sh"]
     scheck["strava heatmap check"]
     tcheck["tracestrack check"]
+    ocheck["openfreemap check"]
     pcheck["prod check<br/>scripts/prod-check.sh"]
     cron4(["cron 05:40 UTC daily,<br/>after the deploy"])
     own["trailroutine services:<br/>Pages, elevations, tracks, proxy"]
@@ -88,6 +90,7 @@ flowchart LR
     r2tiles[("R2 nakarte-tiles")]
     r2elev[("R2 nakarte-elevation")]
     proxy["Worker nakarte-cors-proxy"]
+    ofm["tiles.openfreemap.org"]
     mail(["GitHub email on failure"])
 
     cron2 --> sync
@@ -105,6 +108,10 @@ flowchart LR
     manual --> tcheck
     tcheck -->|"GET of a Tracestrack Topo tile,<br/>200: the key works, 503: no key"| proxy
     tcheck -.-> mail
+    cron6 --> ocheck
+    manual --> ocheck
+    ocheck -->|"GET of the TileJSON and one tile:<br/>200 with CORS"| ofm
+    ocheck -.-> mail
     cron4 --> pcheck
     manual --> pcheck
     pcheck -->|"read only: / with the app title,<br/>/next/ gives 3xx to /, Range, elevation point,<br/>404 of a track, proxy preflight"| own
@@ -122,6 +129,7 @@ flowchart LR
 | `elevation data` | manually | repack of HGT to `dem3/*` | R2 `nakarte-elevation` |
 | `strava heatmap check` | daily 05:17 UTC, manually | a heatmap tile through the proxy; fails without `session` | — |
 | `tracestrack check` | daily 05:41 UTC, manually | a Tracestrack Topo tile through the proxy: `503` (no key) is a warning, another failure (key, quota) fails the workflow | — |
+| `openfreemap check` | daily 05:47 UTC, manually | the TileJSON of the default basemap OpenFreeMap Outdoor and one tile from its template: `200` with a CORS header, the tile not empty | — |
 | `prod check` | daily 05:40 UTC, after the deploy (job `smoke`), manually | `scripts/prod-check.sh`: the app on `/`, the redirect from `/next/` to `/`, the trailroutine services respond; read only | — |
 
 GitHub runs schedules only from the default branch. The workflows that write to Cloudflare and R2 have the condition `github.repository == 'sergeycw/trailroutine'`: a copy in another repository does not run them.
