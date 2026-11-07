@@ -92,13 +92,14 @@ const ALWAYS_THERE = new Set([
 const STYLE_LAYER_OF_CODE = /^([A-Z][A-Za-z0-9]*)-[a-z]/;
 
 // the codes of the map layers from bottom to top, without the gray background and the layers of the elevation
-// profile, the tracks and the editor (they are always there, layers/style.ts); consecutive style layers of one code
-// give one code
+// profile, the tracks and the editor (they are always there, layers/style.ts); the style layers of one code give one
+// code at the place of its first layer: the relief Hs is inside the style of Of (change outdoor-relief-in-style), and
+// the order is Of, Hs
 export function mapLayerIds(map: { getStyle(): { layers: { id: string }[] } }) {
     const codes = map
         .getStyle()
         .layers.map((layer) => layer.id)
         .filter((id) => !ALWAYS_THERE.has(id))
         .map((id) => STYLE_LAYER_OF_CODE.exec(id)?.[1] ?? id);
-    return codes.filter((code, index) => code !== codes[index - 1]);
+    return codes.filter((code, index) => codes.indexOf(code) === index);
 }
