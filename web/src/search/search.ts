@@ -67,7 +67,7 @@ export function closedServiceMessage(service: string): string {
 // A link (design search-track-links, «Порядок разбора ссылки»): a track of a known source, then the map view from the
 // same link; "any file" only if the link is not a track and not a map link. Here the track is only recognized, the
 // choice downloads it
-async function searchAnyLink(text: string, sources: SearchSources): Promise<SearchOutcome> {
+async function searchAnyLink(text: string, context: SearchContext, sources: SearchSources): Promise<SearchOutcome> {
     const closed = closedTrackService(text);
     if (closed) {
         return { kind: 'error', message: closedServiceMessage(closed) };
@@ -81,6 +81,9 @@ async function searchAnyLink(text: string, sources: SearchSources): Promise<Sear
         return outcome([...asTrack, ...(view && 'results' in view ? view.results : [])], null);
     }
     const view = await searchLink(text, sources);
+    if ('placeName' in view) {
+        return searchName(view.placeName, context, sources);
+    }
     if ('results' in view) {
         return outcome(view.results, null);
     }
@@ -92,12 +95,17 @@ async function searchAnyLink(text: string, sources: SearchSources): Promise<Sear
 export async function search(query: string, context: SearchContext, sources: SearchSources): Promise<SearchOutcome> {
     const text = query.trim();
     if (isLinkQuery(text)) {
-        return searchAnyLink(text, sources);
+        return searchAnyLink(text, context, sources);
     }
     if (isCoordinatesQuery(text)) {
         const response = searchCoordinates(text);
         return 'error' in response ? { kind: 'error', message: response.error } : outcome(response.results, null);
     }
+    return searchName(text, context, sources);
+}
+
+// the name search: mapy.cz, and Photon if mapy.cz fails
+async function searchName(text: string, context: SearchContext, sources: SearchSources): Promise<SearchOutcome> {
     const place = { ...context, query: text };
     try {
         const json = await getJson(sources.fetch, mapyczUrl(sources.corsProxyUrl, place), context.signal);

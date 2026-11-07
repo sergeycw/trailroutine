@@ -206,6 +206,24 @@ describe('ссылки на треки', () => {
         expect(requests).toEqual([]);
     });
 
+    it('Короткая ссылка Google на место', async () => {
+        const place = 'Mollafenari, Elizi, Bab-ı Ali Cd. No:27, 34120 Fatih/İstanbul, Turkey';
+        const target = `https://www.google.com/maps/place/${encodeURIComponent(place)}/data=!4m2!3m1!1s0x1:0x2`;
+        const requests: string[] = [];
+        const fetchFn: typeof fetch = async (input) => {
+            const url = String(input);
+            requests.push(url);
+            if (url.startsWith(`${PROXY}https/maps.app.goo.gl/`)) {
+                return { url: `${PROXY}${target.replace('https://', 'https/')}`, ok: true, status: 200 } as Response;
+            }
+            return json(mapyczJson);
+        };
+        const outcome = await search('https://maps.app.goo.gl/abc', CONTEXT, { fetch: fetchFn, corsProxyUrl: PROXY });
+        expect(outcome.kind).toBe('results');
+        expect(requests[1]).toContain('pro.mapy.cz/suggest/');
+        expect(new URL(requests[1].replace(`${PROXY}https/`, 'https://')).searchParams.get('phrase')).toBe(place);
+    });
+
     it('Ссылка Strava', async () => {
         const links: [string, string][] = [
             ['Strava', 'https://www.strava.com/activities/1234567890'],
