@@ -2,14 +2,14 @@
 
 One level up: [overview](README.md#overview), block ④.
 
-The Worker `nakarte-cors-proxy` ([workers/cors-proxy](../../workers/cors-proxy/)) repeats the protocol of the author's `proxy.nakarte.me`. The client adds the source URL to the proxy address (`viaCorsProxy` in [catalog.ts](../../web/src/layers/catalog.ts): `https://host/…` → `<proxy>https/host/…`). The proxy gets the response and returns it with CORS headers. These requests go through the proxy:
+The Worker `nakarte-cors-proxy` ([workers/cors-proxy](../../workers/cors-proxy/)) gets a response from a third-party site and returns it to the client with CORS headers. The client adds the source URL to the proxy address (`viaCorsProxy` in [catalog.ts](../../web/src/layers/catalog.ts): `https://host/…` → `<proxy>https/host/…`). These requests go through the proxy:
 
 - track import from links ([sources.ts](../../web/src/tracks/sources.ts), `proxied`);
 - mapy.cz search ([mapycz.ts](../../web/src/search/mapycz.ts)) and short link expansion ([links.ts](../../web/src/search/links.ts));
-- the layers Tsvetkov (`Mt`), Strava heatmap and the basemap Tracestrack Topo (`Tt`), the second basemap of the fallback chain `Of` → `Tt` → OSM;
+- the layers Tsvetkov (`Mt`), Strava heatmap and the basemap Tracestrack Topo (`Tt`);
 - custom layers with the proxy flag.
 
-The shared layer limit (`LAYER_HOSTS`, 1200 per minute) applies only to the layer hosts that the app sends through the proxy. These hosts are Strava heatmap `content-*.strava.com`, Tsvetkov `maptiles.website.yandexcloud.net` and Tracestrack `tile.tracestrack.com`. Change [retire-old-client-services](../../openspec/changes/archive/2026-10-09-retire-old-client-services/design.md) removed the route `/wikimapia/` of the old nakarte client. The route answers `404`, as any path in an incorrect format does.
+The shared layer limit (`LAYER_HOSTS`, 1200 per minute) applies only to the layer hosts that the app sends through the proxy. These hosts are Strava heatmap `content-*.strava.com`, Tsvetkov `maptiles.website.yandexcloud.net` and Tracestrack `tile.tracestrack.com`.
 
 Behavior: spec [cors-proxy](../../openspec/specs/cors-proxy/spec.md); limits: [protection.md](protection.md).
 
@@ -67,7 +67,7 @@ flowchart TD
     send --> resp
 ```
 
-The code is `fetch` and `proxy` in [index.js](../../workers/cors-proxy/src/index.js). Why the proxy only reads, blocks the trailroutine addresses and splits the limit by the host role: archive [restrict-cors-proxy](../../openspec/changes/archive/2026-10-08-restrict-cors-proxy/design.md). Why `HEAD` goes out as `GET` and why the proxy forwards `User-Agent`: archive [drop-author-services](../../openspec/changes/archive/2026-10-08-drop-author-services/design.md). The proxy still forwards `User-Agent` after Wikimapia left: some sites answer `403` without it, and `fetch` from a Worker does not set its own. The short links of mapy.com need `GET` instead of `HEAD`. Why `ALLOWED_ORIGINS` has the app dev server (8769) and `vite preview` (4173) instead of the origins of the old nakarte client and karma: design [retire-old-client-services](../../openspec/changes/archive/2026-10-09-retire-old-client-services/design.md).
+The code is `fetch` and `proxy` in [index.js](../../workers/cors-proxy/src/index.js). Why the proxy only reads, blocks the trailroutine addresses and splits the limit by the host role: archive [restrict-cors-proxy](../../openspec/changes/archive/2026-10-08-restrict-cors-proxy/design.md). Why `HEAD` goes out as `GET`, why the proxy forwards `User-Agent`, and why `ALLOWED_ORIGINS` has the app dev server (8769) and `vite preview` (4173): [register: CORS proxy and Strava](decisions.md#cors-proxy-and-strava).
 
 ## Tracestrack key
 
@@ -132,4 +132,4 @@ flowchart LR
 
 ## Checked against
 
-[workers/cors-proxy/src/index.js](../../workers/cors-proxy/src/index.js), [workers/cors-proxy/src/strava.js](../../workers/cors-proxy/src/strava.js), [workers/cors-proxy/wrangler.toml](../../workers/cors-proxy/wrangler.toml), [web/src/layers/catalog.ts](../../web/src/layers/catalog.ts) (`viaCorsProxy`), [web/src/layers/custom.ts](../../web/src/layers/custom.ts), [web/src/tracks/sources.ts](../../web/src/tracks/sources.ts), [web/src/search/mapycz.ts](../../web/src/search/mapycz.ts), [web/src/search/links.ts](../../web/src/search/links.ts), [strava-heatmap-check.yml](../../.github/workflows/strava-heatmap-check.yml).
+[workers/cors-proxy/src/index.js](../../workers/cors-proxy/src/index.js), [workers/cors-proxy/src/strava.js](../../workers/cors-proxy/src/strava.js), [workers/cors-proxy/src/tracestrack.js](../../workers/cors-proxy/src/tracestrack.js), [workers/cors-proxy/wrangler.toml](../../workers/cors-proxy/wrangler.toml), [web/src/layers/catalog.ts](../../web/src/layers/catalog.ts) (`viaCorsProxy`), [web/src/layers/custom.ts](../../web/src/layers/custom.ts), [web/src/tracks/sources.ts](../../web/src/tracks/sources.ts), [web/src/search/mapycz.ts](../../web/src/search/mapycz.ts), [web/src/search/links.ts](../../web/src/search/links.ts), [strava-heatmap-check.yml](../../.github/workflows/strava-heatmap-check.yml).

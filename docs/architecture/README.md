@@ -2,7 +2,7 @@
 
 This document shows the app from the top down. First, it gives the full system as large blocks with the key decisions. Then it shows each block separately. The document shows structure and connections. For all other facts, it links to the place that records them (`AGENTS.md`, section ["Where each fact is recorded"](../../AGENTS.md#где-что-записано)). Behavior is in `openspec/specs/`. The reasons for decisions are in the change archive and the [decision register](decisions.md). Launch and pitfalls are in `AGENTS.md`, and risks are in `openspec/backlog.md`.
 
-The diagrams were checked against the code on `master` on 2026-10-09 (after change `switch-to-web-app`), and the Workers after change `retire-old-client-services`. When you change a connection in the code, change the arrow here.
+The diagrams were checked against the code on `master` on 2026-11-07. When you change a connection in the code, change the arrow here.
 
 ## Overview
 
@@ -18,12 +18,12 @@ flowchart LR
         engine["② In-browser routing<br/>BRouter on CheerpJ in a Web Worker,<br/>jar as is; no routing server"]
     end
 
-    subgraph cf["Cloudflare: trailroutine services instead of *.nakarte.me"]
+    subgraph cf["Cloudflare: trailroutine services"]
         direction TB
         pages["③ Pages + Functions<br/>site; BRouter jar and tiles<br/>by Range from the same origin"]
-        elev["⑥ Elevation service, Rust<br/>DEM 3″ as the author has"]
+        elev["⑥ Elevation service, Rust<br/>DEM 3″ viewfinderpanoramas"]
         tracks["⑤ Track storage<br/>link nktl= = md5 of the tracks"]
-        proxy["④ CORS proxy<br/>protocol of the author's proxy;<br/>the proxy keeps the Strava cookies and the Tracestrack key"]
+        proxy["④ CORS proxy<br/>keeps the Strava cookies and the Tracestrack key"]
     end
 
     r2[("R2<br/>BRouter tiles · tracks · DEM")]
@@ -65,15 +65,15 @@ flowchart LR
 
 | Block | Key decision | Details | Reason |
 |---|---|---|---|
-| ① Client | the app `web/` is on `/` (the old nakarte client is deleted, `/next/` is a redirect); the service addresses are the same in all modes, and mode `clone` changes only the engine ([switch-to-web-app](../../openspec/changes/archive/2026-10-09-switch-to-web-app/design.md)) | [client.md](client.md), [route-editor.md](route-editor.md) | [register: platform and stack](decisions.md#platform-and-stack), [editor](decisions.md#editor) |
+| ① Client | the app `web/` is on `/`; the service addresses are the same in all modes, and mode `clone` changes only the engine | [client.md](client.md), [route-editor.md](route-editor.md) | [register: platform and stack](decisions.md#platform-and-stack), [editor](decisions.md#editor) |
 | ② In-browser routing | BRouter on CheerpJ in a Web Worker of the page calculates the route; the server only serves files | [routing.md](routing.md) | [register: routing and the engine](decisions.md#routing-and-the-in-browser-engine) |
 | ③ Pages + Functions | BRouter jar, profiles and tiles come from the trailroutine origin by Range: CheerpJ reads only this origin | [routing.md](routing.md), [level 2](#public-site) | [register: routing and the engine](decisions.md#routing-and-the-in-browser-engine) |
-| ④ CORS proxy | repeats the protocol of the author's proxy; the proxy gets the Strava heatmap cookies itself from a session, and the key for the Tracestrack basemap from its own secret | [cors-proxy.md](cors-proxy.md) | [register: CORS proxy and Strava](decisions.md#cors-proxy-and-strava) |
+| ④ CORS proxy | the proxy gets the Strava heatmap cookies itself from a session, and the key for the Tracestrack basemap from its own secret | [cors-proxy.md](cors-proxy.md) | [register: CORS proxy and Strava](decisions.md#cors-proxy-and-strava) |
 | ⑤ Track storage | the link `nktl=` is the md5 of the tracks, and the object in R2 does not change | [track-storage.md](track-storage.md) | [register: track storage](decisions.md#track-storage) |
-| ⑥ Elevation service | the data and arithmetic of the author, Rust → wasm; only the elevation API, the elevation tiles are retired | [elevation.md](elevation.md) | [register: elevation service](decisions.md#elevation-service) |
+| ⑥ Elevation service | the data and arithmetic of the author, Rust → wasm; only the elevation API | [elevation.md](elevation.md) | [register: elevation service](decisions.md#elevation-service) |
 | ⑦ GitHub Actions | production = `master`; CI uploads the data to R2, not the runtime; the deploy fails on author hosts | [ci-cd.md](ci-cd.md), [protection.md](protection.md) | [register: deploy and protection](decisions.md#deploy-and-protection) |
 | ⑧ Local mode | the same app in a mode without `clone`: `routingEngine: 'server'` and BRouter in docker | [level 2](#local-mode), [routing.md](routing.md) | `AGENTS.md`, ["Launch"](../../AGENTS.md#запуск) |
-| Cloudflare as a whole | own Workers and R2 instead of `*.nakarte.me`, with per-call and rate limits | [protection.md](protection.md), [what is replaced](#replaced-nakarteme-services) | [register: platform and stack](decisions.md#platform-and-stack) |
+| Cloudflare as a whole | own Workers and R2, with per-call and rate limits | [protection.md](protection.md) | [register: platform and stack](decisions.md#platform-and-stack) |
 
 Which third-party services the system depends on, and what breaks when each one fails: [backlog, "External dependencies and risks"](../../openspec/backlog.md#внешние-зависимости-и-риски).
 
@@ -83,7 +83,7 @@ The blocks of the overview one level down: each service and each request path wi
 
 ### Public site
 
-The build `vite build --mode clone` on `trailroutine.com` (and on the old address `nakarte-routing.pages.dev`, which moves visitors to the new domain). The browser calculates the route, and the BRouter tiles and engine files come from the same origin.
+The build `vite build --mode clone` on `trailroutine.com` (and on the old address `nakarte-routing.pages.dev`, which moves visitors to the new domain: [client.md](client.md#move-to-the-own-domain)). The browser calculates the route, and the BRouter tiles and engine files come from the same origin.
 
 ```mermaid
 flowchart LR
@@ -165,21 +165,6 @@ flowchart LR
 
 The dev server and `vite preview` serve the engine files with Range themselves ([engine-files.ts](../../web/vite/engine-files.ts)): `/brouter-wasm/lib`, `profiles`, and, without `clone`, also the tiles `/brouter-wasm/segments4/` from `brouter/segments4/`. Launch, ports and pitfalls: `AGENTS.md`, ["Launch"](../../AGENTS.md#запуск) and ["Public site on Cloudflare"](../../AGENTS.md#публичный-клон-на-cloudflare).
 
-## Replaced `*.nakarte.me` services
-
-No function of trailroutine sends requests to the author's infrastructure (requirement ["No requests to the author's infrastructure"](../../openspec/specs/clone-hosting/spec.md#requirement-без-запросов-к-инфраструктуре-автора) in clone-hosting). The deploy checks this in the bundle ([protection.md](protection.md)).
-
-| Author service | Replacement | Source |
-|---|---|---|
-| `proxy.nakarte.me` | `nakarte-cors-proxy` | [cors-proxy](../../openspec/specs/cors-proxy/spec.md), [drop-author-services](../../openspec/changes/archive/2026-10-08-drop-author-services/design.md) |
-| `proxy.nakarte.me/mapy/` (mapy.cz layers) | deleted, not replaced | [drop-author-services](../../openspec/changes/archive/2026-10-08-drop-author-services/design.md) |
-| `tracks.nakarte.me` | `nakarte-tracks` | [track-storage](../../openspec/specs/track-storage/spec.md) |
-| `elevation.nakarte.me` | `nakarte-elevation`, `POST /` | [elevation-api](../../openspec/specs/elevation-api/spec.md) |
-| `tiles.nakarte.me/elevation` | not replaced: our elevation tiles are retired together with the old nakarte client | [retire-old-client-services](../../openspec/changes/archive/2026-10-09-retire-old-client-services/design.md), [elevation.md](elevation.md#elevation-tiles-are-retired) |
-| `{s}.tiles.nakarte.me`, `tiles.nakarte.me/topomapper` (map scans), `nakarte.me/westraPasses/`, `nakarte.me/geocachingSu/` | layers deleted | [drop-author-scan-layers](../../openspec/changes/archive/2026-10-08-drop-author-scan-layers/design.md) |
-| `tiles.nakarte.me/wikimedia_commons_images`, `mapillary.nakarte.me` (panorama coverage) | providers deleted, only Street View stays | [remove-panorama-providers](../../openspec/changes/archive/2026-10-08-remove-panorama-providers/design.md) |
-| `nakarte.me/event`, Sentry | the app has no event log; browser errors go to its own Sentry project, only in a build with a DSN | [config.ts](../../web/src/config.ts), [drop-author-services](../../openspec/changes/archive/2026-10-08-drop-author-services/design.md), [add-error-tracking](../../openspec/changes/archive/2026-10-30-add-error-tracking/design.md) |
-
 ## Inventory
 
 Each component and each connection, with the file that confirms it. All diagrams come from these tables. Use the tables as a reference to check the diagrams, not to read from start to end.
@@ -200,7 +185,7 @@ Each component and each connection, with the file that confirms it. All diagrams
 | Worker `nakarte-elevation` | elevation API (`POST /`), Rust → wasm; no elevation tiles | [workers/elevation/wrangler.toml](../../workers/elevation/wrangler.toml), [http.rs](../../workers/elevation/core/src/http.rs) |
 | R2 `nakarte-tiles` | BRouter tiles `*.rd5`, sync `manifest.json` | [wrangler.toml](../../wrangler.toml), [brouter-tiles-sync.mjs](../../scripts/brouter-tiles-sync.mjs) |
 | R2 `nakarte-tracks` | objects `tracks/{key}` | [workers/tracks/wrangler.toml](../../workers/tracks/wrangler.toml) |
-| R2 `nakarte-elevation` | degree objects `dem3/N43E042`; the elevation tile archive `tiles/elevation-z0-9` stays until the owner decides, and the Worker does not read it | [grid.rs](../../workers/elevation/core/src/grid.rs), [elevation.md](elevation.md#elevation-tiles-are-retired) |
+| R2 `nakarte-elevation` | degree objects `dem3/N43E042` | [grid.rs](../../workers/elevation/core/src/grid.rs), [elevation.md](elevation.md#data-in-r2-nakarte-elevation) |
 | BRouter in docker | `ghcr.io/abrensch/brouter:nightly` on `127.0.0.1:17777` | [docker-compose.yml](../../docker-compose.yml) |
 | Dev server | 8769 for `npm run dev` and `npm run dev:clone` from `web/`, 4173 for `vite preview` | [web/package.json](../../web/package.json), [vite.config.ts](../../web/vite.config.ts), `../.claude/launch.json` (outside the repository) |
 | In-browser engine | CheerpJ in a Web Worker + `brouter.jar` + patches + `WasmRouter` | [engine/](../../web/src/engine/), [build.sh](../../experiments/wasm/cheerpj/build.sh) |
