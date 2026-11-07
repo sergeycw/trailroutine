@@ -19,6 +19,18 @@ const LAYERS = JSON.stringify({
 
 test.use({ tracksOpen: false });
 
+// WebKit stops all loads of the old address when location.replace starts the move. The dynamic import of maplibre-gl
+// (src/map/maplibre.ts) that is still loading then fails, and Sentry reports «Importing a module script failed.» from
+// the old address. Chromium lets the old page load until the new page commits. The report is noise in Sentry, not a
+// failed move, and these tests do not check it.
+function abortedImportOnOldAddress(envelope: string) {
+    return envelope.includes('Importing a module script failed.') && envelope.includes(`"url":"${OLD}/`);
+}
+
+test.beforeEach(({ network }) => {
+    network.ignoreSentry(abortedImportOnOldAddress);
+});
+
 // The autosave record and a setting on the old origin, written from an empty page of that origin. The record has the
 // form of web/src/autosave/saved.ts (version 1, lines as Float64Array).
 async function seedOldAddress(page: Page) {

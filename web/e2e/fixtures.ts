@@ -203,6 +203,9 @@ interface Network {
     serveSite(...hosts: string[]): void;
     // take the received envelopes: a test that expects a report takes it, all other tests must end without reports
     takeSentryEnvelopes(): string[];
+    // envelopes of a known app report that the test does not check: the final check skips them, also when they come
+    // after the test body (e2e/move.spec.ts)
+    ignoreSentry(match: (envelope: string) => boolean): void;
 }
 
 // Sentry report intake: o<organization>.ingest.sentry.io, with a region o<…>.ingest.us.sentry.io,
@@ -268,6 +271,7 @@ export const test = base.extend<{ network: Network; tracksOpen: boolean }>({
             // the test body is over: the context closes next
             let ended = false;
             const siteHosts = new Set<string>();
+            const ignoredSentry: ((envelope: string) => boolean)[] = [];
             const proxied = new Map<string, { path?: string; body?: string; status?: number }>();
             const searchStatus: Record<'mapycz' | 'photon', number> = { mapycz: 200, photon: 200 };
             const network: Network = {
@@ -278,6 +282,9 @@ export const test = base.extend<{ network: Network; tracksOpen: boolean }>({
                 googleApiLoads: [],
                 sentryEnvelopes: [],
                 takeSentryEnvelopes: () => network.sentryEnvelopes.splice(0),
+                ignoreSentry: (match) => {
+                    ignoredSentry.push(match);
+                },
                 engineLoads: 0,
                 cdnRequests: [],
                 storage: new Map(),
@@ -478,7 +485,10 @@ export const test = base.extend<{ network: Network; tracksOpen: boolean }>({
             expect(network.cdnRequests, 'запросы к CDN CheerpJ мимо заглушки').toEqual([]);
             // on a build with a DSN, the scenario «Заход без ошибок» of the spec clone-monitoring in all e2e: routing,
             // profile, layers, search give no reports
-            expect(network.sentryEnvelopes, 'отчёты Sentry, которых тест не ждал').toEqual([]);
+            expect(
+                network.sentryEnvelopes.filter((envelope) => !ignoredSentry.some((match) => match(envelope))),
+                'отчёты Sentry, которых тест не ждал',
+            ).toEqual([]);
         },
         { auto: true },
     ],
