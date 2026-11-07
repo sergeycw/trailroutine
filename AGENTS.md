@@ -9,11 +9,11 @@
 - `web/` — приложение: исходники, тесты (Vitest и Playwright), сборка в корень `build/` вместе с файлами движка; раздел «Приложение».
 - `workers/<сервис>/` — Cloudflare Worker'ы: `cors-proxy`, `tracks`, `elevation` (Rust), `tiles` (тайлы BRouter из R2, работает как Pages Function `functions/tiles`; там же тесты обеих Pages Functions и их middleware), `guard` (счётчик частоты Pages Functions, закрыт снаружи, функции зовут его по service binding `GUARD`). Правила — раздел «Свои бэкенды».
 - `functions/` — Pages Functions клона: `tiles` и `brouter-wasm` (Range для файлов движка).
-- `scripts/` — тайлы BRouter (`brouter-*`), проверка бандла на `*.nakarte.me`, синтетика прода (`prod-check.sh`), секреты Strava, которые заводит владелец (`strava-*-secret.mjs`), иконки сайта из `web/public/favicon.svg` (`favicon.mjs`).
+- `scripts/` — тайлы BRouter (`brouter-*`), проверка бандла на `*.nakarte.me`, синтетика прода (`prod-check.sh`), еженедельная проверка тайлов слоёв (`layer-tiles-check.mjs`), секреты Strava, которые заводит владелец (`strava-*-secret.mjs`), иконки сайта из `web/public/favicon.svg` (`favicon.mjs`).
 - `biome.json` и корневой `package.json` — только линт JS `workers/`, `functions/` и `scripts/` (Biome, без форматтера); у `web/` свой `biome.json`.
 - `experiments/wasm/` — сборка и стенд движка CheerpJ; `brouter/` — профили и тайлы локального BRouter (`docker-compose.yml`).
 - `docs/architecture/` — схема системы: контекст, контейнеры, диаграммы по областям, реестр решений.
-- `.github/workflows/` — `check-web.yml`, `check-lint.yml`, `check-<сервис>.yml`, `deploy-pages.yml` (по push в `master` — сервисы, чьи файлы менялись), ручные и плановые загрузки данных, `strava heatmap check`, `prod check` (`scripts/prod-check.sh`).
+- `.github/workflows/` — `check-web.yml`, `check-lint.yml`, `check-<сервис>.yml`, `deploy-pages.yml` (по push в `master` — сервисы, чьи файлы менялись), ручные и плановые загрузки данных, `strava heatmap check`, `layer tiles check`, `prod check` (`scripts/prod-check.sh`).
 
 ## Где что записано
 

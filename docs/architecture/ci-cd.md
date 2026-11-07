@@ -73,12 +73,15 @@ flowchart LR
     cron2(["cron Mon 04:00 UTC"])
     cron3(["cron 05:17 UTC daily"])
     cron5(["cron 05:41 UTC daily"])
+    cron6(["cron Mon 06:23 UTC"])
     manual(["workflow_dispatch"])
 
     sync["brouter tiles sync<br/>brouter-tiles-sync.mjs"]
     edata["elevation data<br/>elevation-data.sh"]
     scheck["strava heatmap check"]
     tcheck["tracestrack check"]
+    lcheck["layer tiles check<br/>scripts/layer-tiles-check.mjs"]
+    providers["tile providers<br/>of the catalog layers"]
     pcheck["prod check<br/>scripts/prod-check.sh"]
     cron4(["cron 05:40 UTC daily,<br/>after the deploy"])
     own["trailroutine services:<br/>Pages, elevations, tracks, proxy"]
@@ -105,6 +108,11 @@ flowchart LR
     manual --> tcheck
     tcheck -->|"GET of a Tracestrack Topo tile,<br/>200: the key works, 503: no key"| proxy
     tcheck -.-> mail
+    cron6 --> lcheck
+    manual --> lcheck
+    lcheck -->|"GET of one tile per raster layer:<br/>200, image, CORS, no redirect"| providers
+    lcheck -->|"Mt"| proxy
+    lcheck -.-> mail
     cron4 --> pcheck
     manual --> pcheck
     pcheck -->|"read only: / with the app title,<br/>/next/ gives 3xx to /, Range, elevation point,<br/>404 of a track, proxy preflight"| own
@@ -122,6 +130,7 @@ flowchart LR
 | `elevation data` | manually | repack of HGT to `dem3/*` | R2 `nakarte-elevation` |
 | `strava heatmap check` | daily 05:17 UTC, manually | a heatmap tile through the proxy; fails without `session` | — |
 | `tracestrack check` | daily 05:41 UTC, manually | a Tracestrack Topo tile through the proxy: `503` (no key) is a warning, another failure (key, quota) fails the workflow | — |
+| `layer tiles check` | Monday 06:23 UTC, manually | one tile of each raster layer of `web/src/layers/catalog.ts`, through the proxy for the proxy layers; fails on a status other than `200`, a body that is not an image, a redirect or no CORS header. `Of`, `Tt`, the Strava heatmaps, `Hls` and `Ct` are not in it | — |
 | `prod check` | daily 05:40 UTC, after the deploy (job `smoke`), manually | `scripts/prod-check.sh`: the app on `/`, the redirect from `/next/` to `/`, the trailroutine services respond; read only | — |
 
 GitHub runs schedules only from the default branch. The workflows that write to Cloudflare and R2 have the condition `github.repository == 'sergeycw/trailroutine'`: a copy in another repository does not run them.
