@@ -151,7 +151,8 @@ test('Ссылка после склейки', async ({ page, context, browser, 
     await clickMap(page, FINISH, 'right');
     await menuItem(page, 'Join');
     await clickMap(page, SECOND_START);
-    const joined = [{ legs: [['routed', 'routed', 'straight', 'routed']], points: [] }];
+    // the seam is routed with the current activity (change route-join-seam)
+    const joined = [{ legs: [['routed', 'routed', 'routed', 'routed']], points: [] }];
     await expect.poll(() => saved(page)).toEqual(joined);
     await page.getByRole('button', { name: 'Finish editing' }).click();
 
