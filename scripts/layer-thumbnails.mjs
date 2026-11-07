@@ -37,7 +37,7 @@ const PLACES = {
     G: {lat: 41.705, lng: 44.795, zoom: 14},
     E: {lat: 43.0467, lng: 42.7286, zoom: 12},
 };
-const ORIGIN = 'https://nakarte-routing.pages.dev';
+const ORIGIN = 'https://trailroutine.com';
 const CORS_PROXY_URL = 'https://nakarte-cors-proxy.nakarte-routing.workers.dev/';
 
 function tileOf({lat, lng, zoom}) {

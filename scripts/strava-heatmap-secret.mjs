@@ -18,7 +18,7 @@ import {spawnSync} from 'node:child_process';
 
 const REQUIRED = ['CloudFront-Key-Pair-Id', 'CloudFront-Policy', 'CloudFront-Signature', '_strava_idcf'];
 const PROXY = 'https://nakarte-cors-proxy.nakarte-routing.workers.dev';
-const ORIGIN = 'https://nakarte-routing.pages.dev';
+const ORIGIN = 'https://trailroutine.com';
 // тайл Тбилиси z12, на нём точно есть треки
 const TEST_TILE = 'https/content-a.strava.com/identified/globalheat/all/hot/12/2557/1514.png?px=256';
 const dryRun = process.argv.includes('--dry-run');

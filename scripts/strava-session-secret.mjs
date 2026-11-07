@@ -30,7 +30,7 @@ import {HEATMAP_COOKIES, describeSetCookie, fetchHeatmapCookies} from '../worker
 // 2026-10-08 проверено владельцем: странице heatmap хватает одной _strava4_session
 const SESSION_COOKIES = ['_strava4_session'];
 const PROXY = 'https://nakarte-cors-proxy.nakarte-routing.workers.dev';
-const ORIGIN = 'https://nakarte-routing.pages.dev';
+const ORIGIN = 'https://trailroutine.com';
 // тайл Тбилиси z12, на нём точно есть треки
 const TEST_TILE = 'https/content-a.strava.com/identified/globalheat/all/hot/12/2557/1514.png?px=256';
 const MIN_NODE_MAJOR = 22;
