@@ -43,8 +43,27 @@ export function buildStyle(
     return {
         version: 8,
         sources: { ...Object.fromEntries(sorted.flatMap(layerSources)), ...overlay },
-        layers: [BACKGROUND_LAYER, ...sorted.flatMap(layerSpecs), ...PROFILE_LAYERS, ...TRACK_LAYERS, ...EDIT_LAYERS],
+        layers: [BACKGROUND_LAYER, ...catalogLayers(sorted), ...PROFILE_LAYERS, ...TRACK_LAYERS, ...EDIT_LAYERS],
     };
+}
+
+// The relief shading right above the vector basemap goes inside its style, under the water, the roads and the labels
+// (change outdoor-relief-in-style): the shadows do not darken the lines and the labels of the basemap. An overlay
+// between them (an opaque map of the catalog or a custom layer) keeps the relief at its catalog place, above that
+// overlay, as on the other basemaps. The basemap is always first: sorted puts the overlays after it.
+function catalogLayers(sorted: readonly LayerDef[]): LayerSpecification[] {
+    const [base, next] = sorted;
+    if (base && next && isVectorBasemap(base) && next.source.type === 'raster-dem') {
+        return [
+            ...outdoorLayers(base.code, base.labelLanguage ?? '', layerSpecs(next)),
+            ...sorted.slice(2).flatMap(layerSpecs),
+        ];
+    }
+    return sorted.flatMap(layerSpecs);
+}
+
+function isVectorBasemap(layer: LayerDef): boolean {
+    return layer.source.type === 'vector' && !layer.isOverlay;
 }
 
 // multidirectional is the recommendation of the research new-ui.md («Подложка по умолчанию»): shadows from several
@@ -130,7 +149,7 @@ function layerSources(layer: LayerDef): [string, LayerDef['source']][] {
 // catalog and of custom layers (-cs…)
 function layerSpecs(layer: LayerDef): LayerSpecification[] {
     const zoom = layer.minZoom === undefined ? {} : { minzoom: layer.minZoom };
-    if (layer.source.type === 'vector' && !layer.isOverlay) {
+    if (isVectorBasemap(layer)) {
         return outdoorLayers(layer.code, layer.labelLanguage ?? '');
     }
     if (layer.source.type === 'vector') {
