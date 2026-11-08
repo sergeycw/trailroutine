@@ -42,8 +42,6 @@
 
 В `features[0].properties` есть `track-length`, `filtered ascend`, `total-time` и `messages` — таблица по участкам, где колонка `WayTags` содержит `highway=…`, `surface=…`. Параметры запроса: `nogos`, `polylines`, `polygons`, `alternativeidx`, `straight`, `roundTrip*`, `profile:<переменная>`. Через `profile:` переопределяется любая `assign`-переменная профиля, даже без пометки `%…%`.
 
-- Набор и сброс высоты трека (`filtered ascend` или API высот). Время в пути не показываем (владелец 2026-11-08).
-
 ## Интерфейс после макета 4a
 
 Раскладка по макету Claude Design 4a — change `polish-web-ui`, затем три зоны — change `layout-three-zones`; интерфейс ещё несколько раз сильно поменяется (владелец 2026-10-10). Флоу и следующие changes — [`research/user-flows.md`](research/user-flows.md).
