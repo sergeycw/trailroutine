@@ -82,7 +82,7 @@
 - Контейнер карты — `isolation: isolate`: оверлеи MapLibre с `z-index: 99999` иначе перекрывают панели. CSS MapLibre импортируется в `index.css` вне `@layer` после Tailwind и перебивает Preflight.
 - Browser-тест рендерит `App` вместе с `index.css`: без стилей контейнер карты растёт бесконечно (`ResizeObserver loop`), и карта не загружается.
 - `shadcn add` берёт алиас `@/*` из корневого `tsconfig.json`; тема только светлая — блок `.dark` из `index.css` после `shadcn` удалять.
-- Провайдеры тайлов меняют адреса: `slazav.xyz` и `static.mapy.hiking.sk` отвечают редиректом без CORS-заголовка, а WebGL требует CORS на каждом ответе цепочки — в каталоге конечные адреса. Проверка — `curl -IL -H 'Origin: https://nakarte-routing.pages.dev'`.
+- Провайдеры тайлов меняют адреса: `static.mapy.hiking.sk` отвечает редиректом без CORS-заголовка, а WebGL требует CORS на каждом ответе цепочки — в каталоге конечные адреса. Проверка — `curl -IL -H 'Origin: https://nakarte-routing.pages.dev'`.
 - `ALLOWED_ORIGINS` прокси, хранилища треков и сервиса высот включают dev-сервер 8769 и `vite preview` 4173 (change `retire-old-client-services`): локально Strava, `Mt`, подложка Tracestrack (тратит квоту боевого ключа), импорт по ссылке, «Copy link», `nktl=` и профиль высот ходят в боевые Worker'ы. Тесты от этого не зависят: сеть подменяют проп `fetch` у `App` и фикстура `network` в e2e.
 - CSS MapLibre вне `@layer` перебивает и утилиты Tailwind: свойства элементов MapLibre (`.maplibregl-ctrl-*`) задавать с `!` (`top-1!` в `BaseMap.tsx`, `pointer-events-none!` столбца в `LayerSwitcher.tsx`).
 - `@custom-variant dark` в `index.css` нужен, хотя тёмной темы нет: без него классы `dark:` компонентов shadcn включаются темой системы.

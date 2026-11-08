@@ -98,8 +98,8 @@ test('Список слоёв', async ({ page }) => {
     const switcher = await openSwitcher(page);
     await switcher.getByText('Configure layers').click();
     const dialog = page.getByRole('dialog');
-    // the 36 catalog layers without the five buttons of the column (design custom-bases-in-list)
-    await expect(dialog.getByRole('checkbox')).toHaveCount(31);
+    // the 34 catalog layers without the five buttons of the column (design custom-bases-in-list)
+    await expect(dialog.getByRole('checkbox')).toHaveCount(29);
     await expect(dialog.getByRole('checkbox').first()).toHaveAccessibleName('Tracestrack Topo');
     for (const title of ['Yandex map', 'Yandex Satellite', 'Wikimapia', 'Soviet topo maps grid']) {
         await expect(dialog.getByText(title, { exact: true })).toHaveCount(0);
