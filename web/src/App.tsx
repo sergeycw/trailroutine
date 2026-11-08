@@ -10,6 +10,7 @@ import { ElevationProfileContext } from '@/elevation/context';
 import { createElevationProfile } from '@/elevation/controller';
 import { ElevationProfile, PROFILE_HEIGHT } from '@/elevation/ElevationProfile';
 import { getEngine } from '@/engine/engine';
+import { FeedbackButton } from '@/feedback/FeedbackButton';
 import { createFallbackGate } from '@/layers/basemap-fallback';
 import { buildCatalog } from '@/layers/catalog';
 import { LayerSwitcher } from '@/layers/LayerSwitcher';
@@ -308,6 +309,7 @@ export function App({
                                     </BaseMap>
                                     <TopBar fetch={fetch} />
                                     <MapActions fetch={fetch} />
+                                    <FeedbackButton fetch={fetch} notify={notify} />
                                     <ElevationProfile />
                                     <StreetViewPanel />
                                     <MapMenu />
