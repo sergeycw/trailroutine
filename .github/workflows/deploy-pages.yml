@@ -40,6 +40,7 @@ jobs:
       pages: ${{ steps.diff.outputs.pages }}
       cors_proxy: ${{ steps.diff.outputs.cors_proxy }}
       tracks: ${{ steps.diff.outputs.tracks }}
+      feedback: ${{ steps.diff.outputs.feedback }}
       elevation: ${{ steps.diff.outputs.elevation }}
       guard: ${{ steps.diff.outputs.guard }}
     steps:
@@ -53,7 +54,7 @@ jobs:
         run: |
           all() {
             echo "deploy everything: $1"
-            printf 'pages=true\ncors_proxy=true\ntracks=true\nelevation=true\nguard=true\n' >> "$GITHUB_OUTPUT"
+            printf 'pages=true\ncors_proxy=true\ntracks=true\nfeedback=true\nelevation=true\nguard=true\n' >> "$GITHUB_OUTPUT"
           }
           if [ "$EVENT" = workflow_dispatch ]; then all 'manual run'; exit 0; fi
           base=$(gh run list --workflow deploy-pages.yml --branch master --status success --limit 1 \
@@ -66,10 +67,11 @@ jobs:
           {
             echo "cors_proxy=$(has '^workers/cors-proxy/')"
             echo "tracks=$(has '^workers/tracks/')"
+            echo "feedback=$(has '^workers/feedback/')"
             echo "elevation=$(has '^workers/elevation/')"
             echo "guard=$(has '^workers/guard/')"
             # site: all, except the Workers, documents and other workflows: the app web/, functions/, engine files
-            echo "pages=$(echo "$changed" | grep -vE '^(workers/(cors-proxy|tracks|elevation|guard)/|docs/|openspec/|\.github/)|\.md$' | grep -q . && echo true || echo false)"
+            echo "pages=$(echo "$changed" | grep -vE '^(workers/(cors-proxy|tracks|feedback|elevation|guard)/|docs/|openspec/|\.github/)|\.md$' | grep -q . && echo true || echo false)"
           } | tee -a "$GITHUB_OUTPUT"
 
   cors-proxy:
@@ -107,6 +109,29 @@ jobs:
           node-version: '24'
           cache: npm
           cache-dependency-path: workers/tracks/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npx --yes $WRANGLER deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+  # the feedback service (change add-feedback): the email address of the owner is the secret FEEDBACK_TO of the
+  # Worker, the owner sets it once (npx wrangler@4 secret put FEEDBACK_TO from workers/feedback)
+  feedback:
+    needs: changes
+    if: needs.changes.outputs.feedback == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: workers/feedback
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: workers/feedback/package-lock.json
       - run: npm ci
       - run: npm test
       - run: npx --yes $WRANGLER deploy
@@ -169,7 +194,7 @@ jobs:
   # and the binding GUARD must not point to a Worker that does not exist.
   # If a Worker deploy fails, Pages do not deploy; skipped Workers do not block it.
   pages:
-    needs: [changes, cors-proxy, tracks, elevation, guard]
+    needs: [changes, cors-proxy, tracks, feedback, elevation, guard]
     if: ${{ !cancelled() && !failure() && needs.changes.outputs.pages == 'true' }}
     runs-on: ubuntu-latest
     steps:
@@ -301,10 +326,11 @@ jobs:
 
   # Production check after the deploy of at least one service; the same workflow also runs once a day.
   smoke:
-    needs: [changes, cors-proxy, tracks, elevation, guard, pages]
+    needs: [changes, cors-proxy, tracks, feedback, elevation, guard, pages]
     if: >-
       ${{ !cancelled() && !failure() && (needs.changes.outputs.pages == 'true'
       || needs.changes.outputs.cors_proxy == 'true' || needs.changes.outputs.tracks == 'true'
+      || needs.changes.outputs.feedback == 'true'
       || needs.changes.outputs.elevation == 'true' || needs.changes.outputs.guard == 'true') }}
     uses: ./.github/workflows/prod-check.yml
     with:
