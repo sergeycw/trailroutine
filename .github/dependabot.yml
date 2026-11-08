@@ -17,6 +17,7 @@ updates:
     directories:
       - "/"
       - "/workers/tracks"
+      - "/workers/feedback"
       - "/workers/elevation"
       - "/workers/cors-proxy"
       - "/workers/guard"

@@ -239,9 +239,11 @@
     width: 28px;
     padding: 0;
 }
+/* expanded, it ends before the feedback button at the bottom right (36 px and an 8 px gap, FeedbackButton.tsx): on a
+   phone the text goes to the next line instead of under the button (change add-feedback) */
 .maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact-show {
     padding: 5px 12px 5px 30px;
-    max-width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px - 44px);
 }
 .maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-button {
     top: 1px;

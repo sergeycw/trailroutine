@@ -1,0 +1,35 @@
+name = "trailroutine-feedback"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+# Version URLs are off for all versions: an old version with old limits would bypass the limits of the new one
+# (requirement «Только основной адрес Worker'а», worker-limits).
+preview_urls = false
+
+# Workers Logs: the request history and console.log in the Cloudflare dashboard, kept for 7 days.
+[observability]
+enabled = true
+
+# One request reads the form (up to 10 MiB of files) and sends one email.
+[limits]
+cpu_ms = 500
+subrequests = 5
+
+[vars]
+# the site of the clone, the dev server of the web/ app (8769) and vite preview (4173)
+ALLOWED_ORIGINS = "https://trailroutine.com,https://nakarte-routing.pages.dev,http://localhost:8769,http://localhost:4173"
+# the sender address on the Email Routing domain; the recipient is the secret FEEDBACK_TO (the address of the owner,
+# not in the public repository): npx wrangler@4 secret put FEEDBACK_TO
+FEEDBACK_FROM = "feedback@trailroutine.com"
+
+# Email Routing sends only to verified destination addresses of the account, and these sends are free
+# (developers.cloudflare.com/email-service/platform/limits, «Verified destination addresses»). No restriction attribute:
+# the address comes from the secret, and Cloudflare allows only verified addresses anyway.
+[[send_email]]
+name = "EMAIL"
+
+# Feedback messages from one IP (CF-Connecting-IP) per 60 s; namespace_id is unique in the account (1002–1008 are the
+# other Workers of the clone, 1001 is free).
+[[ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "1009"
+simple = { limit = 3, period = 60 }

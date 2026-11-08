@@ -103,6 +103,7 @@ flowchart LR
         tracks["nakarte-tracks"]
         elev["nakarte-elevation"]
         guard["nakarte-guard<br/>without workers.dev"]
+        feedback["trailroutine-feedback"]
     end
 
     subgraph r2["R2, EEUR"]
@@ -123,6 +124,8 @@ flowchart LR
     ftiles -->|"get with range"| r2tiles
     fwasm & ftiles -->|"_middleware: service binding GUARD,<br/>limit by IP"| guard
     spa -->|"POST, GET /track/{key}"| tracks
+    spa -->|"POST /feedback, multipart"| feedback
+    feedback -->|"send_email, Email Routing"| mail(["Owner's mailbox"])
     tracks -->|"tracks/{key}"| r2tracks
     spa -->|"POST /"| elev
     elev -->|"range dem3/*"| r2elev
@@ -182,6 +185,7 @@ Each component and each connection, with the file that confirms it. All diagrams
 | Worker `nakarte-guard` | rate counter for Pages Functions, closed from outside (`workers_dev = false`) | [workers/guard/wrangler.toml](../../workers/guard/wrangler.toml), [index.js](../../workers/guard/src/index.js), [client.js](../../workers/guard/src/client.js) |
 | Worker `nakarte-cors-proxy` | CORS proxy, Strava heatmap cookies, Tracestrack key (`TRACESTRACK_KEY`) | [workers/cors-proxy/wrangler.toml](../../workers/cors-proxy/wrangler.toml), [index.js](../../workers/cors-proxy/src/index.js), [strava.js](../../workers/cors-proxy/src/strava.js), [tracestrack.js](../../workers/cors-proxy/src/tracestrack.js) |
 | Worker `nakarte-tracks` | track storage for `nktl=` | [workers/tracks/wrangler.toml](../../workers/tracks/wrangler.toml), [index.js](../../workers/tracks/src/index.js) |
+| Worker `trailroutine-feedback` | feedback form → email to the owner (`send_email` of Email Routing, recipient in the secret `FEEDBACK_TO`) | [workers/feedback/wrangler.toml](../../workers/feedback/wrangler.toml), [index.js](../../workers/feedback/src/index.js) |
 | Worker `nakarte-elevation` | elevation API (`POST /`), Rust → wasm; no elevation tiles | [workers/elevation/wrangler.toml](../../workers/elevation/wrangler.toml), [http.rs](../../workers/elevation/core/src/http.rs) |
 | R2 `nakarte-tiles` | BRouter tiles `*.rd5`, sync `manifest.json` | [wrangler.toml](../../wrangler.toml), [brouter-tiles-sync.mjs](../../scripts/brouter-tiles-sync.mjs) |
 | R2 `nakarte-tracks` | objects `tracks/{key}` | [workers/tracks/wrangler.toml](../../workers/tracks/wrangler.toml) |
@@ -204,6 +208,8 @@ Each component and each connection, with the file that confirms it. All diagrams
 | browser → BRouter in docker | `GET http://localhost:17777/brouter?lonlats=…&profile=…&format=geojson` | [router.ts](../../web/src/routing/router.ts), [brouter.ts](../../web/src/routing/brouter.ts), [config.ts](../../web/src/config.ts) (`routingServer`) |
 | browser → `nakarte-tracks` | `POST /track/{key}`, `GET /track/{key}` | [share.ts](../../web/src/tracks/share.ts), [links.ts](../../web/src/tracks/links.ts) |
 | `nakarte-tracks` → R2 `nakarte-tracks` | `head`/`put`/`get` `tracks/{key}` | [workers/tracks/src/index.js](../../workers/tracks/src/index.js) |
+| browser → `trailroutine-feedback` | `POST /feedback`, `multipart/form-data`: email, message, context, files | [send.ts](../../web/src/feedback/send.ts) |
+| `trailroutine-feedback` → owner's mailbox | `EMAIL.send()`, from `feedback@trailroutine.com`, Reply-To of the user | [workers/feedback/src/index.js](../../workers/feedback/src/index.js) |
 | browser → `nakarte-elevation` | `POST /` (one point per line) | [api.ts](../../web/src/elevation/api.ts) |
 | `nakarte-elevation` → R2 `nakarte-elevation` | range reads of `dem3/*` | [worker/src/lib.rs](../../workers/elevation/worker/src/lib.rs), [grid.rs](../../workers/elevation/core/src/grid.rs) |
 | browser → `nakarte-cors-proxy` | `GET`/`HEAD /{http,https}/{host}/{path}` | [catalog.ts](../../web/src/layers/catalog.ts), [sources.ts](../../web/src/tracks/sources.ts), [mapycz.ts](../../web/src/search/mapycz.ts), [links.ts](../../web/src/search/links.ts) |

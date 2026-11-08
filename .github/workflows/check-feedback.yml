@@ -1,0 +1,30 @@
+name: check feedback
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'workers/feedback/**'
+      - '.github/workflows/check-feedback.yml'
+  pull_request:
+    paths:
+      - 'workers/feedback/**'
+      - '.github/workflows/check-feedback.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: workers/feedback
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: workers/feedback/package-lock.json
+      - run: npm ci
+      # known vulnerabilities of the production dependencies fail the check (security audit, P3)
+      - run: npm audit --omit=dev
+      - run: npm test

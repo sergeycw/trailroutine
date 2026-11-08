@@ -13,6 +13,7 @@ flowchart LR
     clint["check lint<br/>Biome: workers/, functions/, scripts/"]
     cproxy["check cors proxy"]
     ctracks["check tracks"]
+    cfeedback["check feedback"]
     cweb["check web<br/>biome, tsc, vitest, build,<br/>author hosts in build/, e2e"]
     cguard["check guard"]
     ctiles["check tiles"]
@@ -23,17 +24,18 @@ flowchart LR
 
     ghcr["ghcr.io<br/>brouter, pinned digest BROUTER_IMAGE"]
     pages["Pages nakarte-routing<br/>static files + functions/"]
-    workers["Workers nakarte-cors-proxy,<br/>nakarte-tracks, nakarte-elevation,<br/>nakarte-guard"]
+    workers["Workers nakarte-cors-proxy,<br/>nakarte-tracks, nakarte-elevation,<br/>nakarte-guard, trailroutine-feedback"]
     prune["deploy pages: prune<br/>delete the Pages deploys, except the current one"]
 
     pr -->|"paths: workers/**/*.js, functions/**,<br/>scripts/**, biome.json, package*.json"| clint
     pr -->|"paths: workers/cors-proxy/**"| cproxy
     pr -->|"paths: workers/tracks/**"| ctracks
+    pr -->|"paths: workers/feedback/**"| cfeedback
     pr -->|"paths: web/**"| cweb
     pr -->|"paths: workers/guard/**"| cguard
     pr -->|"paths: workers/tiles/**, functions/**,<br/>workers/guard/src/**"| ctiles
     pr -->|"paths: workers/elevation/**"| celev
-    push -->|"the same paths"| clint & cproxy & ctracks & cguard & ctiles & celev & cweb
+    push -->|"the same paths"| clint & cproxy & ctracks & cfeedback & cguard & ctiles & celev & cweb
     push --> changes
     changes -->|"workers/<service>/ changed"| djobs
     changes -->|"changes outside docs/, openspec/, .github/,<br/>*.md and the Worker directories with a job"| dpages
@@ -129,7 +131,7 @@ flowchart LR
 | Workflow | When | What it does | Target |
 |---|---|---|---|
 | `check lint` | PR and push with changes in `workers/**/*.js`, `functions/`, `scripts/`, `biome.json`, the root `package.json` and `package-lock.json` | `npm run lint` from the root: Biome with the root `biome.json`, linter only | — |
-| `check cors proxy`, `check tracks`, `check guard`, `check tiles` | PR and push with changes in the service directory (`check tiles` also in `functions/` and `workers/guard/src/`) | `vitest` in `workerd` | — |
+| `check cors proxy`, `check tracks`, `check feedback`, `check guard`, `check tiles` | PR and push with changes in the service directory (`check tiles` also in `functions/` and `workers/guard/src/`) | `vitest` in `workerd` | — |
 | `check web` | PR and push with changes in `web/` and `scripts/check-no-author-hosts.mjs` | `biome ci`, `tsc -b`, Vitest (unit in Node and browser mode in Chromium), build to `build/`, check of `build/` for author hosts, Playwright e2e against `vite preview` | — |
 | `check elevation` | PR and push with changes in `workers/elevation/` | `cargo fmt`, `clippy` (also for wasm32), `cargo test`, `npm test` in `workerd` | — |
 | `deploy pages` | push to `master` (changed services), manually (everything) | tests of the service, build of `web/` and deploy; after Pages, deletion of the old Pages deploys and `prod check` (job `smoke`) | Pages, Workers |
@@ -147,13 +149,14 @@ GitHub runs schedules only from the default branch. The workflows that write to 
 
 | Secret | Where it is | Who uses it | Permissions |
 |---|---|---|---|
-| `CLOUDFLARE_API_TOKEN` | GitHub | the steps `wrangler` and `prune` in `deploy pages` | Account API token "nakarte deploy": Pages Write, Editor on `nakarte-cors-proxy`, `nakarte-tracks`, `nakarte-elevation`, `nakarte-guard`; no R2 |
+| `CLOUDFLARE_API_TOKEN` | GitHub | the steps `wrangler` and `prune` in `deploy pages` | Account API token "nakarte deploy": Pages Write, Editor on `nakarte-cors-proxy`, `nakarte-tracks`, `nakarte-elevation`, `nakarte-guard`, `trailroutine-feedback`; no R2 |
 | `CLOUDFLARE_ACCOUNT_ID` | GitHub | the steps `wrangler` and `prune` in `deploy pages` | — |
 | `GOOGLE_MAPS_API_KEY` | GitHub, optional | the step `web build` in `deploy pages`, variable `VITE_GOOGLE_MAPS_API_KEY`; without the secret, the key is empty and the app uses the keyless mode | key restrictions in Google Cloud (the key is in the bundle) |
 | `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | GitHub | `elevation data`, `brouter tiles sync` (R2 S3 API) | Bucket Item Write on `nakarte-elevation` and `nakarte-tiles` |
 | `SENTRY_DSN` | GitHub, optional | the step `web build` in `deploy pages`, variable `VITE_SENTRY_DSN`; without the secret, the build has no error tracker | the DSN is public in the bundle; Allowed Domains of the Sentry project limit the senders |
 | `SENTRY_AUTH_TOKEN`; variables `SENTRY_ORG`, `SENTRY_PROJECT` | GitHub, optional | the step `upload source maps to sentry` in `deploy pages`; without the token, the step skips the upload | — |
 | `STRAVA_SESSION`, `STRAVA_COOKIES` | secrets of the Worker `nakarte-cors-proxy` | the proxy ([cors-proxy.md](cors-proxy.md)) | — |
+| `FEEDBACK_TO` | secret of the Worker `trailroutine-feedback` | the feedback email: the recipient, a verified destination address of Email Routing | the address is not in the public repository |
 | `TRACESTRACK_KEY` | secret of the Worker `nakarte-cors-proxy` | the proxy, tiles of the Tracestrack Topo basemap ([cors-proxy.md](cors-proxy.md#tracestrack-key)) | Tracestrack key without a `Referer` list; the free plan gives 100 thousand tiles per month |
 
 Only the steps that use a secret get it (`env` of the step, not of the job): dependency install, tests and build run without secrets. In all workflows, actions are pinned to a full SHA. In the steps with a token, `wrangler` has the exact version from the variable `WRANGLER` (requirement ["Secrets only for the publication steps"](../../openspec/specs/clone-deploy/spec.md#requirement-секреты-только-у-шагов-публикации), [clone-deploy](../../openspec/specs/clone-deploy/spec.md)). The owner adds all secrets; the agent does not enter tokens. Token permissions and the order to add them: `AGENTS.md`, ["Public site on Cloudflare"](../../AGENTS.md#публичный-клон-на-cloudflare) and ["Elevation service"](../../AGENTS.md#сервис-высот-workerselevation). A token leak and narrower permissions: [security audit](../../openspec/research/security-audit.md), [item 5](../../openspec/research/security-audit.md#5-секреты-и-права) and ["Owner steps"](../../openspec/research/security-audit.md#шаги-владельца).

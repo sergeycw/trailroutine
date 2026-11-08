@@ -14,6 +14,8 @@ export interface Config {
     // the data attribution of the elevation service: the terms of viewfinderpanoramas.org require a link to the source
     elevationsAttribution: { text: string; url: string };
     tracksStorageServer: string;
+    // the feedback service (workers/feedback, change add-feedback): POST of the form, the service sends an email
+    feedbackUrl: string;
     routingEngine: RoutingEngine;
     routingEngineRuntimeUrl: string;
     routingServer: string;
@@ -48,6 +50,7 @@ export function makeConfig(mode: string, googleMapsApiKey = '', sentryDsn = ''):
             url: 'https://viewfinderpanoramas.org/dem3.html',
         },
         tracksStorageServer: 'https://nakarte-tracks.nakarte-routing.workers.dev',
+        feedbackUrl: 'https://trailroutine-feedback.nakarte-routing.workers.dev/feedback',
         routingEngine: clone ? 'browser' : 'server',
         // the CheerpJ 4.3 loader: the Community license works only with this CDN
         routingEngineRuntimeUrl: 'https://cjrtnc.leaningtech.com/4.3/loader.js',
