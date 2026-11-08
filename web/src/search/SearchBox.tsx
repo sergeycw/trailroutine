@@ -194,7 +194,9 @@ export function SearchBox({ sources }: { sources: SearchSources }) {
                 <Input
                     ref={input}
                     className="h-9 border-0 bg-transparent pr-7 pl-8 shadow-none focus-visible:ring-0 dark:bg-transparent"
-                    placeholder="Search or paste a track link"
+                    // short: on a phone the field shows about 13 characters; the hint under the empty field in focus
+                    // lists the link sources (change search-panel-mobile)
+                    placeholder="Search"
                     title="Search places, coordinates, map or track links (Alt+L)"
                     aria-label="Search"
                     role="combobox"
@@ -224,8 +226,10 @@ export function SearchBox({ sources }: { sources: SearchSources }) {
                     </Button>
                 )}
             </div>
+            {/* the right edge of the panel is the right edge of the route zone (TopBar.tsx: left-3 and
+                100vw − 4.5rem): wider, it covers the column of the map buttons on a phone */}
             {open && (
-                <div className="glass -left-1 absolute top-full z-20 mt-2.5 flex max-h-72 w-[min(26rem,calc(100vw-1.5rem))] flex-col gap-1 overflow-y-auto rounded-xl p-2 text-sm">
+                <div className="glass -left-1 absolute top-full z-20 mt-2.5 flex max-h-72 w-[min(26rem,calc(100vw-4.25rem))] flex-col gap-1 overflow-y-auto rounded-xl p-2 text-sm">
                     {hint && <p className="text-muted-foreground text-xs">{SEARCH_HINT}</p>}
                     {tooShort && <p className="text-muted-foreground">Type at least {MIN_QUERY_LENGTH} characters</p>}
                     {!tooShort && shown.kind === 'loading' && (
