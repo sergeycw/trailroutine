@@ -109,10 +109,8 @@ const ORDER = [
     'St',
     'Sp',
     'Mt',
-    'Q',
     'Gbt',
     'Si',
-    'Z',
     '#custom-top',
     'Hs',
     'Ct',
@@ -176,7 +174,6 @@ const HLS_ATTRIBUTION =
 // (https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/1.0.0/WMTSCapabilities.xml)
 const HLS_LAYERS = ['HLS_L30_Nadir_BRDF_Adjusted_Reflectance', 'HLS_S30_Nadir_BRDF_Adjusted_Reflectance'];
 const HLS_MAX_ZOOM = 12;
-const SLAZAV_ATTRIBUTION = '<a href="http://slazav.xyz/maps">Vladislav Zavjalov</a>';
 // The full list of DEM sources (11 items) is behind the link: joerd/docs/attribution.md requires the attribution "in a
 // place that is reasonable for the medium", and the OSMF rules that it refers to allow a link to a page with the full
 // attribution.
@@ -418,24 +415,6 @@ function definitions(env: CatalogEnv): Def[] {
                 ['https://t.ssl.ak.tiles.virtualearth.net/tiles/a{quadkey}.jpeg?g=15625&n=z&prx=1'],
                 '<a href="https://www.bing.com/maps?style=h">Microsoft</a>',
             ),
-        },
-        {
-            code: 'Q',
-            title: 'Slazav mountains',
-            group: 'Default layers',
-            isOverlay: true,
-            isDefault: true,
-            // slazav.xyz/tiles/hr/{x}-{y}-{z}.png answers 302 to here without a CORS header, and WebGL needs CORS on
-            // each answer of the chain, so this is the final address at once
-            source: raster(['https://tiles.slazav.xyz/hr/{z}/{x}/{y}.png'], SLAZAV_ATTRIBUTION, { maxzoom: 13 }),
-        },
-        {
-            code: 'Z',
-            title: 'Slazav Moscow region map',
-            group: 'Default layers',
-            isOverlay: true,
-            isDefault: true,
-            source: raster(['https://tiles.slazav.xyz/podm/{z}/{x}/{y}.png'], SLAZAV_ATTRIBUTION, { maxzoom: 14 }),
         },
         {
             code: 'Otm',

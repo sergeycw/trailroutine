@@ -256,7 +256,7 @@ export function App({
             }
             return;
         }
-        // 404 means "no tile" for regional and sparse layers (Slazav inside its area), and it is not an error
+        // 404 means "no tile" for regional and sparse layers (Mt inside its bounds), and it is not an error
         if (status === 404) {
             return;
         }

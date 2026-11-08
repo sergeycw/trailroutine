@@ -28,7 +28,7 @@ function tileUrl(layer: LayerDef, z: number, x: number, y: number, pixelRatio = 
 
 // The samples are the templates of src/layers.js with the values that Leaflet substituted for tile 8/151/87 (or for a
 // tile in the layer coverage). The differences from the old client are intentional: Google uses z= instead of
-// zoom=17-z (the same tiles), Slazav and Slovakia use the final addresses after the redirect, swisstopo goes without
+// zoom=17-z (the same tiles), Slovakia uses the final address after the redirect, swisstopo goes without
 // the proxy, Bing uses a static address from the style.
 const SAMPLES: [code: string, tile: [number, number, number], url: string][] = [
     ['Tt', [8, 151, 87], 'https://proxy.test/https/tile.tracestrack.com/topo_en/8/151/87.webp'],
@@ -47,8 +47,6 @@ const SAMPLES: [code: string, tile: [number, number, number], url: string][] = [
     ['L', [8, 151, 87], 'https://mt2.google.com/vt/lyrs=s&x=151&y=87&z=8'],
     ['P', [8, 151, 87], 'https://mt2.google.com/vt/lyrs=t@130,r@206000000&hl=en&x=151&y=87&z=8'],
     ['I', [3, 4, 2], 'https://t.ssl.ak.tiles.virtualearth.net/tiles/a120.jpeg?g=15625&n=z&prx=1'],
-    ['Q', [10, 634, 377], 'https://tiles.slazav.xyz/hr/10/634/377.png'],
-    ['Z', [10, 619, 320], 'https://tiles.slazav.xyz/podm/10/619/320.png'],
     ['Otm', [8, 151, 87], 'https://b.tile.opentopomap.org/8/151/87.png'],
     ['Ocm', [8, 151, 87], 'https://b.tile.thunderforest.com/cycle/8/151/87.png'],
     ['Oso', [8, 151, 87], 'https://b.tile.thunderforest.com/outdoors/8/151/87.png'],
@@ -112,8 +110,8 @@ const SAMPLES: [code: string, tile: [number, number, number], url: string][] = [
 ];
 
 describe('Каталог слоёв', () => {
-    test('Список слоёв: 30 слоёв старого клиента, отмывка, горизонтали, Tracestrack, OpenFreeMap, Sentinel-2 и снимки по датам, без Яндекса, Wikimapia и сетки', () => {
-        expect(catalog).toHaveLength(36);
+    test('Список слоёв: 28 слоёв старого клиента, отмывка, горизонтали, Tracestrack, OpenFreeMap, Sentinel-2 и снимки по датам, без Яндекса, Slazav, Wikimapia и сетки', () => {
+        expect(catalog).toHaveLength(34);
         const first = [...catalog].sort((a, b) => a.order - b.order).slice(0, 4);
         expect(first.map((layer) => layer.title)).toEqual([
             'Tracestrack Topo',
@@ -121,7 +119,8 @@ describe('Каталог слоёв', () => {
             'OpenStreetMap',
             'ESRI Satellite',
         ]);
-        for (const code of ['Y', 'S', 'W', 'Ng']) {
+        // Q and Z (Slazav) are removed on 2026-11-08: tiles.slazav.xyz answers 404 for all tiles
+        for (const code of ['Y', 'S', 'W', 'Ng', 'Q', 'Z']) {
             expect(byCode.has(code)).toBe(false);
         }
         expect(byCode.get('Hs')?.title).toBe('Relief shading');

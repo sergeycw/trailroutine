@@ -1,6 +1,6 @@
 # Hide the Rust services: options
 
-Status: research for the owner's to-do «Research: how to hide the Rust services of trailroutine that have valuable solutions» (2026-11-07). No change is made yet; the owner chooses an option.
+Status: research for the owner's to-do «Research: how to hide the Rust services of trailroutine that have valuable solutions» (2026-11-07). Owner decision 2026-11-08: hide nothing; the services stay in this public repository.
 
 ## What is valuable and where it is
 

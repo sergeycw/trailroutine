@@ -28,9 +28,6 @@ const SKIP = new Set(['Of', 'Tt', 'Sa', 'Sr', 'Sb', 'Sw', 'Hls', 'Ct']);
 // Regional layers without bounds in the catalog have their place here.
 const DEFAULT_PLACE = {lat: 42.66, lng: 44.64};
 const PLACES = {
-    // the maps of slazav.xyz: «hr» is the mountain ridges of the former USSR, «podm» is the Moscow region
-    Q: {lat: 42.66, lng: 44.64},
-    Z: {lat: 55.75, lng: 37.62},
     // the mountain maps of Aleksey Tsvetkov cover only the ranges, not all of the bounds: Khan Tengri has z9–z13
     Mt: {lat: 42.21, lng: 80.17},
 };
