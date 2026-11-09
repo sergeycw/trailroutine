@@ -223,6 +223,20 @@ function climbApi() {
 const slopeFill = (step: number) =>
     page.getByTestId('profile-graph').element().querySelector(`[data-slope="${step}"]`)?.getAttribute('d') ?? '';
 
+describe('Order of the profile summary', () => {
+    test('Order of the summary', async () => {
+        await render(trackLink('Walk', [SOUTH, NORTH]));
+        await openTrackProfile('Walk');
+        const columns = [...profilePanel().element().querySelectorAll('dl')].map((list) =>
+            [...list.querySelectorAll<HTMLElement>('[data-stat]')].map((value) => value.dataset.stat),
+        );
+        expect(columns).toEqual([
+            ['distance', 'ascent', 'descent', 'ascent-slope', 'descent-slope'],
+            ['max', 'min', 'start', 'finish'],
+        ]);
+    });
+});
+
 describe('Раскраска профиля по крутизне', () => {
     test('Участки разной крутизны', async () => {
         await render(trackLink('Walk', [SOUTH]), climbApi());
