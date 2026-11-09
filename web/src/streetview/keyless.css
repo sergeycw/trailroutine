@@ -14,8 +14,13 @@ The rules came from src/lib/leaflet.control.panoramas/lib/google/keyless.css of 
 (change switch-to-web-app), so this file is the only copy.
 */
 
-/* a second inversion on the scene root cancels the inversion of the canvas */
-.google-street-view-keyless div[aria-label="Street View"] {
+/*
+A second inversion on the scene root cancels the inversion of the canvas. Only while the canvas has it: Google inverts
+the canvas after the request QuotaService.RecordEvent, and the list EasyPrivacy (uBlock Origin Lite and others) blocks
+this request; an unconditional inversion then makes the panorama negative (change fix-street-view-negative). The rule
+does not remove the filter of the canvas: Google then shows a black panorama.
+*/
+.google-street-view-keyless div[aria-label="Street View"]:has(canvas[style*="invert"]) {
     filter: invert(1) !important;
 }
 
