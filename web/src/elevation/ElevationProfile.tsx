@@ -27,24 +27,47 @@ interface StatItem {
     value: string;
 }
 
-function statItems(stats: ProfileStats): StatItem[] {
-    const items: StatItem[] = [{ key: 'distance', label: 'Distance', value: kilometers(stats.distance) }];
+// Two columns of the summary (feedback 2026-11-08, owner chose the variant «path | heights» on 2026-11-09, change
+// profile-summary-columns): the path and the slopes on the left, the heights on the right. A column reads from top to
+// bottom; the phone line has the same order, the path first
+function statColumns(stats: ProfileStats): { path: StatItem[]; heights: StatItem[] } {
+    const path: StatItem[] = [{ key: 'distance', label: 'Distance', value: kilometers(stats.distance) }];
     if (stats.noData) {
-        return items;
+        return { path, heights: [] };
     }
     const approx = stats.missing ? '~' : '';
     const angle = (value: ProfileStats['ascentAngle']) => (value ? `${value.avg}° / ${value.max}°` : '-');
-    items.push(
+    path.push(
         { key: 'ascent', label: 'Ascent', value: approx + meters(stats.ascent) },
         { key: 'descent', label: 'Descent', value: approx + meters(stats.descent) },
-        { key: 'min', label: 'Min', value: meters(stats.min) },
-        { key: 'max', label: 'Max', value: meters(stats.max) },
-        { key: 'start', label: 'Start', value: (stats.approxStart ? '~' : '') + meters(stats.start) },
-        { key: 'finish', label: 'Finish', value: (stats.approxEnd ? '~' : '') + meters(stats.end) },
         { key: 'ascent-slope', label: 'Avg / max ascent', value: angle(stats.ascentAngle) },
         { key: 'descent-slope', label: 'Avg / max descent', value: angle(stats.descentAngle) },
     );
-    return items;
+    const heights = [
+        { key: 'max', label: 'Max', value: meters(stats.max) },
+        { key: 'min', label: 'Min', value: meters(stats.min) },
+        { key: 'start', label: 'Start', value: (stats.approxStart ? '~' : '') + meters(stats.start) },
+        { key: 'finish', label: 'Finish', value: (stats.approxEnd ? '~' : '') + meters(stats.end) },
+    ];
+    return { path, heights };
+}
+
+function StatList({ name, items }: { name: string; items: StatItem[] }) {
+    if (items.length === 0) {
+        return null;
+    }
+    return (
+        <dl className="flex items-baseline gap-x-3 sm:grid sm:grid-cols-[auto_auto] sm:gap-y-0.5" data-stats={name}>
+            {items.map((item) => (
+                <div key={item.key} className="flex gap-1 sm:contents">
+                    <dt className="text-muted-foreground">{item.label}</dt>
+                    <dd className="font-medium tabular-nums" data-stat={item.key}>
+                        {item.value}
+                    </dd>
+                </div>
+            ))}
+        </dl>
+    );
 }
 
 function Stats({ data }: { data: ProfileData }) {
@@ -62,6 +85,7 @@ function Stats({ data }: { data: ProfileData }) {
     if (!stats) {
         return null;
     }
+    const columns = statColumns(stats);
     let note = '';
     if (stats.noData) {
         note = 'No elevation data';
@@ -72,16 +96,10 @@ function Stats({ data }: { data: ProfileData }) {
         // phone: a line with scroll; computer: a column of «label — value» on the left of the graph (mock-up 4a)
         <div className="flex min-w-0 flex-nowrap items-baseline gap-x-3 overflow-x-auto whitespace-nowrap text-xs sm:flex-col sm:gap-y-1 sm:overflow-visible">
             {selection && <span className="font-medium text-amber-700">Selection</span>}
-            <dl className="flex items-baseline gap-x-3 sm:grid sm:grid-cols-[auto_auto_auto_auto] sm:gap-y-0.5">
-                {statItems(stats).map((item) => (
-                    <div key={item.key} className="flex gap-1 sm:contents">
-                        <dt className="text-muted-foreground">{item.label}</dt>
-                        <dd className="font-medium tabular-nums" data-stat={item.key}>
-                            {item.value}
-                        </dd>
-                    </div>
-                ))}
-            </dl>
+            <div className="flex items-baseline gap-x-3 sm:items-start">
+                <StatList name="path" items={columns.path} />
+                <StatList name="heights" items={columns.heights} />
+            </div>
             {note && (
                 <span className="text-amber-700" data-testid="profile-note">
                     {note}
