@@ -10,7 +10,7 @@
     "test": "worker-build --release worker && vitest run"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "0.22.0",
-    "vitest": "^4.1.0"
+    "@cloudflare/vitest-pool-workers": "0.23.0",
+    "vitest": "^4.1.12"
   }
 }
