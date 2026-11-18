@@ -10,4 +10,4 @@ crate-type = ["cdylib"]
 
 [dependencies]
 elevation-core.workspace = true
-worker = "0.8"
+worker = "0.9"
